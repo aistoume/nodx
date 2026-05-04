@@ -1,0 +1,25 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default permissions for the nodx desktop window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    {
+      "identifier": "sql:allow-load",
+      "allow": [{ "name": "sqlite:nodx.db" }]
+    },
+    {
+      "identifier": "sql:allow-execute",
+      "allow": [{ "name": "sqlite:nodx.db" }]
+    },
+    {
+      "identifier": "sql:allow-select",
+      "allow": [{ "name": "sqlite:nodx.db" }]
+    },
+    {
+      "identifier": "sql:allow-close",
+      "allow": [{ "name": "sqlite:nodx.db" }]
+    }
+  ]
+}
