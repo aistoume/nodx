@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>nodx — AI 决策思考工作台 (原型)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e5e5e3;
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --accent: #2C5282;
+    --accent-light: #DBEAFE;
+    --accent-soft: #EFF6FF;
+    --note-yellow: #FEF3C7;
+    --note-yellow-border: #F59E0B;
+    --note-blue: #DBEAFE;
+    --note-blue-border: #3B82F6;
+    --note-green: #D1FAE5;
+    --note-green-border: #10B981;
+    --note-purple: #EDE9FE;
+    --note-purple-border: #8B5CF6;
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+    overflow: hidden;
+  }
+
+  /* Header */
+  header {
+    height: 56px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+  }
+  .logo { font-weight: 700; font-size: 18px; color: var(--accent); }
+  .logo-tagline { font-size: 12px; color: var(--text-muted); margin-left: 8px; }
+  .tabs { display: flex; gap: 4px; margin-left: auto; }
+  .tab {
+    padding: 6px 14px; border: none; background: transparent;
+    border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .tab.active { background: var(--accent); color: white; }
+  .tab:hover:not(.active) { background: rgba(0,0,0,0.04); color: var(--text); }
+  .draft-btn {
+    border: 1px solid var(--border); background: var(--surface);
+    padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px;
+    color: var(--text-muted);
+  }
+  .draft-btn:hover { background: var(--bg); color: var(--text); }
+
+  /* Main */
+  main { height: calc(100vh - 56px); overflow: hidden; position: relative; }
+  .view { display: none; width: 100%; height: 100%; }
+  .view.active { display: flex; }
+
+  /* Graph view */
+  #graph-view {
+    flex-direction: column;
+    background: linear-gradient(135deg, #fafaf9 0%, #f0f4f8 100%);
+    position: relative;
+  }
+  #network { flex: 1; width: 100%; cursor: grab; }
+  .legend {
+    position: absolute; bottom: 20px; left: 20px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px; font-size: 12px;
+    color: var(--text-muted); display: flex; gap: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .legend-dot {
+    display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; margin-right: 4px; vertical-align: middle;
+  }
+  .graph-help {
+    position: absolute; top: 20px; right: 20px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px; font-size: 12px;
+    color: var(--text-muted); max-width: 240px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04); line-height: 1.8;
+  }
+  .graph-title {
+    position: absolute; top: 20px; left: 20px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .graph-title h2 { font-size: 15px; font-weight: 600; }
+  .graph-title small { font-size: 11px; color: var(--text-muted); }
+
+  /* Dialog view */
+  #dialog-view.active { display: grid; grid-template-columns: 240px 1fr 340px; }
+  .panel { height: 100%; overflow-y: auto; background: var(--surface); }
+  .panel.left { border-right: 1px solid var(--border); padding: 18px 14px; }
+  .panel.right { border-left: 1px solid var(--border); padding: 16px; }
+
+  /* Left panel */
+  .breadcrumb { font-size: 12px; color: var(--text-muted); margin-bottom: 18px; line-height: 1.8; }
+  .breadcrumb-item { cursor: pointer; }
+  .breadcrumb-item:hover { color: var(--accent); }
+  .breadcrumb-item.current { color: var(--text); font-weight: 500; }
+  .panel-section-title {
+    font-size: 11px; text-transform: uppercase; color: var(--text-muted);
+    letter-spacing: 0.5px; margin: 16px 0 8px 0;
+  }
+  .nav-list { list-style: none; }
+  .nav-item {
+    padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 13px;
+    margin-bottom: 2px; color: var(--text-muted);
+  }
+  .nav-item:hover { background: rgba(0,0,0,0.04); color: var(--text); }
+  .nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
+  .mini-graph {
+    margin-top: 16px; border: 1px dashed var(--border);
+    border-radius: 6px; height: 110px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); font-size: 11px;
+  }
+
+  /* Center panel */
+  .center { display: flex; flex-direction: column; height: 100%; background: var(--bg); }
+  .chat-header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .chat-title { font-size: 16px; font-weight: 600; }
+  .chat-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .chat-actions { display: flex; gap: 8px; }
+  .btn {
+    border: 1px solid var(--border); background: var(--surface);
+    padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    font-size: 12px; color: var(--text-muted); transition: all 0.15s;
+  }
+  .btn:hover { background: var(--bg); color: var(--text); }
+  .btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn.primary:hover { background: #1e3a5f; color: white; }
+
+  .messages {
+    flex: 1; overflow-y: auto; padding: 24px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .message { max-width: 760px; width: 100%; }
+  .message.user { align-self: flex-end; }
+  .speaker {
+    font-size: 11px; color: var(--text-muted); margin-bottom: 4px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .message.user .speaker { text-align: right; }
+  .bubble {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 18px;
+  }
+  .message.user .bubble { background: var(--accent-light); border-color: var(--accent-light); }
+  .bubble p { margin-bottom: 8px; }
+  .bubble p:last-child { margin-bottom: 0; }
+
+  /* Survey */
+  .survey-card {
+    background: linear-gradient(135deg, #fff 0%, #f8faff 100%);
+    border: 2px solid var(--accent-light); border-radius: 12px; padding: 20px;
+  }
+  .survey-title { font-weight: 600; margin-bottom: 4px; }
+  .survey-hint { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+  .survey-options { list-style: none; margin-bottom: 12px; }
+  .survey-options li label {
+    padding: 6px 0; display: flex; align-items: flex-start; gap: 10px;
+    cursor: pointer; user-select: none;
+  }
+  .survey-options input { margin-top: 4px; }
+  .survey-add {
+    background: transparent; border: 1px dashed var(--border);
+    width: 100%; padding: 8px; border-radius: 6px; color: var(--text-muted);
+    cursor: pointer; margin-bottom: 14px; font-size: 13px;
+  }
+  .survey-add:hover { border-color: var(--accent); color: var(--accent); }
+  .survey-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* Factors */
+  .factors { margin-top: 12px; }
+  .factor {
+    border-left: 3px solid var(--accent); padding: 10px 14px;
+    margin-bottom: 10px; background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+  }
+  .factor.current { border-left-color: var(--note-yellow-border); background: #FFFBEB; }
+  .factor h4 { font-size: 14px; margin-bottom: 4px; }
+  .factor-question { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+  .deepen-btn {
+    background: var(--surface); border: 1px solid var(--accent-light);
+    color: var(--accent); padding: 4px 10px; border-radius: 4px;
+    cursor: pointer; font-size: 12px;
+  }
+  .deepen-btn:hover { background: var(--accent); color: white; }
+
+  /* Anchored paragraphs */
+  .anchored { cursor: pointer; transition: background 0.2s; padding: 2px 4px; border-radius: 4px; }
+  .anchored.highlight { background: rgba(255, 235, 0, 0.2); }
+
+  /* @ mention */
+  .mention {
+    display: inline-block; background: var(--accent-light); color: var(--accent);
+    padding: 1px 8px; border-radius: 12px; font-size: 12px; cursor: pointer;
+    font-weight: 500;
+  }
+  .mention:hover { background: var(--accent); color: white; }
+
+  /* Input */
+  .input-area {
+    padding: 16px 24px; border-top: 1px solid var(--border);
+    background: var(--surface); display: flex; gap: 8px;
+  }
+  .input-area input {
+    flex: 1; border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; font-size: 14px; font-family: inherit;
+  }
+  .input-area input:focus { outline: none; border-color: var(--accent); }
+  .input-area button {
+    background: var(--accent); color: white; border: none;
+    border-radius: 8px; padding: 10px 20px; cursor: pointer; font-size: 13px;
+  }
+
+  /* Right panel - comments */
+  .comments-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px;
+  }
+  .comments-title { font-size: 13px; font-weight: 600; }
+  .comment-count { font-size: 11px; color: var(--text-muted); }
+  .comment-section { margin-bottom: 14px; }
+  .comment-section-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-muted); margin-bottom: 6px; cursor: pointer;
+  }
+  .comment {
+    border-radius: 6px; padding: 10px 12px; margin-bottom: 8px;
+    font-size: 13px; border-left: 3px solid; transition: all 0.2s;
+    cursor: pointer;
+  }
+  .comment.highlight { transform: translateX(-4px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  .comment.yellow { background: var(--note-yellow); border-color: var(--note-yellow-border); }
+  .comment.blue { background: var(--note-blue); border-color: var(--note-blue-border); }
+  .comment.green { background: var(--note-green); border-color: var(--note-green-border); }
+  .comment.purple { background: var(--note-purple); border-color: var(--note-purple-border); }
+  .comment-meta {
+    font-size: 10px; color: var(--text-muted); margin-bottom: 4px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  /* Network nodes */
+  .node rect { cursor: pointer; transition: filter 0.2s; }
+  .node:hover rect { filter: brightness(1.05); }
+  .node-label { font-size: 12px; pointer-events: none; }
+  .node-badge {
+    fill: var(--note-yellow-border); pointer-events: none;
+    font-size: 10px; font-weight: 600;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: white; padding: 10px 18px;
+    border-radius: 8px; font-size: 13px;
+    transition: transform 0.3s; z-index: 100;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Draft drawer */
+  .draft-drawer {
+    position: fixed; right: 0; top: 56px; bottom: 0; width: 360px;
+    background: var(--surface); border-left: 1px solid var(--border);
+    box-shadow: -4px 0 16px rgba(0,0,0,0.06);
+    transform: translateX(100%); transition: transform 0.3s;
+    z-index: 50; overflow-y: auto; padding: 20px;
+  }
+  .draft-drawer.open { transform: translateX(0); }
+  .draft-item {
+    border-left: 3px solid var(--note-yellow-border);
+    background: var(--note-yellow); padding: 10px 12px;
+    border-radius: 6px; margin-bottom: 10px; font-size: 13px;
+  }
+  .draft-item-meta { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <span class="logo">nodx</span>
+    <span class="logo-tagline">AI 决策思考工作台 · 原型</span>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-view="graph">🕸️ 网络图</button>
+    <button class="tab" data-view="dialog">💬 对话页面</button>
+  </div>
+  <button class="draft-btn" id="draftBtn">📝 草稿区 (3)</button>
+</header>
+
+<main>
+  <!-- Network Graph View -->
+  <section id="graph-view" class="view active">
+    <svg id="network"></svg>
+    <div class="graph-title">
+      <h2>🏠 现在该投资股票吗？</h2>
+      <small>10 个对话节点 · 1 个 AI 跨支建议关联</small>
+    </div>
+    <div class="graph-help">
+      💡 <strong>点击任意节点</strong>进入对话<br>
+      🖱️ 拖拽节点重排，滚轮缩放<br>
+      ⭕ 灰色节点 = Survey 没选的"幽灵"，可激活
+    </div>
+    <div class="legend">
+      <span><span class="legend-dot" style="background:#3B82F6"></span>探索中</span>
+      <span><span class="legend-dot" style="background:#10B981"></span>已总结</span>
+      <span><span class="legend-dot" style="background:#F59E0B"></span>已得出原子动作</span>
+      <span><span class="legend-dot" style="background:#999"></span>幽灵 (待激活)</span>
+      <span style="color:#8B5CF6">┄┄ AI 跨支关联</span>
+    </div>
+  </section>
+
+  <!-- Dialog View -->
+  <section id="dialog-view" class="view">
+
+    <aside class="panel left">
+      <div class="breadcrumb">
+        <span class="breadcrumb-item">🏠 现在该投资股票吗？</span><br>
+        &nbsp;&nbsp;└─ <span class="breadcrumb-item current">💬 当前市场时机</span>
+      </div>
+
+      <div class="panel-section-title">兄弟对话</div>
+      <ul class="nav-list">
+        <li class="nav-item">💬 资金属性 & 承受能力</li>
+        <li class="nav-item active">💬 当前市场时机 (你在这)</li>
+        <li class="nav-item">💬 投资目的</li>
+      </ul>
+
+      <div class="panel-section-title">子对话 (2)</div>
+      <ul class="nav-list">
+        <li class="nav-item">💬 估值水平 <small style="color:#10B981">·已总结</small></li>
+        <li class="nav-item">💬 周期阶段</li>
+      </ul>
+
+      <div class="panel-section-title">幽灵节点 (Survey 未选)</div>
+      <ul class="nav-list">
+        <li class="nav-item" style="opacity:0.5">◌ 信息优势</li>
+        <li class="nav-item" style="opacity:0.5">◌ 流动性需求</li>
+        <li class="nav-item" style="opacity:0.5">◌ 税务影响</li>
+      </ul>
+
+      <div class="mini-graph">迷你网络图<br><small>(略)</small></div>
+    </aside>
+
+    <div class="center">
+      <div class="chat-header">
+        <div>
+          <div class="chat-title">💬 当前市场时机</div>
+          <div class="chat-meta">🔵 探索中 · 5 条消息 · 4 条备注</div>
+        </div>
+        <div class="chat-actions">
+          <button class="btn">🔄 总结对话</button>
+          <button class="btn primary">↑ 合并回父对话</button>
+        </div>
+      </div>
+
+      <div class="messages">
+        <div class="message user">
+          <div class="speaker">你</div>
+          <div class="bubble">现在该投资股票吗？</div>
+        </div>
+
+        <div class="message ai">
+          <div class="speaker">nodx · 开场分析师</div>
+          <div class="survey-card">
+            <div class="survey-title">在我帮你分析之前，先告诉我你最关心哪几个方面？</div>
+            <div class="survey-hint">（多选 3-5 项最佳。没选的会以"幽灵节点"保留，随时可激活）</div>
+            <ul class="survey-options">
+              <li><label><input type="checkbox" checked> 我的资金属性和承受能力</label></li>
+              <li><label><input type="checkbox" checked> 当前市场时机</label></li>
+              <li><label><input type="checkbox" checked> 投资目的（保值/增值/对抗通胀）</label></li>
+              <li><label><input type="checkbox"> 我有没有信息优势</label></li>
+              <li><label><input type="checkbox"> 与其他资产的配置比例</label></li>
+              <li><label><input type="checkbox"> 流动性需求</label></li>
+              <li><label><input type="checkbox"> 税务影响</label></li>
+            </ul>
+            <button class="survey-add">+ 添加你想到的方面</button>
+            <div class="survey-actions">
+              <button class="btn">跳过</button>
+              <button class="btn primary" id="surveyConfirm">确认（已选 3 项）</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="message user">
+          <div class="speaker">你</div>
+          <div class="bubble">[已确认 3 项]</div>
+        </div>
+
+        <div class="message ai">
+          <div class="speaker">nodx · 拆解</div>
+          <div class="bubble">
+            <p>好的，基于你选的 3 个方面，我用<strong>第一性原理</strong>帮你拆出关键问题：</p>
+            <div class="factors">
+              <div class="factor">
+                <h4>1. 资金属性和承受能力</h4>
+                <p class="factor-question">本质要回答：这笔钱是闲钱还是应急金？最坏亏 50% 你的生活会崩吗？</p>
+                <button class="deepen-btn">→ 深入讨论</button>
+              </div>
+              <div class="factor current">
+                <h4>2. 当前市场时机 ← 你正在讨论这个</h4>
+                <p class="factor-question">本质要回答两件事：估值层面贵不贵？周期层面在哪个阶段？</p>
+              </div>
+              <div class="factor">
+                <h4>3. 投资目的</h4>
+                <p class="factor-question">保值、增值、对抗通胀，三者的资产配置策略完全不同</p>
+                <button class="deepen-btn">→ 深入讨论</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="message user">
+          <div class="speaker">你</div>
+          <div class="bubble">我想先聊第 2 个，市场时机</div>
+        </div>
+
+        <div class="message ai">
+          <div class="speaker">nodx · 苏格拉底追问</div>
+          <div class="bubble">
+            <p>好。从第一性原理看，"判断市场时机"这个问题如果不拆是没法回答的。它本质上是两个<strong>独立</strong>的问题叠加：</p>
+            <p class="anchored" data-anchor="anchor-pe">① <strong>估值层面</strong>：当前价格相对于内在价值，是高估还是低估？主要看 PE / PB / PEG / 股息率与历史分位数对比。</p>
+            <p class="anchored" data-anchor="anchor-cycle">② <strong>周期层面</strong>：经济和市场周期处于哪个阶段？美林时钟 / 信用周期 / 库存周期。</p>
+            <p>这两个判断<strong>互相独立</strong>——可以同时出现"贵 + 周期早"，也可以"便宜 + 周期晚"，对应完全不同的策略。</p>
+            <p>建议你两个都拆成子对话来讨论。或者参考你之前在 <span class="mention">@资金属性</span> 里说的"最多能亏 30%"，先聊估值？</p>
+            <p style="margin-top:10px">
+              <button class="deepen-btn">→ 深入"估值层面"</button>
+              <button class="deepen-btn">→ 深入"周期层面"</button>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <input type="text" placeholder="输入...或输入 @ 引用其他对话">
+        <button>发送</button>
+      </div>
+    </div>
+
+    <aside class="panel right">
+      <div class="comments-header">
+        <span class="comments-title">📌 备注 & 沉淀</span>
+        <span class="comment-count">5 条</span>
+      </div>
+
+      <div class="comment-section">
+        <div class="comment-section-title">▼ 🟡 便签 · 1</div>
+        <div class="comment yellow" data-anchor="anchor-pe">
+          <div class="comment-meta">便签 · 2 分钟前</div>
+          老板说他更看 PEG，不是单纯 PE
+        </div>
+      </div>
+
+      <div class="comment-section">
+        <div class="comment-section-title">▼ 🔵 解释 · 2</div>
+        <div class="comment blue" data-anchor="anchor-pe">
+          <div class="comment-meta">解释 · "PE"</div>
+          <strong>PE = 市盈率</strong><br>
+          公式: 股价 ÷ 每股盈利。常用估值指标，越高代表股价相对盈利越贵
+        </div>
+        <div class="comment blue" data-anchor="anchor-cycle">
+          <div class="comment-meta">解释 · "美林时钟"</div>
+          经济周期分四阶段：复苏 / 过热 / 滞胀 / 衰退，每阶段对应不同的最佳资产配置
+        </div>
+      </div>
+
+      <div class="comment-section">
+        <div class="comment-section-title">▼ 🟢 原子动作 · 1 <small style="color:#F59E0B">(也会出现在全局 Todo)</small></div>
+        <div class="comment green" data-anchor="anchor-pe">
+          <div class="comment-meta">原子动作 · 截止 5/15</div>
+          找数据组拉 A 股全行业 PE 分位数 → 输出 1 页报告
+        </div>
+      </div>
+
+      <div class="comment-section">
+        <div class="comment-section-title">▼ 🟣 引用 · 1</div>
+        <div class="comment purple">
+          <div class="comment-meta">来自子对话 @周期阶段</div>
+          AI 总结：当前处于"过热末期"，建议谨慎加仓
+        </div>
+      </div>
+    </aside>
+
+  </section>
+</main>
+
+<!-- Draft drawer -->
+<div class="draft-drawer" id="draftDrawer">
+  <h3 style="margin-bottom:6px">📝 草稿区</h3>
+  <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">
+    讨论中突然冒出来的点子先扔这里，不创建节点污染网络图。整理时再决定要不要并入对话或起新对话。
+  </p>
+  <div class="draft-item">
+    <div class="draft-item-meta">3 分钟前 · 来自「市场时机」</div>
+    历史上 PE 分位数 + 流动性指标的复合模型，似乎比单看 PE 更准
+  </div>
+  <div class="draft-item">
+    <div class="draft-item-meta">10 分钟前 · 自由捕获</div>
+    要不要也考虑下汇率周期？人民币贬值时大概率是好的入场时机
+  </div>
+  <div class="draft-item">
+    <div class="draft-item-meta">昨天 · 自由捕获</div>
+    问下张总他怎么看美联储 6 月议息会议
+  </div>
+  <button class="btn" style="margin-top:12px;width:100%">+ 新建草稿</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ========= View switching =========
+  const tabs = document.querySelectorAll('.tab');
+  const views = document.querySelectorAll('.view');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      views.forEach(v => v.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.view + '-view').classList.add('active');
+    });
+  });
+
+  // ========= D3 Network =========
+  const svg = d3.select('#network');
+  const container = svg.node().parentElement;
+  let width = container.clientWidth;
+  let height = container.clientHeight;
+  svg.attr('width', width).attr('height', height);
+
+  const nodes = [
+    {id: 'root', label: '现在该投资股票吗？', status: 'exploring', isRoot: true},
+    {id: 'capital', label: '资金属性 & 承受能力', status: 'exploring'},
+    {id: 'timing', label: '当前市场时机', status: 'exploring', current: true, childCount: 2},
+    {id: 'purpose', label: '投资目的', status: 'exploring'},
+    {id: 'info', label: '信息优势', status: 'ghost'},
+    {id: 'liquidity', label: '流动性需求', status: 'ghost'},
+    {id: 'tax', label: '税务影响', status: 'ghost'},
+    {id: 'valuation', label: '估值水平', status: 'summarized'},
+    {id: 'cycle', label: '周期阶段', status: 'exploring'},
+    {id: 'risk', label: '最坏能亏多少？', status: 'atomic'},
+  ];
+  const links = [
+    {source: 'root', target: 'capital', type: 'parent'},
+    {source: 'root', target: 'timing', type: 'parent'},
+    {source: 'root', target: 'purpose', type: 'parent'},
+    {source: 'root', target: 'info', type: 'ghost'},
+    {source: 'root', target: 'liquidity', type: 'ghost'},
+    {source: 'root', target: 'tax', type: 'ghost'},
+    {source: 'timing', target: 'valuation', type: 'parent'},
+    {source: 'timing', target: 'cycle', type: 'parent'},
+    {source: 'capital', target: 'risk', type: 'parent'},
+    {source: 'valuation', target: 'cycle', type: 'semantic'},
+  ];
+
+  function statusColor(s) {
+    return { exploring: '#3B82F6', summarized: '#10B981',
+             atomic: '#F59E0B', ghost: '#999' }[s];
+  }
+
+  const sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d => d.id)
+      .distance(d => d.type === 'semantic' ? 220 : 140))
+    .force('charge', d3.forceManyBody().strength(-700))
+    .force('center', d3.forceCenter(width/2, height/2))
+    .force('collide', d3.forceCollide().radius(85));
+
+  const linkSel = svg.append('g').selectAll('line')
+    .data(links).enter().append('line')
+    .attr('stroke', d => d.type === 'semantic' ? '#8B5CF6'
+                       : d.type === 'ghost' ? '#ccc' : '#bbb')
+    .attr('stroke-width', d => d.type === 'semantic' ? 2 : 1.5)
+    .attr('stroke-dasharray', d =>
+      d.type === 'ghost' ? '4,4' : d.type === 'semantic' ? '6,4' : null);
+
+  const nodeSel = svg.append('g').selectAll('g')
+    .data(nodes).enter().append('g').attr('class', 'node')
+    .call(d3.drag()
+      .on('start', (e, d) => {
+        if (!e.active) sim.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+      })
+      .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
+      .on('end', (e, d) => {
+        if (!e.active) sim.alphaTarget(0);
+        d.fx = null; d.fy = null;
+      }));
+
+  nodeSel.append('rect')
+    .attr('width', d => d.label.length * 13 + 32)
+    .attr('height', d => d.isRoot ? 50 : 38)
+    .attr('rx', d => d.isRoot ? 25 : 19)
+    .attr('x', d => -(d.label.length * 13 + 32)/2)
+    .attr('y', d => d.isRoot ? -25 : -19)
+    .attr('fill', d => d.isRoot ? '#2C5282'
+                     : d.status === 'ghost' ? '#f5f5f5' : '#fff')
+    .attr('stroke', d => statusColor(d.status))
+    .attr('stroke-width', d => d.current ? 3 : 2)
+    .attr('stroke-dasharray', d => d.status === 'ghost' ? '4,3' : null);
+
+  nodeSel.append('text')
+    .attr('class', 'node-label')
+    .attr('text-anchor', 'middle')
+    .attr('dy', 5)
+    .style('fill', d => d.isRoot ? 'white'
+                      : d.status === 'ghost' ? '#999' : '#1a1a1a')
+    .style('font-weight', d => d.isRoot ? '600' : '400')
+    .text(d => d.label);
+
+  // Atomic star icon
+  nodeSel.filter(d => d.status === 'atomic')
+    .append('text').attr('text-anchor', 'middle')
+    .attr('dy', -25).style('font-size', '14px').text('⭐');
+
+  // Child count badge
+  nodeSel.filter(d => d.childCount > 0)
+    .append('circle').attr('r', 9).attr('cx', d => (d.label.length * 13 + 32)/2 - 4)
+    .attr('cy', -19).attr('fill', '#F59E0B');
+  nodeSel.filter(d => d.childCount > 0)
+    .append('text').attr('class', 'node-badge')
+    .attr('text-anchor', 'middle')
+    .attr('x', d => (d.label.length * 13 + 32)/2 - 4)
+    .attr('y', -16).style('fill', 'white')
+    .text(d => '+' + d.childCount);
+
+  // Click → enter dialog
+  nodeSel.on('click', (event, d) => {
+    if (d.status === 'ghost') {
+      showToast(`激活 "${d.label}"？这会创建一个新对话节点`);
+      return;
+    }
+    document.querySelector('[data-view="dialog"]').click();
+    showToast(`进入对话: ${d.label}`);
+  });
+
+  sim.on('tick', () => {
+    linkSel
+      .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
+  });
+
+  window.addEventListener('resize', () => {
+    width = container.clientWidth;
+    height = container.clientHeight;
+    svg.attr('width', width).attr('height', height);
+    sim.force('center', d3.forceCenter(width/2, height/2));
+    sim.alpha(0.3).restart();
+  });
+
+  // ========= Anchor highlights =========
+  const anchored = document.querySelectorAll('.anchored');
+  const comments = document.querySelectorAll('.comment[data-anchor]');
+
+  anchored.forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      el.classList.add('highlight');
+      comments.forEach(c => {
+        if (c.dataset.anchor === el.dataset.anchor) c.classList.add('highlight');
+      });
+    });
+    el.addEventListener('mouseleave', () => {
+      el.classList.remove('highlight');
+      comments.forEach(c => c.classList.remove('highlight'));
+    });
+  });
+  comments.forEach(c => {
+    c.addEventListener('mouseenter', () => {
+      anchored.forEach(p => {
+        if (p.dataset.anchor === c.dataset.anchor) p.classList.add('highlight');
+      });
+      c.classList.add('highlight');
+    });
+    c.addEventListener('mouseleave', () => {
+      anchored.forEach(p => p.classList.remove('highlight'));
+      c.classList.remove('highlight');
+    });
+  });
+
+  // ========= Survey count =========
+  const surveyConfirm = document.getElementById('surveyConfirm');
+  document.querySelectorAll('.survey-options input').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const n = document.querySelectorAll('.survey-options input:checked').length;
+      surveyConfirm.textContent = `确认（已选 ${n} 项）`;
+    });
+  });
+
+  // ========= Deepen buttons =========
+  document.querySelectorAll('.deepen-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      btn.textContent = '✓ 已生成子对话';
+      btn.style.background = 'var(--note-green)';
+      btn.style.color = 'var(--note-green-border)';
+      btn.style.borderColor = 'var(--note-green-border)';
+      showToast('🪴 子对话已创建，已加入网络图');
+    });
+  });
+
+  // ========= Draft drawer =========
+  const draftBtn = document.getElementById('draftBtn');
+  const draftDrawer = document.getElementById('draftDrawer');
+  draftBtn.addEventListener('click', () => draftDrawer.classList.toggle('open'));
+  document.addEventListener('click', e => {
+    if (!draftDrawer.contains(e.target) && !draftBtn.contains(e.target)) {
+      draftDrawer.classList.remove('open');
+    }
+  });
+
+  // ========= Toast =========
+  const toast = document.getElementById('toast');
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  // ========= @ mention click =========
+  document.querySelectorAll('.mention').forEach(m => {
+    m.addEventListener('click', () => {
+      showToast('🔗 跳转到 @资金属性 对话 (原型未实现跳转)');
+    });
+  });
+</script>
+
+</body>
+</html>
