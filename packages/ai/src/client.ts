@@ -97,7 +97,21 @@ export async function complete<T>(
   }
 
   const payload = (await res.json()) as GatewayResponse;
-  const json = extractJsonObject(payload.text);
+  let json: unknown;
+  try {
+    json = extractJsonObject(payload.text);
+  } catch (err) {
+    // Truncation at the token cap is the #1 reason the JSON is unclosed.
+    // Surface it specifically so the caller knows to bump maxTokens rather
+    // than hunt for prompt-format issues.
+    if (payload.stopReason === 'max_tokens') {
+      throw new Error(
+        `Model output truncated — hit max_tokens (${payload.usage.output_tokens} output tokens). Increase maxTokens for this prompt.\n\n` +
+          (err instanceof Error ? err.message : String(err)),
+      );
+    }
+    throw err;
+  }
   const data = opts.schema.parse(json);
 
   return {

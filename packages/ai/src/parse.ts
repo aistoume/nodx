@@ -8,7 +8,9 @@
 
 export class JsonExtractionError extends Error {
   constructor(message: string, public readonly rawSample: string) {
-    super(message);
+    // Embed the sample in the message so anything that only logs `.message`
+    // (e.g. UI error banners) still has the diagnostic context.
+    super(`${message}\n--- model output (first 200 chars) ---\n${rawSample}`);
     this.name = 'JsonExtractionError';
   }
 }
