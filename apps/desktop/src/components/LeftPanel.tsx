@@ -43,9 +43,11 @@ export function LeftPanel({
     }
     setSubmitting(true);
     try {
-      await createTopic({ title, status });
+      const created = await createTopic({ title, status });
       setTitle('');
       setStatus('exploring');
+      // Auto-select so CenterPanel can auto-fire Survey on the new topic.
+      onSelectTopic(created.id);
       onMutated();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : String(err));

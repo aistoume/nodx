@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SurveyFactor } from '@nodx/ai';
 import type { Message, Topic } from '@nodx/models';
 import { askCoach } from '../ai/chat.js';
@@ -66,8 +66,11 @@ function Conversation({
   const [aiError, setAiError] = useState<string | null>(null);
   const [decomposingFor, setDecomposingFor] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Per-session guard so we don't double-fire auto-survey across rerenders.
+  // Cleared on error so the user gets a retry by leaving and re-entering.
+  const autoSurveyFiredFor = useRef<Set<string>>(new Set());
 
-  const refresh = async (): Promise<Message[]> => {
+  const refresh = useCallback(async (): Promise<Message[]> => {
     try {
       const list = await listMessages(topic.id);
       setMessages(list);
@@ -77,11 +80,36 @@ function Conversation({
       setLoadError(err instanceof Error ? err.message : String(err));
       return [];
     }
-  };
+  }, [topic.id]);
 
+  // On topic enter: load messages, and if the conversation is empty
+  // auto-fire Survey based on the topic's title (PRD §2.1 — the question
+  // *is* the topic title). Skipped if AI isn't configured; caller can also
+  // retrigger by sending a first message (handleSent has the same check).
   useEffect(() => {
     setAiError(null);
-    void refresh();
+    void (async () => {
+      const list = await refresh();
+      if (
+        list.length === 0 &&
+        isAiConfigured() &&
+        !autoSurveyFiredFor.current.has(topic.id)
+      ) {
+        autoSurveyFiredFor.current.add(topic.id);
+        setAiThinking(true);
+        try {
+          const survey = await generateSurvey(topic.title);
+          await createSurveyMessage(topic.id, survey.factors);
+          await refresh();
+          onMutated();
+        } catch (err) {
+          autoSurveyFiredFor.current.delete(topic.id);
+          setAiError(err instanceof Error ? err.message : String(err));
+        } finally {
+          setAiThinking(false);
+        }
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topic.id]);
 
