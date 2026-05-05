@@ -36,6 +36,10 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Cloudflare Workers local dev secrets
+.dev.vars
+.wrangler/
+
 # Coverage
 coverage/
 
