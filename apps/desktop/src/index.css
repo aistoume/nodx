@@ -1,27 +1,51 @@
-:root {
-  color-scheme: light dark;
+@import 'tailwindcss';
+
+/* Design tokens lifted from prototype.html */
+@theme {
+  --color-canvas: #fafaf9;
+  --color-surface: #ffffff;
+  --color-border: #e5e5e3;
+  --color-ink: #1a1a1a;
+  --color-ink-muted: #6b6b6b;
+
+  --color-accent: #2c5282;
+  --color-accent-soft: #eff6fe;
+  --color-accent-tint: #dbeafe;
+
+  /* Four-colour annotation palette (PRD §2.4) */
+  --color-note-yellow: #fef3c7;
+  --color-note-yellow-edge: #f59e0b;
+  --color-note-blue: #dbeafe;
+  --color-note-blue-edge: #3b82f6;
+  --color-note-green: #d1fae5;
+  --color-note-green-edge: #10b981;
+  --color-note-purple: #ede9fe;
+  --color-note-purple-edge: #8b5cf6;
+
+  /* Status palette (Topic.status) */
+  --color-status-exploring: #3b82f6;
+  --color-status-summarized: #22c55e;
+  --color-status-atomic: #a855f7;
+  --color-status-ghost: #9ca3af;
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei',
+    'Segoe UI', system-ui, sans-serif;
 }
 
+/* Reset overrides */
 html,
 body,
 #root {
-  margin: 0;
-  padding: 0;
   height: 100%;
 }
 
 body {
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  background: #fafafa;
-}
-
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #111;
-    color: #eaeaea;
-  }
-  main {
-    color: #eaeaea !important;
-  }
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
 }
