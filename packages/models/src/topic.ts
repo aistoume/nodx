@@ -22,6 +22,7 @@ export const TopicSchema = z.object({
   title: z.string().min(1, 'title must not be empty'),
   status: TopicStatusSchema,
   isPinned: z.boolean(),
+  isArchived: z.boolean(),
   createdAt: TimestampSchema,
   updatedAt: TimestampSchema,
   meta: TopicMetaSchema,

@@ -4,13 +4,14 @@ import { Header } from './components/Header.js';
 import { LeftPanel } from './components/LeftPanel.js';
 import { CenterPanel } from './components/CenterPanel.js';
 import { RightPanel } from './components/RightPanel.js';
-import { listTopics } from './db/topics.js';
+import { listArchivedTopics, listTopics } from './db/topics.js';
 
 type View = 'dialog' | 'graph';
 
 export function App() {
   const [view, setView] = useState<View>('dialog');
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [archivedTopics, setArchivedTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
@@ -19,8 +20,12 @@ export function App() {
     setLoading(true);
     setLoadError(null);
     try {
-      const fresh = await listTopics();
-      setTopics(fresh);
+      const [active, archived] = await Promise.all([
+        listTopics(),
+        listArchivedTopics(),
+      ]);
+      setTopics(active);
+      setArchivedTopics(archived);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -48,15 +53,21 @@ export function App() {
         <div className="grid grid-cols-[240px_1fr_340px] flex-1 min-h-0">
           <LeftPanel
             topics={topics}
+            archivedTopics={archivedTopics}
             loading={loading}
             loadError={loadError}
             selectedTopicId={selectedTopicId}
             onSelectTopic={setSelectedTopicId}
-            onCreated={() => {
+            onMutated={() => {
               void refresh();
             }}
           />
-          <CenterPanel topic={selectedTopic} />
+          <CenterPanel
+            topic={selectedTopic}
+            onMutated={() => {
+              void refresh();
+            }}
+          />
           <RightPanel topic={selectedTopic} />
         </div>
       ) : (
