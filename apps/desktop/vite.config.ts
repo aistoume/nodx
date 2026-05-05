@@ -1,11 +1,12 @@
 import { defineConfig, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig(
   (): UserConfig => ({
-    plugins: [react()],
+    plugins: [react(), tailwindcss()],
 
     // Tauri reserves ports 1420 / 1421 by convention so HMR survives the embedded webview.
     clearScreen: false,
