@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Topic } from '@nodx/models';
+import type { Comment, Topic } from '@nodx/models';
 import { Header } from './components/Header.js';
 import { LeftPanel } from './components/LeftPanel.js';
 import { CenterPanel } from './components/CenterPanel.js';
 import { RightPanel } from './components/RightPanel.js';
+import { ExplainTrigger } from './components/ExplainTrigger.js';
 import { listArchivedTopics, listTopics } from './db/topics.js';
+import { listComments } from './db/comments.js';
 
 type View = 'dialog' | 'graph';
 
@@ -15,8 +17,9 @@ export function App() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
 
-  const refresh = useCallback(async () => {
+  const refreshTopics = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
@@ -33,9 +36,26 @@ export function App() {
     }
   }, []);
 
+  const refreshComments = useCallback(async () => {
+    if (!selectedTopicId) {
+      setComments([]);
+      return;
+    }
+    try {
+      setComments(await listComments(selectedTopicId));
+    } catch {
+      // RightPanel can survive a stale list; topics-level error already
+      // surfaces via loadError.
+    }
+  }, [selectedTopicId]);
+
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    void refreshTopics();
+  }, [refreshTopics]);
+
+  useEffect(() => {
+    void refreshComments();
+  }, [refreshComments]);
 
   const selectedTopic = useMemo(
     () =>
@@ -44,6 +64,11 @@ export function App() {
         : null,
     [topics, selectedTopicId],
   );
+
+  const refreshAll = () => {
+    void refreshTopics();
+    void refreshComments();
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -58,17 +83,14 @@ export function App() {
             loadError={loadError}
             selectedTopicId={selectedTopicId}
             onSelectTopic={setSelectedTopicId}
-            onMutated={() => {
-              void refresh();
-            }}
+            onMutated={refreshAll}
           />
-          <CenterPanel
+          <CenterPanel topic={selectedTopic} onMutated={refreshAll} />
+          <RightPanel
             topic={selectedTopic}
-            onMutated={() => {
-              void refresh();
-            }}
+            comments={comments}
+            onMutated={refreshAll}
           />
-          <RightPanel topic={selectedTopic} />
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center text-ink-muted">
@@ -80,6 +102,11 @@ export function App() {
           </div>
         </div>
       )}
+
+      <ExplainTrigger
+        topicId={selectedTopicId}
+        onCreated={() => void refreshComments()}
+      />
     </div>
   );
 }

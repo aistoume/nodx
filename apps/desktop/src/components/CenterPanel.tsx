@@ -161,8 +161,9 @@ function MessageBubble({ message }: { message: Message }) {
   return (
     <li className={'flex ' + (isUser ? 'justify-end' : 'justify-start')}>
       <div
+        data-message-id={message.id}
         className={
-          'max-w-[80%] rounded-lg px-4 py-2.5 text-sm whitespace-pre-wrap break-words ' +
+          'max-w-[80%] rounded-lg px-4 py-2.5 text-sm whitespace-pre-wrap break-words selection:bg-yellow-200 selection:text-ink ' +
           (isUser
             ? 'bg-accent text-white'
             : 'bg-surface border border-border text-ink')
