@@ -20,7 +20,10 @@ export async function generateSurvey(question: string): Promise<SurveyOutput> {
   const r = await ai.complete({
     prompt: buildSurveyPrompt({ question }),
     model: SURVEY_PROMPT_MODEL,
-    maxTokens: 1500,
+    // Chinese chars eat ~2 tokens each; 7 factors × (title+hint) plus JSON
+    // boilerplate easily approaches 2k tokens. Padding to 4k so the model
+    // doesn't get truncated into invalid JSON.
+    maxTokens: 4000,
     schema: SurveyOutputSchema,
     temperature: 0.5,
   });
@@ -44,7 +47,9 @@ export async function decomposeSelected(
       context,
     }),
     model: DECOMPOSE_PROMPT_MODEL,
-    maxTokens: 3000,
+    // Decompose has nested factors × sub-questions, JSON ~2-4k tokens easily.
+    // Pad to 6k for room.
+    maxTokens: 6000,
     schema: DecomposeOutputSchema,
     temperature: 0.4,
   });
