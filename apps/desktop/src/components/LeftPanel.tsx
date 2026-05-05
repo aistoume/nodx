@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Topic, TopicStatus } from '@nodx/models';
 import {
   ALL_TOPIC_STATUSES,
@@ -31,6 +31,7 @@ export function LeftPanel({
   const [status, setStatus] = useState<TopicStatus>('exploring');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,26 +54,32 @@ export function LeftPanel({
     }
   };
 
-  const handleArchive = async (id: string) => {
-    await archiveTopic(id);
-    if (id === selectedTopicId) onSelectTopic(null);
-    onMutated();
+  const runAction = async (fn: () => Promise<void>) => {
+    setActionError(null);
+    try {
+      await fn();
+      onMutated();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    }
   };
 
-  const handleUnarchive = async (id: string) => {
-    await unarchiveTopic(id);
-    onMutated();
-  };
+  const handleArchive = (id: string) =>
+    runAction(async () => {
+      await archiveTopic(id);
+      if (id === selectedTopicId) onSelectTopic(null);
+    });
 
-  const handleDelete = async (id: string, title: string) => {
-    const ok = window.confirm(
-      `确定删除「${title}」？\n\n该对话下所有消息、备注、子对话都会一并删除，无法撤销。`,
-    );
-    if (!ok) return;
-    await deleteTopic(id);
-    if (id === selectedTopicId) onSelectTopic(null);
-    onMutated();
-  };
+  const handleUnarchive = (id: string) =>
+    runAction(async () => {
+      await unarchiveTopic(id);
+    });
+
+  const handleDelete = (id: string) =>
+    runAction(async () => {
+      await deleteTopic(id);
+      if (id === selectedTopicId) onSelectTopic(null);
+    });
 
   return (
     <aside className="border-r border-border bg-surface overflow-y-auto p-4 flex flex-col gap-4">
@@ -110,6 +117,12 @@ export function LeftPanel({
         {formError && <p className="text-xs text-red-600">{formError}</p>}
       </form>
 
+      {actionError && (
+        <pre className="text-xs text-red-600 bg-red-50 p-2 rounded whitespace-pre-wrap">
+          {actionError}
+        </pre>
+      )}
+
       <div className="border-t border-border -mx-4" />
 
       <SectionTitle>对话列表 ({topics.length})</SectionTitle>
@@ -130,7 +143,7 @@ export function LeftPanel({
             selected={t.id === selectedTopicId}
             onSelect={() => onSelectTopic(t.id)}
             onArchive={() => handleArchive(t.id)}
-            onDelete={() => handleDelete(t.id, t.title)}
+            onDelete={() => handleDelete(t.id)}
           />
         ))}
       </ul>
@@ -153,7 +166,7 @@ export function LeftPanel({
                   key={t.id}
                   topic={t}
                   onUnarchive={() => handleUnarchive(t.id)}
-                  onDelete={() => handleDelete(t.id, t.title)}
+                  onDelete={() => handleDelete(t.id)}
                 />
               ))}
             </ul>
@@ -183,7 +196,7 @@ function TopicRow({
         type="button"
         onClick={onSelect}
         className={
-          'w-full text-left px-2.5 py-2 pr-16 rounded-md text-sm transition ' +
+          'w-full text-left px-2.5 py-2 pr-20 rounded-md text-sm transition ' +
           (selected ? 'bg-accent-tint text-accent font-medium' : 'text-ink')
         }
       >
@@ -195,13 +208,13 @@ function TopicRow({
           </span>
         </div>
       </button>
-      <div className="absolute right-1 top-1.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition">
-        <RowAction
+      <div className="absolute right-1 top-1.5 flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
+        <PrimaryAction
           label="归档"
           title="归档（隐藏到底部抽屉）"
           onClick={onArchive}
         />
-        <RowAction label="删除" title="永久删除" onClick={onDelete} danger />
+        <DeleteAction onConfirm={onDelete} />
       </div>
     </li>
   );
@@ -219,24 +232,22 @@ function ArchivedRow({
   return (
     <li className="group relative rounded-md hover:bg-canvas px-2.5 py-1.5 text-xs flex items-center justify-between">
       <span className="truncate">{topic.title}</span>
-      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition shrink-0 ml-2">
-        <RowAction label="恢复" title="移回主列表" onClick={onUnarchive} />
-        <RowAction label="删除" title="永久删除" onClick={onDelete} danger />
+      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition shrink-0 ml-2">
+        <PrimaryAction label="恢复" title="移回主列表" onClick={onUnarchive} />
+        <DeleteAction onConfirm={onDelete} />
       </div>
     </li>
   );
 }
 
-function RowAction({
+function PrimaryAction({
   label,
   title,
   onClick,
-  danger,
 }: {
   label: string;
   title: string;
   onClick: () => void;
-  danger?: boolean;
 }) {
   return (
     <button
@@ -246,14 +257,57 @@ function RowAction({
         e.stopPropagation();
         onClick();
       }}
-      className={
-        'px-1.5 py-0.5 text-[10px] rounded font-medium transition ' +
-        (danger
-          ? 'text-red-600 hover:bg-red-50'
-          : 'text-ink-muted hover:bg-surface hover:text-ink border border-border')
-      }
+      className="px-1.5 py-0.5 text-[10px] rounded font-medium transition text-ink-muted hover:bg-surface hover:text-ink border border-border"
     >
       {label}
+    </button>
+  );
+}
+
+/**
+ * Two-step delete: first click stages, second click within 3s commits.
+ * Avoids window.confirm() because the Tauri 2 webview's behaviour for it
+ * is unreliable on macOS, and a noisy native dialog isn't great UX anyway.
+ */
+function DeleteAction({ onConfirm }: { onConfirm: () => void }) {
+  const [pending, setPending] = useState(false);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current != null) window.clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (pending) {
+      if (timerRef.current != null) window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+      setPending(false);
+      onConfirm();
+    } else {
+      setPending(true);
+      timerRef.current = window.setTimeout(() => {
+        setPending(false);
+        timerRef.current = null;
+      }, 3000);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      title={pending ? '再点一次确认删除' : '删除（不可撤销）'}
+      onClick={handleClick}
+      className={
+        'px-1.5 py-0.5 text-[10px] rounded font-medium transition border ' +
+        (pending
+          ? 'bg-red-600 text-white border-red-600 hover:bg-red-700'
+          : 'text-red-600 border-red-200 hover:bg-red-50')
+      }
+    >
+      {pending ? '确认删除' : '删除'}
     </button>
   );
 }
