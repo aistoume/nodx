@@ -1,0 +1,13 @@
+name = "nodx-ai-gateway"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+
+# Public, non-secret config goes in [vars]. Secrets (ANTHROPIC_API_KEY,
+# CLIENT_TOKEN) are managed via:
+#   - local dev:  workers/ai-gateway/.dev.vars  (gitignored)
+#   - production: `pnpm --filter @nodx/ai-gateway exec wrangler secret put NAME`
+[vars]
+# (intentionally empty — every value below is a secret)
+
+[observability]
+enabled = true

@@ -1,6 +1,17 @@
 export * from './models.js';
 
 export {
+  complete,
+  pingGateway,
+  GatewayError,
+  type GatewayConfig,
+  type CompleteOptions,
+  type CompleteResult,
+} from './client.js';
+
+export { extractJsonObject, JsonExtractionError } from './parse.js';
+
+export {
   SURVEY_PROMPT_VERSION,
   SURVEY_PROMPT_MODEL,
   SurveyFactorSchema,
