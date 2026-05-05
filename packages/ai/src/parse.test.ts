@@ -45,16 +45,31 @@ describe('extractJsonObject', () => {
     );
   });
 
-  it('truncates the rawSample to ~200 chars', () => {
-    const long = 'x'.repeat(500);
+  it('keeps short raw output verbatim in rawSample', () => {
+    try {
+      extractJsonObject('Sorry, I cannot help.');
+      throw new Error('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(JsonExtractionError);
+      expect((err as JsonExtractionError).rawSample).toBe(
+        'Sorry, I cannot help.',
+      );
+    }
+  });
+
+  it('shows head + tail of long raw output in rawSample', () => {
+    const long = 'A'.repeat(500) + 'B'.repeat(500);
     try {
       extractJsonObject(long);
       throw new Error('should have thrown');
     } catch (err) {
       expect(err).toBeInstanceOf(JsonExtractionError);
-      expect((err as JsonExtractionError).rawSample.length).toBeLessThanOrEqual(
-        201,
-      );
+      const sample = (err as JsonExtractionError).rawSample;
+      expect(sample).toContain('AAA');
+      expect(sample).toContain('BBB');
+      expect(sample).toContain('truncated');
+      // Sized roughly 300 head + marker + 100 tail.
+      expect(sample.length).toBeLessThan(500);
     }
   });
 });

@@ -66,5 +66,10 @@ function tryParse(slice: string, original: string): unknown {
 }
 
 function sample(s: string): string {
-  return s.length > 200 ? s.slice(0, 200) + '…' : s;
+  // Show both ends so a reader can tell whether the model truncated mid-string
+  // (tail looks chopped) or produced structurally bad JSON elsewhere.
+  if (s.length <= 400) return s;
+  return (
+    s.slice(0, 300) + '\n\n…[truncated middle]…\n\n' + s.slice(-100)
+  );
 }
