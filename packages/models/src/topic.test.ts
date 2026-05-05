@@ -12,6 +12,7 @@ const validTopic: Topic = {
   title: '要不要 ALL IN AI？',
   status: 'exploring',
   isPinned: false,
+  isArchived: false,
   createdAt: 1_700_000_000_000,
   updatedAt: 1_700_000_001_000,
   meta: { messageCount: 3, childCount: 1, lastActivity: 1_700_000_001_000 },
@@ -66,5 +67,16 @@ describe('TopicSchema', () => {
   it('rejects missing meta', () => {
     const { meta: _meta, ...rest } = validTopic;
     expect(() => TopicSchema.parse(rest)).toThrow();
+  });
+
+  it('rejects missing isArchived flag', () => {
+    const { isArchived: _isArchived, ...rest } = validTopic;
+    expect(() => TopicSchema.parse(rest)).toThrow();
+  });
+
+  it('accepts archived topic', () => {
+    expect(
+      TopicSchema.parse({ ...validTopic, isArchived: true }),
+    ).toMatchObject({ isArchived: true });
   });
 });

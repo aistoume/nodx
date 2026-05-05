@@ -79,11 +79,41 @@ CREATE TABLE draft_items (
 CREATE INDEX idx_draft_items_topic ON draft_items(source_topic_id);
 "#;
 
+/// Schema v2 — soft-archive on topics + auto-bump message counters.
+///
+/// Adds `topics.is_archived` so old topics can be tucked away without
+/// losing them, and an AFTER INSERT trigger on `messages` so
+/// `topics.message_count` / `last_activity` / `updated_at` stay in
+/// sync without the client having to remember.
+const V2_SQL: &str = r#"
+ALTER TABLE topics ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0
+    CHECK (is_archived IN (0, 1));
+CREATE INDEX idx_topics_archived ON topics(is_archived) WHERE is_archived = 1;
+
+CREATE TRIGGER trg_messages_after_insert
+AFTER INSERT ON messages
+BEGIN
+    UPDATE topics
+    SET message_count = message_count + 1,
+        last_activity = NEW.created_at,
+        updated_at = NEW.created_at
+    WHERE id = NEW.topic_id;
+END;
+"#;
+
 pub fn all() -> Vec<Migration> {
-    vec![Migration {
-        version: 1,
-        description: "create_initial_schema",
-        sql: V1_SQL,
-        kind: MigrationKind::Up,
-    }]
+    vec![
+        Migration {
+            version: 1,
+            description: "create_initial_schema",
+            sql: V1_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 2,
+            description: "topic_archive_and_message_counter_trigger",
+            sql: V2_SQL,
+            kind: MigrationKind::Up,
+        },
+    ]
 }

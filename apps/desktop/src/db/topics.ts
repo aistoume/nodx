@@ -12,6 +12,7 @@ interface TopicRow {
   title: string;
   status: string;
   is_pinned: number;
+  is_archived: number;
   created_at: number;
   updated_at: number;
   message_count: number;
@@ -21,7 +22,7 @@ interface TopicRow {
 }
 
 const SELECT_COLUMNS =
-  'id, parent_id, title, status, is_pinned, created_at, updated_at, message_count, child_count, last_activity, ai_summary';
+  'id, parent_id, title, status, is_pinned, is_archived, created_at, updated_at, message_count, child_count, last_activity, ai_summary';
 
 function rowToTopic(r: TopicRow): Topic {
   return TopicSchema.parse({
@@ -30,6 +31,7 @@ function rowToTopic(r: TopicRow): Topic {
     title: r.title,
     status: r.status,
     isPinned: r.is_pinned === 1,
+    isArchived: r.is_archived === 1,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     meta: {
@@ -41,10 +43,26 @@ function rowToTopic(r: TopicRow): Topic {
   });
 }
 
-export async function listTopics(): Promise<Topic[]> {
+export interface ListTopicsOptions {
+  /** Default: false — keeps the main list lean. */
+  includeArchived?: boolean;
+}
+
+export async function listTopics(
+  opts: ListTopicsOptions = {},
+): Promise<Topic[]> {
+  const where = opts.includeArchived ? '' : 'WHERE is_archived = 0';
   const db = await getDb();
   const rows = await db.select<TopicRow[]>(
-    `SELECT ${SELECT_COLUMNS} FROM topics ORDER BY created_at DESC`,
+    `SELECT ${SELECT_COLUMNS} FROM topics ${where} ORDER BY last_activity DESC, created_at DESC`,
+  );
+  return rows.map(rowToTopic);
+}
+
+export async function listArchivedTopics(): Promise<Topic[]> {
+  const db = await getDb();
+  const rows = await db.select<TopicRow[]>(
+    `SELECT ${SELECT_COLUMNS} FROM topics WHERE is_archived = 1 ORDER BY updated_at DESC`,
   );
   return rows.map(rowToTopic);
 }
@@ -55,11 +73,6 @@ export interface CreateTopicInput {
   parentId?: string | null;
 }
 
-/**
- * Insert a new Topic. The row is validated through TopicSchema before INSERT,
- * so SQL CHECK constraints should never trip in practice — they exist as a
- * second line of defence in case data lands via another path (sync, import).
- */
 export async function createTopic(input: CreateTopicInput): Promise<Topic> {
   const now = Date.now();
   const topic: Topic = TopicSchema.parse({
@@ -68,6 +81,7 @@ export async function createTopic(input: CreateTopicInput): Promise<Topic> {
     title: input.title.trim(),
     status: input.status ?? 'exploring',
     isPinned: false,
+    isArchived: false,
     createdAt: now,
     updatedAt: now,
     meta: { messageCount: 0, childCount: 0, lastActivity: now },
@@ -93,6 +107,31 @@ export async function createTopic(input: CreateTopicInput): Promise<Topic> {
   );
 
   return topic;
+}
+
+export async function archiveTopic(id: string): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    'UPDATE topics SET is_archived = 1, updated_at = $1 WHERE id = $2',
+    [Date.now(), id],
+  );
+}
+
+export async function unarchiveTopic(id: string): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    'UPDATE topics SET is_archived = 0, updated_at = $1 WHERE id = $2',
+    [Date.now(), id],
+  );
+}
+
+/**
+ * Hard delete. Cascades to messages / comments / draft_items via the FK
+ * relationships defined in migrations v1.
+ */
+export async function deleteTopic(id: string): Promise<void> {
+  const db = await getDb();
+  await db.execute('DELETE FROM topics WHERE id = $1', [id]);
 }
 
 export const ALL_TOPIC_STATUSES = TopicStatusSchema.options;
