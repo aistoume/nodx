@@ -106,6 +106,19 @@ export async function createTopic(input: CreateTopicInput): Promise<Topic> {
     ],
   );
 
+  // Bump parent's child_count + last_activity. Done in client code rather
+  // than a SQL trigger so we keep migrations minimal until M3.
+  if (topic.parentId) {
+    await db.execute(
+      `UPDATE topics
+       SET child_count = child_count + 1,
+           last_activity = $1,
+           updated_at = $1
+       WHERE id = $2`,
+      [topic.createdAt, topic.parentId],
+    );
+  }
+
   return topic;
 }
 

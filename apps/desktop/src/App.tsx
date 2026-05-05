@@ -85,7 +85,11 @@ export function App() {
             onSelectTopic={setSelectedTopicId}
             onMutated={refreshAll}
           />
-          <CenterPanel topic={selectedTopic} onMutated={refreshAll} />
+          <CenterPanel
+            topic={selectedTopic}
+            onMutated={refreshAll}
+            onSelectTopic={setSelectedTopicId}
+          />
           <RightPanel
             topic={selectedTopic}
             comments={comments}
