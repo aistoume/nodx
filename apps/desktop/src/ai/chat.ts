@@ -23,7 +23,10 @@ export interface ChatReply {
  * adding a multi-turn passthrough is a follow-up.
  */
 export async function askCoach(history: Message[]): Promise<ChatReply> {
-  const recent = history.slice(-10);
+  // Survey/factor_list/explanation messages carry JSON or are anchored to
+  // the right panel — feeding them in as-is confuses the model. Keep the
+  // transcript text-only.
+  const recent = history.filter((m) => m.type === 'text').slice(-10);
   const transcript = recent
     .map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content}`)
     .join('\n\n');

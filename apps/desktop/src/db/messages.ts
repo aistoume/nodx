@@ -1,5 +1,35 @@
 import { MessageSchema, type Message } from '@nodx/models';
+import type {
+  DecomposedFactor,
+  SurveyFactor,
+} from '@nodx/ai';
 import { getDb } from './client.js';
+
+/**
+ * Payload stored in Message.content for type='survey'.
+ * `selectedIds` is null until the user clicks "继续" — once set, the card
+ * renders in read-only mode.
+ */
+export interface SurveyMessageContent {
+  factors: SurveyFactor[];
+  selectedIds: string[] | null;
+}
+
+/** Payload stored in Message.content for type='factor_list'. */
+export interface FactorListMessageContent {
+  selectedFactorTitles: string[];
+  factors: DecomposedFactor[];
+  /** Map of "{factorIdx}_{questionIdx}" → spawned child topic id. */
+  spawned: Record<string, string>;
+}
+
+export function parseSurveyContent(raw: string): SurveyMessageContent {
+  return JSON.parse(raw) as SurveyMessageContent;
+}
+
+export function parseFactorListContent(raw: string): FactorListMessageContent {
+  return JSON.parse(raw) as FactorListMessageContent;
+}
 
 interface MessageRow {
   id: string;
@@ -57,6 +87,48 @@ export async function createAiMessage(
   content: string,
 ): Promise<Message> {
   return insertMessage(topicId, 'ai', 'text', content);
+}
+
+/**
+ * Insert a Survey card as a Message. The card lives inline in the conversation
+ * so users can scroll back and see what they picked.
+ */
+export async function createSurveyMessage(
+  topicId: string,
+  factors: SurveyFactor[],
+): Promise<Message> {
+  const payload: SurveyMessageContent = { factors, selectedIds: null };
+  return insertMessage(topicId, 'ai', 'survey', JSON.stringify(payload));
+}
+
+/** Insert the decomposed factor list (essence + sub-questions, PRD §7.2). */
+export async function createFactorListMessage(
+  topicId: string,
+  selectedFactorTitles: string[],
+  factors: DecomposedFactor[],
+): Promise<Message> {
+  const payload: FactorListMessageContent = {
+    selectedFactorTitles,
+    factors,
+    spawned: {},
+  };
+  return insertMessage(topicId, 'ai', 'factor_list', JSON.stringify(payload));
+}
+
+/**
+ * Replace a message's `content`. Used to mark a Survey as picked or to record
+ * the spawned child-topic id on a factor_list. Doesn't touch the AFTER INSERT
+ * trigger because we're updating, not inserting.
+ */
+export async function updateMessageContent(
+  id: string,
+  content: string,
+): Promise<void> {
+  const db = await getDb();
+  await db.execute('UPDATE messages SET content = $1 WHERE id = $2', [
+    content,
+    id,
+  ]);
 }
 
 async function insertMessage(
