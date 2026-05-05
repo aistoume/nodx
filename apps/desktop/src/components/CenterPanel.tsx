@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Message, Topic } from '@nodx/models';
-import { createUserMessage, listMessages } from '../db/messages.js';
+import { askCoach } from '../ai/chat.js';
+import { isAiConfigured } from '../ai/gateway.js';
+import {
+  createAiMessage,
+  createUserMessage,
+  listMessages,
+} from '../db/messages.js';
 
 interface CenterPanelProps {
   topic: Topic | null;
@@ -33,28 +39,54 @@ function Conversation({
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [aiThinking, setAiThinking] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  const refresh = async () => {
+  const refresh = async (): Promise<Message[]> => {
     try {
-      setMessages(await listMessages(topic.id));
+      const list = await listMessages(topic.id);
+      setMessages(list);
       setLoadError(null);
+      return list;
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : String(err));
+      return [];
     }
   };
 
   useEffect(() => {
+    setAiError(null);
     void refresh();
-    // refresh when switching to a different topic
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topic.id]);
 
   useEffect(() => {
-    // scroll to bottom on new messages
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages.length]);
+  }, [messages.length, aiThinking]);
+
+  const handleSent = async (history: Message[]) => {
+    onMutated();
+    if (!isAiConfigured()) {
+      setAiError(
+        'AI 网关未配置，跳过 AI 回复。复制 apps/desktop/.env.example → .env.local 并填入 token，然后重启 desktop。',
+      );
+      return;
+    }
+    setAiError(null);
+    setAiThinking(true);
+    try {
+      const reply = await askCoach(history);
+      await createAiMessage(topic.id, reply.text);
+      await refresh();
+      onMutated();
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAiThinking(false);
+    }
+  };
 
   return (
     <main className="flex flex-col bg-canvas min-h-0">
@@ -69,23 +101,29 @@ function Conversation({
           )}
           {messages.length === 0 && !loadError && (
             <p className="text-sm text-ink-muted italic">
-              还没有消息。Survey 卡片 / 第一性原理拆解会在后续接入；
-              先用下方输入框记录你的初步思路。
+              还没有消息。在下方输入你的问题或想法，AI 会以思考陪练的身份回应。
             </p>
           )}
           <ul className="flex flex-col gap-3">
             {messages.map((m) => (
               <MessageBubble key={m.id} message={m} />
             ))}
+            {aiThinking && <ThinkingBubble />}
           </ul>
+          {aiError && (
+            <pre className="mt-3 text-xs text-red-600 bg-red-50 p-2 rounded whitespace-pre-wrap">
+              AI 调用失败: {aiError}
+            </pre>
+          )}
         </div>
       </div>
 
       <Composer
         topicId={topic.id}
+        disabled={aiThinking}
         onSent={async () => {
-          await refresh();
-          onMutated();
+          const history = await refresh();
+          await handleSent(history);
         }}
       />
     </main>
@@ -121,11 +159,7 @@ function ConversationHeader({ topic }: { topic: Topic }) {
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user';
   return (
-    <li
-      className={
-        'flex ' + (isUser ? 'justify-end' : 'justify-start')
-      }
-    >
+    <li className={'flex ' + (isUser ? 'justify-end' : 'justify-start')}>
       <div
         className={
           'max-w-[80%] rounded-lg px-4 py-2.5 text-sm whitespace-pre-wrap break-words ' +
@@ -140,11 +174,37 @@ function MessageBubble({ message }: { message: Message }) {
   );
 }
 
+function ThinkingBubble() {
+  return (
+    <li className="flex justify-start">
+      <div className="rounded-lg px-4 py-3 bg-surface border border-border text-ink-muted text-sm flex items-center gap-2">
+        <span className="flex gap-1">
+          <Dot delay="0s" />
+          <Dot delay="0.15s" />
+          <Dot delay="0.3s" />
+        </span>
+        <span className="text-xs">AI 思考中…</span>
+      </div>
+    </li>
+  );
+}
+
+function Dot({ delay }: { delay: string }) {
+  return (
+    <span
+      className="inline-block w-1.5 h-1.5 rounded-full bg-ink-muted/60 animate-bounce"
+      style={{ animationDelay: delay }}
+    />
+  );
+}
+
 function Composer({
   topicId,
+  disabled,
   onSent,
 }: {
   topicId: string;
+  disabled: boolean;
   onSent: () => void | Promise<void>;
 }) {
   const [draft, setDraft] = useState('');
@@ -152,7 +212,7 @@ function Composer({
   const [error, setError] = useState<string | null>(null);
 
   const send = async () => {
-    if (!draft.trim() || submitting) return;
+    if (!draft.trim() || submitting || disabled) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -173,6 +233,8 @@ function Composer({
     }
   };
 
+  const blocked = submitting || disabled;
+
   return (
     <div className="border-t border-border bg-surface shrink-0">
       <div className="max-w-3xl mx-auto px-8 py-3">
@@ -182,15 +244,19 @@ function Composer({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="输入消息…  Cmd/Ctrl + Enter 发送"
-            disabled={submitting}
+            placeholder={
+              disabled
+                ? 'AI 回复中…'
+                : '输入消息…  Cmd/Ctrl + Enter 发送'
+            }
+            disabled={blocked}
             rows={3}
-            className="flex-1 resize-none px-3 py-2 text-sm border border-border rounded-md bg-canvas focus:outline-none focus:border-accent focus:bg-surface transition font-sans"
+            className="flex-1 resize-none px-3 py-2 text-sm border border-border rounded-md bg-canvas focus:outline-none focus:border-accent focus:bg-surface transition font-sans disabled:opacity-60"
           />
           <button
             type="button"
             onClick={() => void send()}
-            disabled={submitting || !draft.trim()}
+            disabled={blocked || !draft.trim()}
             className="px-4 py-2 text-sm font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition shrink-0"
           >
             {submitting ? '…' : '发送'}

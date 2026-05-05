@@ -111,6 +111,74 @@ export async function complete<T>(
   };
 }
 
+export interface CompleteTextOptions {
+  prompt: string;
+  model: ModelId;
+  maxTokens: number;
+  system?: string;
+  temperature?: number;
+  signal?: AbortSignal;
+}
+
+export interface CompleteTextResult {
+  text: string;
+  usage: { inputTokens: number; outputTokens: number };
+  model: string;
+}
+
+/**
+ * Variant of `complete` for freeform text replies (no Zod schema). Used by
+ * conversational paths where the model's reply is shown verbatim to the user.
+ * Schema-driven prompts (survey, decompose, atomic-check) keep using
+ * `complete` so malformed JSON fails loudly instead of leaking into the UI.
+ */
+export async function completeText(
+  cfg: GatewayConfig,
+  opts: CompleteTextOptions,
+): Promise<CompleteTextResult> {
+  const res = await fetch(`${cfg.endpoint}/v1/complete`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${cfg.clientToken}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: opts.model,
+      prompt: opts.prompt,
+      max_tokens: opts.maxTokens,
+      ...(opts.system ? { system: opts.system } : {}),
+      ...(opts.temperature !== undefined
+        ? { temperature: opts.temperature }
+        : {}),
+    }),
+    signal: opts.signal,
+  });
+
+  if (!res.ok) {
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      body = await res.text();
+    }
+    throw new GatewayError(
+      res.status,
+      `gateway returned ${res.status}`,
+      body,
+    );
+  }
+
+  const payload = (await res.json()) as GatewayResponse;
+  return {
+    text: payload.text,
+    usage: {
+      inputTokens: payload.usage.input_tokens,
+      outputTokens: payload.usage.output_tokens,
+    },
+    model: payload.model,
+  };
+}
+
 /**
  * Hits the gateway's /health endpoint. Useful as a connection probe before
  * the user fires their first AI call.

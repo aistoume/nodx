@@ -48,13 +48,30 @@ export async function createUserMessage(
   topicId: string,
   content: string,
 ): Promise<Message> {
+  return insertMessage(topicId, 'user', 'text', content);
+}
+
+/** Insert an AI-authored reply. Same trigger semantics as createUserMessage. */
+export async function createAiMessage(
+  topicId: string,
+  content: string,
+): Promise<Message> {
+  return insertMessage(topicId, 'ai', 'text', content);
+}
+
+async function insertMessage(
+  topicId: string,
+  role: 'user' | 'ai',
+  type: 'text' | 'survey' | 'factor_list' | 'explanation',
+  content: string,
+): Promise<Message> {
   const trimmed = content.trim();
   if (!trimmed) throw new Error('message content is empty');
   const message: Message = MessageSchema.parse({
     id: crypto.randomUUID(),
     topicId,
-    role: 'user',
-    type: 'text',
+    role,
+    type,
     content: trimmed,
     createdAt: Date.now(),
   });

@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { GatewayError, complete, pingGateway } from './client.js';
+import {
+  GatewayError,
+  complete,
+  completeText,
+  pingGateway,
+} from './client.js';
 import { MODELS } from './models.js';
 
 const CFG = { endpoint: 'http://localhost:8787', clientToken: 'tok' };
@@ -140,6 +145,43 @@ describe('complete', () => {
         schema: HelloSchema,
       }),
     ).rejects.toThrow();
+  });
+});
+
+describe('completeText', () => {
+  it('returns the raw text without schema validation', async () => {
+    stubFetch(async () =>
+      new Response(
+        JSON.stringify({
+          text: 'whatever the model said, including ```fences``` and prose',
+          stopReason: 'end_turn',
+          usage: { input_tokens: 10, output_tokens: 20 },
+          model: 'claude-haiku-4-5-20251001',
+        }),
+      ),
+    );
+
+    const r = await completeText(CFG, {
+      prompt: 'p',
+      model: MODELS.haiku,
+      maxTokens: 200,
+    });
+    expect(r.text).toContain('fences');
+    expect(r.usage).toEqual({ inputTokens: 10, outputTokens: 20 });
+    expect(r.model).toBe('claude-haiku-4-5-20251001');
+  });
+
+  it('throws GatewayError on non-2xx', async () => {
+    stubFetch(async () =>
+      new Response(JSON.stringify({ error: 'rate' }), { status: 429 }),
+    );
+    await expect(
+      completeText(CFG, {
+        prompt: 'p',
+        model: MODELS.haiku,
+        maxTokens: 50,
+      }),
+    ).rejects.toBeInstanceOf(GatewayError);
   });
 });
 

@@ -2,11 +2,14 @@ export * from './models.js';
 
 export {
   complete,
+  completeText,
   pingGateway,
   GatewayError,
   type GatewayConfig,
   type CompleteOptions,
   type CompleteResult,
+  type CompleteTextOptions,
+  type CompleteTextResult,
 } from './client.js';
 
 export { extractJsonObject, JsonExtractionError } from './parse.js';
