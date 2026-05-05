@@ -101,9 +101,16 @@ export async function complete<T>(
   try {
     json = extractJsonObject(payload.text);
   } catch (err) {
-    // Truncation at the token cap is the #1 reason the JSON is unclosed.
-    // Surface it specifically so the caller knows to bump maxTokens rather
-    // than hunt for prompt-format issues.
+    // Always log the full payload to the devtools console — UI banners can
+    // only show a sample, but the developer needs the whole thing to tell
+    // truncation from a stray comma.
+    // eslint-disable-next-line no-console
+    console.error(
+      '[@nodx/ai] JSON extraction failed.',
+      '\nstopReason:', payload.stopReason,
+      '\noutputTokens:', payload.usage.output_tokens,
+      '\nfull text:\n', payload.text,
+    );
     if (payload.stopReason === 'max_tokens') {
       throw new Error(
         `Model output truncated — hit max_tokens (${payload.usage.output_tokens} output tokens). Increase maxTokens for this prompt.\n\n` +

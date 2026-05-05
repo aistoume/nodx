@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { MODELS, type ModelId } from '../models.js';
 
-export const SURVEY_PROMPT_VERSION = '2026-05-04.v1';
+export const SURVEY_PROMPT_VERSION = '2026-05-05.v2';
 export const SURVEY_PROMPT_MODEL: ModelId = MODELS.sonnet;
 
 export interface SurveyInput {
@@ -41,10 +41,11 @@ ${input.question}
 要求：
 1. 维度必须互相独立、不重叠，且对**这个具体问题**有意义（不要套话）。
 2. 给每个维度一个稳定的英文蛇形 id（例如 "market_size"、"team_capacity"），后续步骤会用 id 回引。
-3. 给每个维度一行 hint，说明为什么这个维度对决策有杠杆。
-4. 不要解释你的思考过程，直接输出 JSON。
+3. 给每个维度一行 hint，**不超过 30 字**，简短点出杠杆即可（不要长解释、不要举例）。
+4. title 不超过 12 字。
+5. 不要解释你的思考过程，不要任何前后说明文字，直接输出 JSON。
 
-只输出形如下面结构的 JSON：
+只输出形如下面结构的 JSON（不要包在 \`\`\`json 代码块里）：
 {
   "factors": [
     { "id": "market_size", "title": "市场规模", "hint": "决定上限是 1B 还是 100M" },
