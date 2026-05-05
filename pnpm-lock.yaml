@@ -17,6 +17,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@nodx/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@nodx/models':
         specifier: workspace:*
         version: link:../../packages/models

@@ -12,6 +12,7 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo src-tauri/target"
   },
   "dependencies": {
+    "@nodx/ai": "workspace:*",
     "@nodx/models": "workspace:*",
     "@tauri-apps/api": "^2.1.1",
     "@tauri-apps/plugin-sql": "~2.4.0",
