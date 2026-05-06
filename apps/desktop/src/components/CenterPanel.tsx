@@ -176,10 +176,12 @@ function Conversation({
 
   // Prefer doc view whenever a doc exists.
   if (document) {
+    const chatMessages = messages.filter((m) => m.type === 'text');
     return (
       <DocumentView
         topic={topic}
         initialHtml={document.content}
+        chatMessages={chatMessages}
         onMutated={onMutated}
       />
     );
