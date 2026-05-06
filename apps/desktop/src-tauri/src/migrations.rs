@@ -101,6 +101,21 @@ BEGIN
 END;
 "#;
 
+/// Schema v3 — per-topic "thinking document" (PRD pivot 2026-05-05).
+///
+/// Replaces the chat-bubble conversation surface with a single editable
+/// artefact owned 1:1 by a Topic. Stored as HTML for now (TipTap's native
+/// I/O); a future migration can introduce richer formats without changing
+/// the table shape.
+const V3_SQL: &str = r#"
+CREATE TABLE topic_documents (
+    topic_id    TEXT PRIMARY KEY REFERENCES topics(id) ON DELETE CASCADE,
+    content     TEXT NOT NULL,
+    format      TEXT NOT NULL DEFAULT 'html' CHECK (format IN ('html')),
+    updated_at  INTEGER NOT NULL
+);
+"#;
+
 pub fn all() -> Vec<Migration> {
     vec![
         Migration {
@@ -113,6 +128,12 @@ pub fn all() -> Vec<Migration> {
             version: 2,
             description: "topic_archive_and_message_counter_trigger",
             sql: V2_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 3,
+            description: "topic_documents",
+            sql: V3_SQL,
             kind: MigrationKind::Up,
         },
     ]
