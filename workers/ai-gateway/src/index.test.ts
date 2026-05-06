@@ -6,6 +6,43 @@ const ENV: Env = {
   CLIENT_TOKEN: 'tok',
 };
 
+/** Build a minimal Anthropic-shape SSE response. */
+function mockSSE(opts: {
+  text: string;
+  model?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  stopReason?: string;
+}): Response {
+  const model = opts.model ?? 'claude-haiku-4-5-20251001';
+  const payload = [
+    `event: message_start\ndata: ${JSON.stringify({
+      type: 'message_start',
+      message: {
+        id: 'msg_1',
+        model,
+        usage: { input_tokens: opts.inputTokens ?? 7, output_tokens: 0 },
+      },
+    })}`,
+    `event: content_block_delta\ndata: ${JSON.stringify({
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'text_delta', text: opts.text },
+    })}`,
+    `event: message_delta\ndata: ${JSON.stringify({
+      type: 'message_delta',
+      delta: { stop_reason: opts.stopReason ?? 'end_turn' },
+      usage: { output_tokens: opts.outputTokens ?? 4 },
+    })}`,
+    `event: message_stop\ndata: ${JSON.stringify({ type: 'message_stop' })}`,
+  ].join('\n\n') + '\n\n';
+
+  return new Response(payload, {
+    status: 200,
+    headers: { 'content-type': 'text/event-stream' },
+  });
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -95,18 +132,15 @@ describe('POST /v1/complete', () => {
     expect(res.status).toBe(400);
   });
 
-  it('forwards a valid request to Anthropic and reshapes the response', async () => {
+  it('forwards a valid request to Anthropic and reshapes the streamed response', async () => {
     const fetchSpy = vi.fn(async (input: string | URL | Request) => {
       expect(String(input)).toBe('https://api.anthropic.com/v1/messages');
-      return new Response(
-        JSON.stringify({
-          content: [{ type: 'text', text: '{"a":1}' }],
-          stop_reason: 'end_turn',
-          usage: { input_tokens: 7, output_tokens: 4 },
-          model: 'claude-haiku-4-5-20251001',
-        }),
-        { status: 200, headers: { 'content-type': 'application/json' } },
-      );
+      return mockSSE({
+        text: '{"a":1}',
+        inputTokens: 7,
+        outputTokens: 4,
+        model: 'claude-haiku-4-5-20251001',
+      });
     });
     vi.stubGlobal('fetch', fetchSpy);
 
@@ -129,18 +163,54 @@ describe('POST /v1/complete', () => {
     expect(fetchSpy).toHaveBeenCalledOnce();
   });
 
-  it('sends x-api-key + anthropic-version on upstream call', async () => {
+  it('reassembles text across multiple content_block_delta chunks', async () => {
+    vi.stubGlobal('fetch', async () => {
+      const lines = [
+        `event: message_start\ndata: ${JSON.stringify({
+          type: 'message_start',
+          message: {
+            model: 'm',
+            usage: { input_tokens: 1, output_tokens: 0 },
+          },
+        })}`,
+        `event: content_block_delta\ndata: ${JSON.stringify({
+          type: 'content_block_delta',
+          index: 0,
+          delta: { type: 'text_delta', text: 'Hello ' },
+        })}`,
+        `event: content_block_delta\ndata: ${JSON.stringify({
+          type: 'content_block_delta',
+          index: 0,
+          delta: { type: 'text_delta', text: 'world' },
+        })}`,
+        `event: message_delta\ndata: ${JSON.stringify({
+          type: 'message_delta',
+          delta: { stop_reason: 'end_turn' },
+          usage: { output_tokens: 2 },
+        })}`,
+      ].join('\n\n') + '\n\n';
+      return new Response(lines, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      });
+    });
+
+    const res = await postJson(
+      { model: 'claude-haiku-4-5', prompt: 'hi' },
+      { authorization: 'Bearer tok' },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { text: string };
+    expect(body.text).toBe('Hello world');
+  });
+
+  it('sends x-api-key + anthropic-version + stream:true on upstream call', async () => {
     let upstreamHeaders: Headers | null = null;
+    let upstreamBody: string | null = null;
     vi.stubGlobal('fetch', async (_input: unknown, init?: RequestInit) => {
       upstreamHeaders = new Headers(init?.headers);
-      return new Response(
-        JSON.stringify({
-          content: [{ type: 'text', text: '{}' }],
-          stop_reason: null,
-          usage: { input_tokens: 0, output_tokens: 0 },
-          model: 'm',
-        }),
-      );
+      upstreamBody = init?.body as string;
+      return mockSSE({ text: '{}' });
     });
 
     await postJson(
@@ -151,6 +221,34 @@ describe('POST /v1/complete', () => {
     expect(upstreamHeaders).not.toBeNull();
     expect(upstreamHeaders!.get('x-api-key')).toBe('sk-ant-test');
     expect(upstreamHeaders!.get('anthropic-version')).toBe('2023-06-01');
+    expect(upstreamBody).not.toBeNull();
+    const parsed = JSON.parse(upstreamBody!) as { stream?: boolean };
+    expect(parsed.stream).toBe(true);
+  });
+
+  it('surfaces a mid-stream Anthropic error event as 502', async () => {
+    vi.stubGlobal('fetch', async () => {
+      const lines = [
+        `event: message_start\ndata: ${JSON.stringify({
+          type: 'message_start',
+          message: { model: 'm', usage: { input_tokens: 1, output_tokens: 0 } },
+        })}`,
+        `event: error\ndata: ${JSON.stringify({
+          type: 'error',
+          error: { type: 'overloaded_error', message: 'overloaded' },
+        })}`,
+      ].join('\n\n') + '\n\n';
+      return new Response(lines, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      });
+    });
+
+    const res = await postJson(
+      { model: 'claude-haiku-4-5', prompt: 'hi' },
+      { authorization: 'Bearer tok' },
+    );
+    expect(res.status).toBe(502);
   });
 
   it('maps upstream 429 to 429', async () => {
