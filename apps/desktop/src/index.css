@@ -49,3 +49,65 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
 }
+
+/* TipTap-rendered document styling — Google-doc-ish */
+.prose-doc {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--color-ink);
+}
+.prose-doc h1 {
+  font-size: 1.65em;
+  font-weight: 700;
+  margin: 1.2em 0 0.5em;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.3em;
+}
+.prose-doc h2 {
+  font-size: 1.35em;
+  font-weight: 600;
+  margin: 1.4em 0 0.4em;
+  color: var(--color-accent);
+}
+.prose-doc h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 1em 0 0.3em;
+  color: var(--color-ink-muted);
+  text-transform: none;
+}
+.prose-doc p {
+  margin: 0.5em 0;
+}
+.prose-doc ul,
+.prose-doc ol {
+  margin: 0.5em 0 0.5em 1.4em;
+}
+.prose-doc li {
+  margin: 0.2em 0;
+}
+.prose-doc blockquote {
+  border-left: 3px solid var(--color-accent-tint);
+  background: var(--color-accent-soft);
+  padding: 0.4em 0.8em;
+  margin: 0.6em 0;
+  color: var(--color-ink-muted);
+  font-style: italic;
+  border-radius: 0 4px 4px 0;
+}
+.prose-doc code {
+  background: var(--color-canvas);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.prose-doc strong {
+  font-weight: 600;
+}
+.prose-doc em {
+  font-style: italic;
+}
+.prose-doc ::selection {
+  background: rgba(254, 243, 199, 0.95);
+  color: var(--color-ink);
+}

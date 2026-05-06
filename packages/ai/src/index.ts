@@ -57,3 +57,14 @@ export {
   type ExplainInput,
   type ExplainOutput,
 } from './prompts/explain.js';
+
+export {
+  DOCUMENT_DRAFT_PROMPT_VERSION,
+  DOCUMENT_DRAFT_PROMPT_MODEL,
+  REFINE_SELECTION_PROMPT_VERSION,
+  REFINE_SELECTION_PROMPT_MODEL,
+  buildDocumentDraftPrompt,
+  buildRefineSelectionPrompt,
+  type DocumentDraftInput,
+  type RefineSelectionInput,
+} from './prompts/document.js';
