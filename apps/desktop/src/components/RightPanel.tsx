@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Comment, Topic } from '@nodx/models';
 import {
   deleteComment,
-  parseExplanationContent,
+  parseQuotedContent,
 } from '../db/comments.js';
 
 interface RightPanelProps {
@@ -59,9 +59,10 @@ function CommentCard({
   onDelete: () => void | Promise<void>;
 }) {
   const palette = TYPE_PALETTE[comment.type];
+  // note + explanation both use the `> quote\n\nbody` convention.
   const { quote, body } =
-    comment.type === 'explanation'
-      ? parseExplanationContent(comment.content)
+    comment.type === 'explanation' || comment.type === 'note'
+      ? parseQuotedContent(comment.content)
       : { quote: null, body: comment.content };
 
   return (
