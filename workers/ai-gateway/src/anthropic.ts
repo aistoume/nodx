@@ -1,6 +1,12 @@
 /**
  * Thin typed wrapper over the Anthropic Messages API. Lives inside the worker
  * so the client never sees the API key, only nodx-shaped requests.
+ *
+ * Internally always uses SSE streaming. Long Sonnet generations (4-8k tokens
+ * of Chinese reasoning take 30-90s) routinely got their connections dropped
+ * with "Network connection lost" when called non-streaming. Streaming keeps
+ * the upstream connection warm with chunks. The worker still returns a
+ * single non-streaming JSON to its callers — clients don't need to know.
  */
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
@@ -11,20 +17,14 @@ export interface AnthropicCallParams {
   model: string;
   prompt: string;
   maxTokens: number;
-  /** Optional system prompt — the per-prompt module owns the user prompt. */
   system?: string;
-  /** Defaults to 0.7 to keep deterministic-leaning outputs for JSON parsing. */
   temperature?: number;
 }
 
 export interface AnthropicTextResponse {
-  /** Concatenated text from every "text" content block. */
   text: string;
-  /** Stop reason as reported by the API (e.g. end_turn, max_tokens). */
   stopReason: string | null;
-  /** Pass-through usage so the caller can attribute cost. */
   usage: { input_tokens: number; output_tokens: number };
-  /** The model id Anthropic actually billed against (may be alias-resolved). */
   model: string;
 }
 
@@ -47,6 +47,7 @@ export async function callAnthropic(
     max_tokens: params.maxTokens,
     temperature: params.temperature ?? 0.7,
     messages: [{ role: 'user', content: params.prompt }],
+    stream: true,
   };
   if (params.system) body.system = params.system;
 
@@ -69,30 +70,117 @@ export async function callAnthropic(
     );
   }
 
-  const data = (await upstream.json()) as {
-    content?: Array<{ type: string; text?: string }>;
-    stop_reason?: string | null;
-    usage?: { input_tokens: number; output_tokens: number };
-    model?: string;
-  };
+  if (!upstream.body) {
+    throw new AnthropicError(502, 'anthropic returned no body', '');
+  }
 
-  const text = (data.content ?? [])
-    .filter((b) => b.type === 'text')
-    .map((b) => b.text ?? '')
-    .join('');
+  return await consumeStream(upstream.body, params.model);
+}
+
+async function consumeStream(
+  stream: ReadableStream<Uint8Array>,
+  fallbackModel: string,
+): Promise<AnthropicTextResponse> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let text = '';
+  let stopReason: string | null = null;
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let model = fallbackModel;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSE events are separated by blank lines.
+      const events = buffer.split('\n\n');
+      buffer = events.pop() ?? '';
+
+      for (const eventText of events) {
+        const data = parseSSEData(eventText);
+        if (!data) continue;
+
+        switch (data.type) {
+          case 'message_start': {
+            const msg = data.message as
+              | { model?: string; usage?: { input_tokens?: number } }
+              | undefined;
+            if (msg?.usage?.input_tokens != null) {
+              inputTokens = msg.usage.input_tokens;
+            }
+            if (msg?.model) model = msg.model;
+            break;
+          }
+          case 'content_block_delta': {
+            const delta = data.delta as
+              | { type?: string; text?: string }
+              | undefined;
+            if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
+              text += delta.text;
+            }
+            break;
+          }
+          case 'message_delta': {
+            const delta = data.delta as
+              | { stop_reason?: string | null }
+              | undefined;
+            if (delta?.stop_reason) stopReason = delta.stop_reason;
+            const usage = data.usage as
+              | { output_tokens?: number }
+              | undefined;
+            if (usage?.output_tokens != null) {
+              outputTokens = usage.output_tokens;
+            }
+            break;
+          }
+          case 'error': {
+            const err = data.error as
+              | { type?: string; message?: string }
+              | undefined;
+            throw new AnthropicError(
+              503,
+              `anthropic stream error: ${err?.type ?? 'unknown'}: ${err?.message ?? ''}`,
+              JSON.stringify(data),
+            );
+          }
+          // message_stop / content_block_start / content_block_stop / ping:
+          // nothing to accumulate.
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 
   if (!text) {
     throw new AnthropicError(
       502,
-      'anthropic returned no text content',
-      JSON.stringify(data),
+      'anthropic stream produced no text',
+      '',
     );
   }
 
   return {
     text,
-    stopReason: data.stop_reason ?? null,
-    usage: data.usage ?? { input_tokens: 0, output_tokens: 0 },
-    model: data.model ?? params.model,
+    stopReason,
+    usage: { input_tokens: inputTokens, output_tokens: outputTokens },
+    model,
   };
+}
+
+function parseSSEData(raw: string): Record<string, unknown> | null {
+  let dataStr = '';
+  for (const line of raw.split('\n')) {
+    if (line.startsWith('data:')) dataStr += line.slice(5).trim();
+  }
+  if (!dataStr) return null;
+  try {
+    return JSON.parse(dataStr) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
