@@ -3,13 +3,18 @@ import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import type { Topic } from '@nodx/models';
 import { refineSelection } from '../ai/document.js';
+import { explainSelection } from '../ai/explain.js';
+import {
+  createComment,
+  formatQuotedContent,
+} from '../db/comments.js';
 import { upsertDocument } from '../db/documents.js';
 import { markdownToHtml } from '../lib/markdown.js';
 
 interface DocumentViewProps {
   topic: Topic;
   initialHtml: string;
-  /** Bumps when an AI mutation finishes; used so the right panel can refresh. */
+  /** Bumped after any AI mutation (comment created / doc updated). */
   onMutated: () => void;
 }
 
@@ -17,19 +22,18 @@ interface PendingSelection {
   text: string;
   from: number;
   to: number;
-  /** Viewport-anchored position for the floating action button. */
+  /** Viewport-anchored position for floating UI. */
   x: number;
   y: number;
 }
 
 interface ActiveProposal {
-  /** The currently-selected slice of the doc (read-only after submit). */
   original: { text: string; from: number; to: number };
-  /** The user's question that produced the proposal. */
   question: string;
-  /** Markdown returned by the AI. */
   markdown: string;
 }
+
+type ActivePanel = 'menu' | 'note' | 'refine' | null;
 
 const SAVE_DEBOUNCE_MS = 700;
 
@@ -42,24 +46,19 @@ export function DocumentView({
     {
       extensions: [
         StarterKit.configure({
-          // Heading is part of starter-kit; tighten its config.
           heading: { levels: [1, 2, 3] },
         }),
       ],
       content: initialHtml,
       editorProps: {
         attributes: {
-          class:
-            'prose-doc focus:outline-none min-h-[60vh] py-2',
+          class: 'prose-doc focus:outline-none min-h-[60vh] py-2',
         },
       },
     },
-    // Re-create the editor when navigating between topics so we don't
-    // bleed state.
     [topic.id],
   );
 
-  // Keep the editor's content in sync if the parent loads a doc later.
   useEffect(() => {
     if (!editor) return;
     if (editor.getHTML() !== initialHtml) {
@@ -68,7 +67,6 @@ export function DocumentView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topic.id, initialHtml, editor]);
 
-  // Debounced save on every change.
   const saveTimer = useRef<number | null>(null);
   useEffect(() => {
     if (!editor) return;
@@ -86,30 +84,35 @@ export function DocumentView({
     };
   }, [editor, topic.id]);
 
-  // Track the selection in the editor so we can show the "深化思考" trigger.
   const [pendingSelection, setPendingSelection] = useState<
     PendingSelection | null
   >(null);
-  const [questionDraft, setQuestionDraft] = useState('');
-  const [askingActive, setAskingActive] = useState(false);
+  const [activePanel, setActivePanel] = useState<ActivePanel>(null);
+  const [explaining, setExplaining] = useState(false);
   const [proposing, setProposing] = useState(false);
   const [proposal, setProposal] = useState<ActiveProposal | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Track the editor's selection so we can position the action menu.
+  // Freeze when a popover or proposal is open so they don't dismiss
+  // themselves by triggering a "no selection" path.
   const updateSelectionFromEditor = useCallback(
     (e: Editor) => {
-      if (proposing || proposal) return; // freeze while a proposal is open
+      if (proposing || proposal || activePanel === 'note' || activePanel === 'refine') {
+        return;
+      }
       const { from, to, empty } = e.state.selection;
       if (empty) {
         setPendingSelection(null);
+        setActivePanel(null);
         return;
       }
       const text = e.state.doc.textBetween(from, to, ' ').trim();
-      if (text.length < 4) {
+      if (text.length < 2) {
         setPendingSelection(null);
+        setActivePanel(null);
         return;
       }
-      // Compute viewport rect of the selection's end coords.
       try {
         const coords = e.view.coordsAtPos(to);
         setPendingSelection({
@@ -119,11 +122,13 @@ export function DocumentView({
           x: coords.right,
           y: coords.bottom + 6,
         });
+        setActivePanel('menu');
       } catch {
         setPendingSelection(null);
+        setActivePanel(null);
       }
     },
-    [proposal, proposing],
+    [proposal, proposing, activePanel],
   );
 
   useEffect(() => {
@@ -135,15 +140,55 @@ export function DocumentView({
     };
   }, [editor, updateSelectionFromEditor]);
 
-  const openAskPopover = () => {
-    if (!pendingSelection) return;
-    setQuestionDraft('');
-    setAskingActive(true);
+  // ──────── Actions ────────
+
+  const handleExplain = async () => {
+    if (!pendingSelection || explaining) return;
+    setExplaining(true);
+    setError(null);
+    try {
+      const r = await explainSelection(pendingSelection.text);
+      await createComment({
+        topicId: topic.id,
+        anchorId: null, // doc-anchored — no message id to attach to
+        type: 'explanation',
+        content: formatQuotedContent(pendingSelection.text, r.explanation),
+      });
+      window.getSelection()?.removeAllRanges();
+      setPendingSelection(null);
+      setActivePanel(null);
+      onMutated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setExplaining(false);
+    }
   };
 
-  const submitQuestion = async () => {
+  const submitNote = async (noteText: string) => {
+    if (!pendingSelection) return;
+    const trimmed = noteText.trim();
+    if (!trimmed) return;
+    setError(null);
+    try {
+      await createComment({
+        topicId: topic.id,
+        anchorId: null,
+        type: 'note',
+        content: formatQuotedContent(pendingSelection.text, trimmed),
+      });
+      window.getSelection()?.removeAllRanges();
+      setPendingSelection(null);
+      setActivePanel(null);
+      onMutated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const submitRefineQuestion = async (question: string) => {
     if (!editor || !pendingSelection) return;
-    const q = questionDraft.trim() || '请帮我深化这一段。';
+    const q = question.trim() || '请帮我深化这一段。';
     setProposing(true);
     setError(null);
     try {
@@ -161,17 +206,12 @@ export function DocumentView({
         question: q,
         markdown: r.markdown,
       });
-      setAskingActive(false);
+      setActivePanel(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setProposing(false);
     }
-  };
-
-  const cancelAsk = () => {
-    setAskingActive(false);
-    setQuestionDraft('');
   };
 
   const acceptProposal = async () => {
@@ -183,16 +223,17 @@ export function DocumentView({
       .deleteRange({ from: proposal.original.from, to: proposal.original.to })
       .insertContentAt(proposal.original.from, html)
       .run();
-    // Force-flush save.
     await upsertDocument(topic.id, editor.getHTML());
     setProposal(null);
     setPendingSelection(null);
+    setActivePanel(null);
     onMutated();
   };
 
   const rejectProposal = () => {
     setProposal(null);
     setPendingSelection(null);
+    setActivePanel(null);
   };
 
   const proposalHtml = useMemo(
@@ -211,7 +252,8 @@ export function DocumentView({
             {topic.title}
           </h1>
           <p className="mt-2 text-xs text-ink-muted">
-            可直接编辑。选中文字后点 "深化思考"，AI 会改写并询问是否替换。
+            可直接编辑。选中文字后选择 <em>解释</em> / <em>便签</em> /{' '}
+            <em>深化</em>。
           </p>
         </div>
       </header>
@@ -227,32 +269,38 @@ export function DocumentView({
         </div>
       </div>
 
-      {/* Floating "深化思考" trigger near selection */}
-      {pendingSelection && !askingActive && !proposal && (
-        <FloatingButton
+      {pendingSelection && activePanel === 'menu' && (
+        <SelectionMenu
           x={pendingSelection.x}
           y={pendingSelection.y}
-          label="深化思考"
-          hint="↪ AI 改写"
-          onClick={openAskPopover}
+          explaining={explaining}
+          onExplain={handleExplain}
+          onNote={() => setActivePanel('note')}
+          onRefine={() => setActivePanel('refine')}
         />
       )}
 
-      {/* Ask popover */}
-      {askingActive && pendingSelection && (
+      {pendingSelection && activePanel === 'note' && (
+        <NotePopover
+          x={pendingSelection.x}
+          y={pendingSelection.y}
+          selection={pendingSelection.text}
+          onSubmit={submitNote}
+          onCancel={() => setActivePanel('menu')}
+        />
+      )}
+
+      {pendingSelection && activePanel === 'refine' && (
         <AskPopover
           x={pendingSelection.x}
           y={pendingSelection.y}
           selection={pendingSelection.text}
-          question={questionDraft}
-          onChange={setQuestionDraft}
-          onSubmit={submitQuestion}
-          onCancel={cancelAsk}
+          onSubmit={submitRefineQuestion}
+          onCancel={() => setActivePanel('menu')}
           submitting={proposing}
         />
       )}
 
-      {/* Proposal accept/reject card */}
       {proposal && (
         <ProposalCard
           original={proposal.original.text}
@@ -266,34 +314,176 @@ export function DocumentView({
   );
 }
 
-function FloatingButton({
+// ──────── Subcomponents ────────
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function SelectionMenu({
   x,
   y,
-  label,
-  hint,
-  onClick,
+  explaining,
+  onExplain,
+  onNote,
+  onRefine,
 }: {
   x: number;
   y: number;
-  label: string;
-  hint?: string;
-  onClick: () => void;
+  explaining: boolean;
+  onExplain: () => void;
+  onNote: () => void;
+  onRefine: () => void;
 }) {
-  const left = Math.max(8, Math.min(window.innerWidth - 240, x));
-  const top = Math.max(8, Math.min(window.innerHeight - 80, y));
+  const left = clamp(x, 8, window.innerWidth - 280);
+  const top = clamp(y, 8, window.innerHeight - 60);
   return (
     <div
       style={{ position: 'fixed', left, top, zIndex: 50 }}
       onMouseDown={(e) => e.preventDefault()}
+      className="bg-surface border border-border rounded-md shadow-md flex overflow-hidden text-xs"
     >
-      <button
-        type="button"
-        onClick={onClick}
-        className="px-3 py-1.5 rounded-md text-xs font-medium shadow-md bg-accent text-white hover:opacity-90 transition flex items-center gap-1.5"
-      >
-        <span>{label}</span>
-        {hint && <span className="opacity-70 text-[10px]">{hint}</span>}
-      </button>
+      <MenuButton
+        onClick={onExplain}
+        loading={explaining}
+        loadingLabel="解释中…"
+        idleLabel="解释"
+        hint="蓝色备注"
+        accent="blue"
+      />
+      <span className="w-px bg-border" />
+      <MenuButton
+        onClick={onNote}
+        idleLabel="便签"
+        hint="黄色备注"
+        accent="yellow"
+      />
+      <span className="w-px bg-border" />
+      <MenuButton
+        onClick={onRefine}
+        idleLabel="深化"
+        hint="AI 改写"
+        accent="accent"
+      />
+    </div>
+  );
+}
+
+function MenuButton({
+  onClick,
+  loading,
+  loadingLabel,
+  idleLabel,
+  hint,
+  accent,
+}: {
+  onClick: () => void;
+  loading?: boolean;
+  loadingLabel?: string;
+  idleLabel: string;
+  hint: string;
+  accent: 'blue' | 'yellow' | 'accent';
+}) {
+  const accentClass =
+    accent === 'blue'
+      ? 'hover:bg-note-blue text-blue-700'
+      : accent === 'yellow'
+        ? 'hover:bg-note-yellow text-yellow-700'
+        : 'hover:bg-accent-tint text-accent';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      className={
+        'px-3 py-2 flex flex-col items-start gap-0.5 transition disabled:opacity-60 ' +
+        accentClass
+      }
+    >
+      <span className="font-medium">
+        {loading ? loadingLabel : idleLabel}
+      </span>
+      <span className="text-[10px] opacity-70">{hint}</span>
+    </button>
+  );
+}
+
+function NotePopover({
+  x,
+  y,
+  selection,
+  onSubmit,
+  onCancel,
+}: {
+  x: number;
+  y: number;
+  selection: string;
+  onSubmit: (note: string) => Promise<void> | void;
+  onCancel: () => void;
+}) {
+  const [text, setText] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!text.trim() || saving) return;
+    setSaving(true);
+    try {
+      await onSubmit(text);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const left = clamp(x, 8, window.innerWidth - 380);
+  const top = clamp(y, 8, window.innerHeight - 240);
+  return (
+    <div
+      style={{ position: 'fixed', left, top, zIndex: 60, width: 360 }}
+      onMouseDown={(e) => e.stopPropagation()}
+      className="bg-note-yellow border border-note-yellow-edge/60 rounded-lg shadow-xl p-3 flex flex-col gap-2"
+    >
+      <div className="text-[11px] uppercase tracking-wider text-yellow-800 font-semibold">
+        便签
+      </div>
+      <blockquote className="text-xs text-yellow-900/70 italic border-l-2 border-yellow-700/30 pl-2 max-h-20 overflow-y-auto">
+        {selection}
+      </blockquote>
+      <textarea
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            e.preventDefault();
+            void submit();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            onCancel();
+          }
+        }}
+        placeholder="记下你对这段的想法…"
+        rows={3}
+        disabled={saving}
+        className="resize-none px-2 py-1.5 text-sm border border-yellow-700/30 rounded-md bg-white/80 focus:outline-none focus:border-yellow-700/60 transition font-sans"
+      />
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="px-3 py-1 text-xs text-yellow-900/70 hover:text-yellow-900"
+        >
+          返回
+        </button>
+        <button
+          type="button"
+          onClick={() => void submit()}
+          disabled={saving || !text.trim()}
+          className="px-3 py-1 text-xs font-medium rounded-md bg-yellow-700 text-white hover:opacity-90 disabled:opacity-50 transition"
+        >
+          {saving ? '保存中…' : '保存便签  ⌘↵'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -302,8 +492,6 @@ function AskPopover({
   x,
   y,
   selection,
-  question,
-  onChange,
   onSubmit,
   onCancel,
   submitting,
@@ -311,14 +499,18 @@ function AskPopover({
   x: number;
   y: number;
   selection: string;
-  question: string;
-  onChange: (s: string) => void;
-  onSubmit: () => void;
+  onSubmit: (question: string) => Promise<void> | void;
   onCancel: () => void;
   submitting: boolean;
 }) {
-  const left = Math.max(8, Math.min(window.innerWidth - 380, x));
-  const top = Math.max(8, Math.min(window.innerHeight - 240, y));
+  const [question, setQuestion] = useState('');
+
+  const submit = () => {
+    void onSubmit(question);
+  };
+
+  const left = clamp(x, 8, window.innerWidth - 380);
+  const top = clamp(y, 8, window.innerHeight - 240);
   return (
     <div
       style={{ position: 'fixed', left, top, zIndex: 60, width: 360 }}
@@ -334,11 +526,11 @@ function AskPopover({
       <textarea
         autoFocus
         value={question}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => setQuestion(e.target.value)}
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
             e.preventDefault();
-            onSubmit();
+            submit();
           } else if (e.key === 'Escape') {
             e.preventDefault();
             onCancel();
@@ -356,11 +548,11 @@ function AskPopover({
           disabled={submitting}
           className="px-3 py-1 text-xs text-ink-muted hover:text-ink"
         >
-          取消
+          返回
         </button>
         <button
           type="button"
-          onClick={onSubmit}
+          onClick={submit}
           disabled={submitting}
           className="px-3 py-1 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-50 transition"
         >

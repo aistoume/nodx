@@ -89,25 +89,29 @@ export async function deleteComment(id: string): Promise<void> {
 }
 
 /**
- * Convention used for type='explanation' comments — the selected quote and
- * the AI's explanation share the same `content` column rather than adding a
- * dedicated migration. Format:
+ * Convention used for selection-anchored comments (note, explanation):
+ * the selected quote and the body share the same `content` column rather
+ * than adding a dedicated migration. Format:
  *
  *     > {quote}
  *
- *     {explanation}
+ *     {body}
+ *
+ * Falls back gracefully when the format isn't matched (returns the whole
+ * string as body, no quote).
  */
-export function formatExplanationContent(
-  quote: string,
-  explanation: string,
-): string {
-  return `> ${quote.trim()}\n\n${explanation.trim()}`;
+export function formatQuotedContent(quote: string, body: string): string {
+  return `> ${quote.trim()}\n\n${body.trim()}`;
 }
 
-export function parseExplanationContent(
+export function parseQuotedContent(
   content: string,
 ): { quote: string | null; body: string } {
   const m = content.match(/^>\s+([\s\S]+?)\n\n([\s\S]+)$/);
   if (!m) return { quote: null, body: content.trim() };
   return { quote: m[1]!.trim(), body: m[2]!.trim() };
 }
+
+// Back-compat aliases — older imports still work.
+export const formatExplanationContent = formatQuotedContent;
+export const parseExplanationContent = parseQuotedContent;
