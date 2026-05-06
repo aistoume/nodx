@@ -114,6 +114,28 @@ function Conversation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topic.id]);
 
+  /**
+   * User typed a custom factor on the Survey card. Append to the message
+   * payload and return its id so the card can auto-check it.
+   */
+  const handleAddCustomFactor = async (
+    surveyMessage: Message,
+    title: string,
+  ): Promise<string> => {
+    const data = parseSurveyContent(surveyMessage.content);
+    const newId = `custom_${Date.now().toString(36)}_${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    data.factors = [
+      ...data.factors,
+      { id: newId, title, hint: '用户自定义' },
+    ];
+    await updateMessageContent(surveyMessage.id, JSON.stringify(data));
+    await refreshAll();
+    onMutated();
+    return newId;
+  };
+
   /** Survey → decompose → generate doc. Replaces old factor_list flow. */
   const handleSurveyPick = async (
     surveyMessage: Message,
@@ -209,6 +231,9 @@ function Conversation({
                 message={surveyMsg}
                 decomposing={decomposingFor === surveyMsg.id}
                 onPick={(picked) => handleSurveyPick(surveyMsg, picked)}
+                onAddCustom={(title) =>
+                  handleAddCustomFactor(surveyMsg, title)
+                }
               />
               {decomposingFor === surveyMsg.id && (
                 <PendingBubble label={aiPhase || 'AI 生成中…'} />
