@@ -91,7 +91,7 @@ export async function complete<T>(
     }
     throw new GatewayError(
       res.status,
-      `gateway returned ${res.status}`,
+      `gateway returned ${res.status}: ${describeErrorBody(body)}`,
       body,
     );
   }
@@ -184,7 +184,7 @@ export async function completeText(
     }
     throw new GatewayError(
       res.status,
-      `gateway returned ${res.status}`,
+      `gateway returned ${res.status}: ${describeErrorBody(body)}`,
       body,
     );
   }
@@ -198,6 +198,21 @@ export async function completeText(
     },
     model: payload.model,
   };
+}
+
+function describeErrorBody(body: unknown): string {
+  if (typeof body === 'string') return body.slice(0, 400);
+  if (body && typeof body === 'object') {
+    const obj = body as Record<string, unknown>;
+    if (typeof obj.error === 'string') {
+      const upstream = obj.upstream
+        ? ` | upstream: ${JSON.stringify(obj.upstream).slice(0, 300)}`
+        : '';
+      return obj.error + upstream;
+    }
+    return JSON.stringify(body).slice(0, 400);
+  }
+  return String(body);
 }
 
 /**
