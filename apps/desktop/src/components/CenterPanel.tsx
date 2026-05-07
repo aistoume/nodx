@@ -17,12 +17,14 @@ import { SurveyCard } from './SurveyCard.js';
 
 interface CenterPanelProps {
   topic: Topic | null;
+  comments: import('@nodx/models').Comment[];
   onMutated: () => void;
   onSelectTopic: (id: string) => void;
 }
 
 export function CenterPanel({
   topic,
+  comments,
   onMutated,
   onSelectTopic: _onSelectTopic,
 }: CenterPanelProps) {
@@ -39,14 +41,22 @@ export function CenterPanel({
     );
   }
 
-  return <Conversation topic={topic} onMutated={onMutated} />;
+  return (
+    <Conversation
+      topic={topic}
+      comments={comments}
+      onMutated={onMutated}
+    />
+  );
 }
 
 function Conversation({
   topic,
+  comments,
   onMutated,
 }: {
   topic: Topic;
+  comments: import('@nodx/models').Comment[];
   onMutated: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -177,11 +187,15 @@ function Conversation({
   // Prefer doc view whenever a doc exists.
   if (document) {
     const chatMessages = messages.filter((m) => m.type === 'text');
+    const anchorableComments = comments.filter(
+      (c) => c.type === 'note' || c.type === 'explanation',
+    );
     return (
       <DocumentView
         topic={topic}
         initialHtml={document.content}
         chatMessages={chatMessages}
+        anchorableComments={anchorableComments}
         onMutated={onMutated}
       />
     );

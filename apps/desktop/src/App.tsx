@@ -87,6 +87,7 @@ export function App() {
           />
           <CenterPanel
             topic={selectedTopic}
+            comments={comments}
             onMutated={refreshAll}
             onSelectTopic={setSelectedTopicId}
           />

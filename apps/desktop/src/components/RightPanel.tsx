@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Comment, Topic } from '@nodx/models';
-import {
-  deleteComment,
-  parseQuotedContent,
-} from '../db/comments.js';
+import { deleteComment, parseQuotedContent } from '../db/comments.js';
+import { useAnchorPositions } from '../lib/anchor-layout.js';
 
 interface RightPanelProps {
   topic: Topic | null;
@@ -11,9 +9,68 @@ interface RightPanelProps {
   onMutated: () => void;
 }
 
+const CARD_GAP = 8;
+const ESTIMATED_CARD_HEIGHT = 120;
+
 export function RightPanel({ topic, comments, onMutated }: RightPanelProps) {
+  const anchorPositions = useAnchorPositions();
+  const panelRef = useRef<HTMLElement | null>(null);
+  const anchoredZoneRef = useRef<HTMLDivElement | null>(null);
+  const [panelTop, setPanelTop] = useState(0);
+
+  // Track the panel's top edge in viewport coords so we can convert anchor
+  // viewport-Y → panel-local-Y.
+  useLayoutEffect(() => {
+    const update = () => {
+      if (panelRef.current) {
+        setPanelTop(panelRef.current.getBoundingClientRect().top);
+      }
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, []);
+
+  // Anti-overlap: lay anchored cards out top-down by anchor Y, pushing each
+  // down so it doesn't overlap the previous one's measured bottom. Run after
+  // every render so newly inserted cards take their natural place.
+  useLayoutEffect(() => {
+    const zone = anchoredZoneRef.current;
+    if (!zone) return;
+    const cards = Array.from(
+      zone.querySelectorAll<HTMLDivElement>('[data-anchor-card]'),
+    );
+    let prevBottom = -Infinity;
+    for (const card of cards) {
+      const desired = Number(card.dataset.desiredTop ?? '0');
+      const top = Math.max(desired, prevBottom + CARD_GAP);
+      card.style.top = `${top}px`;
+      // Use the actual measured height for stacking.
+      prevBottom = top + (card.offsetHeight || ESTIMATED_CARD_HEIGHT);
+    }
+  });
+
+  const anchored: Comment[] = [];
+  const unanchored: Comment[] = [];
+  for (const c of comments) {
+    if (anchorPositions.has(c.id)) anchored.push(c);
+    else unanchored.push(c);
+  }
+  // Stable order: anchored cards by Y ascending.
+  anchored.sort(
+    (a, b) =>
+      (anchorPositions.get(a.id) ?? 0) - (anchorPositions.get(b.id) ?? 0),
+  );
+
   return (
-    <aside className="border-l border-border bg-surface overflow-y-auto p-4 flex flex-col gap-4">
+    <aside
+      ref={panelRef}
+      className="border-l border-border bg-surface overflow-y-auto p-4 flex flex-col gap-4 relative"
+    >
       <div className="flex items-baseline justify-between">
         <SectionTitle>
           备注{topic && comments.length > 0 ? ` (${comments.length})` : ''}
@@ -24,28 +81,81 @@ export function RightPanel({ topic, comments, onMutated }: RightPanelProps) {
       {topic && comments.length === 0 && (
         <>
           <p className="text-xs text-ink-muted leading-relaxed">
-            选中消息中的任意文字 → 浮出
-            <span className="inline-block mx-1 px-1.5 py-0.5 text-[10px] rounded bg-accent text-white align-middle">
-              解释
-            </span>
-            按钮 → AI 解释会落在这里。
+            选中文档中的文字 → 浮出菜单 → <em>解释</em> / <em>便签</em> /{' '}
+            <em>深化</em>。新增的备注会出现在这里，并跟着选中位置垂直对齐。
           </p>
           <Legend />
         </>
       )}
-      {topic && comments.length > 0 && (
-        <ul className="flex flex-col gap-3">
-          {comments.map((c) => (
-            <CommentCard
-              key={c.id}
-              comment={c}
-              onDelete={async () => {
-                await deleteComment(c.id);
-                onMutated();
-              }}
-            />
-          ))}
-        </ul>
+
+      {topic && anchored.length > 0 && (
+        <div
+          ref={anchoredZoneRef}
+          className="relative"
+          style={{
+            // Ensure the panel scrolls far enough for the lowest anchor.
+            minHeight:
+              Math.max(
+                ...anchored.map(
+                  (c) => (anchorPositions.get(c.id) ?? 0) - panelTop,
+                ),
+                0,
+              ) +
+              ESTIMATED_CARD_HEIGHT +
+              CARD_GAP,
+          }}
+        >
+          {anchored.map((c) => {
+            const desiredTop = Math.max(
+              0,
+              (anchorPositions.get(c.id) ?? 0) - panelTop,
+            );
+            return (
+              <div
+                key={c.id}
+                data-anchor-card
+                data-desired-top={desiredTop}
+                style={{
+                  position: 'absolute',
+                  top: desiredTop,
+                  left: 0,
+                  right: 0,
+                  transition: 'top 120ms ease-out',
+                }}
+              >
+                <CommentCard
+                  comment={c}
+                  onDelete={async () => {
+                    await deleteComment(c.id);
+                    onMutated();
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {topic && unanchored.length > 0 && (
+        <>
+          {anchored.length > 0 && (
+            <div className="border-t border-border mt-4 pt-4">
+              <SectionTitle>未锚定 ({unanchored.length})</SectionTitle>
+            </div>
+          )}
+          <ul className="flex flex-col gap-3">
+            {unanchored.map((c) => (
+              <CommentCard
+                key={c.id}
+                comment={c}
+                onDelete={async () => {
+                  await deleteComment(c.id);
+                  onMutated();
+                }}
+              />
+            ))}
+          </ul>
+        </>
       )}
     </aside>
   );
@@ -59,14 +169,13 @@ function CommentCard({
   onDelete: () => void | Promise<void>;
 }) {
   const palette = TYPE_PALETTE[comment.type];
-  // note + explanation both use the `> quote\n\nbody` convention.
   const { quote, body } =
     comment.type === 'explanation' || comment.type === 'note'
       ? parseQuotedContent(comment.content)
       : { quote: null, body: comment.content };
 
   return (
-    <li
+    <div
       className={
         'group rounded-md border p-3 text-xs leading-relaxed relative ' +
         palette.container
@@ -94,7 +203,7 @@ function CommentCard({
         </blockquote>
       )}
       <div className="text-ink whitespace-pre-wrap">{body}</div>
-    </li>
+    </div>
   );
 }
 
@@ -128,8 +237,6 @@ function LegendRow({ color, label }: { color: string; label: string }) {
   );
 }
 
-// Maps each comment type to its visual palette and Chinese label.
-// Using the four-colour tokens declared in src/index.css @theme.
 const TYPE_PALETTE = {
   note: {
     container: 'bg-note-yellow border-note-yellow-edge/40',
