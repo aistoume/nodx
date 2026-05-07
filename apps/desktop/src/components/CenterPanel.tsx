@@ -217,6 +217,15 @@ function Conversation({
     }
   };
 
+  // DocumentView mutates messages (chat) and comments (note / explanation
+  // / refine) — it needs both the local refresh (so chatMessages /
+  // anchorableComments props re-flow) and the App-level refresh (so the
+  // left-panel topic counters + right-panel anchor list stay in sync).
+  const handleDocViewMutated = () => {
+    void refreshAll();
+    onMutated();
+  };
+
   // Prefer doc view whenever a doc exists.
   if (document) {
     const chatMessages = messages.filter((m) => m.type === 'text');
@@ -229,7 +238,7 @@ function Conversation({
         initialHtml={document.content}
         chatMessages={chatMessages}
         anchorableComments={anchorableComments}
-        onMutated={onMutated}
+        onMutated={handleDocViewMutated}
       />
     );
   }
