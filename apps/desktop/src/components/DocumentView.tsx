@@ -115,16 +115,18 @@ export function DocumentView({
   // Outer scroll container so we can listen for scroll → re-anchor.
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
 
-  // Compute viewport-Y for each anchorable comment by string-searching the
-  // editor doc for its quote, then asking ProseMirror for screen coords.
-  // Republished on editor update / scroll / resize so cards in the right
-  // panel can track in real time.
-  const publishAnchors = useCallback(() => {
+  // Doc position cache: comment id → ProseMirror position.
+  // Built only when comments / editor doc change (string-search is O(n×m)).
+  // Scroll handler reuses the cache and just calls coordsAtPos — fast.
+  const docPosCacheRef = useRef<Map<string, number>>(new Map());
+  const rafIdRef = useRef<number | null>(null);
+
+  const rebuildDocPosCache = useCallback(() => {
     if (!editor) {
-      setAnchorPositions(new Map());
+      docPosCacheRef.current = new Map();
       return;
     }
-    const next = new Map<string, number>();
+    const cache = new Map<string, number>();
     for (const c of anchorableComments) {
       const { quote } = parseQuotedContent(c.content);
       if (!quote) continue;
@@ -140,47 +142,70 @@ export function DocumentView({
         }
         return true;
       });
-      if (foundPos == null) continue;
+      if (foundPos != null) cache.set(c.id, foundPos);
+    }
+    docPosCacheRef.current = cache;
+  }, [editor, anchorableComments]);
+
+  /** Recompute viewport coords for every cached doc position and publish. */
+  const publishFromCache = useCallback(() => {
+    if (!editor) return;
+    const next = new Map<string, number>();
+    for (const [id, pos] of docPosCacheRef.current) {
       try {
-        const coords = editor.view.coordsAtPos(foundPos);
-        next.set(c.id, coords.top);
+        const coords = editor.view.coordsAtPos(pos);
+        next.set(id, coords.top);
       } catch {
-        // pos may be out of view — skip
+        // pos may be off-screen / detached — skip
       }
     }
     setAnchorPositions(next);
-  }, [editor, anchorableComments]);
+  }, [editor]);
 
-  // Run after first paint and whenever inputs change.
+  /** Schedule a publish on the next animation frame; coalesces bursts. */
+  const schedulePublish = useCallback(() => {
+    if (rafIdRef.current != null) return;
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = null;
+      publishFromCache();
+    });
+  }, [publishFromCache]);
+
+  // Rebuild cache + publish on editor mount and when comments / doc change.
   useEffect(() => {
     if (!editor) return;
-    // Wait one frame so DOM is laid out before we measure.
-    const raf = requestAnimationFrame(publishAnchors);
-    const onUpdate = () => publishAnchors();
-    editor.on('update', onUpdate);
-    return () => {
-      cancelAnimationFrame(raf);
-      editor.off('update', onUpdate);
+    const refresh = () => {
+      rebuildDocPosCache();
+      schedulePublish();
     };
-  }, [editor, publishAnchors]);
+    refresh();
+    editor.on('update', refresh);
+    return () => {
+      editor.off('update', refresh);
+    };
+  }, [editor, rebuildDocPosCache, schedulePublish]);
 
-  // Re-publish on scroll (cheap — coordsAtPos is fast) and on resize.
+  // Scroll / resize: just re-translate cached positions into viewport coords.
+  // No state churn beyond the rAF-throttled setAnchorPositions, no DOM scan.
   useEffect(() => {
     const el = scrollAreaRef.current;
     if (!el) return;
-    const onScroll = () => publishAnchors();
+    const onScroll = () => schedulePublish();
     el.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
     return () => {
       el.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
     };
-  }, [publishAnchors]);
+  }, [schedulePublish]);
 
   // Clear anchors when the component unmounts so a stale set doesn't bleed
   // into the next topic / chat-mode state.
   useEffect(() => {
-    return () => setAnchorPositions(new Map());
+    return () => {
+      if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
+      setAnchorPositions(new Map());
+    };
   }, []);
 
   // When new chat messages land, scroll the chat anchor into view.

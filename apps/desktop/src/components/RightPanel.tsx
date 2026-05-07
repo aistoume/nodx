@@ -43,19 +43,26 @@ export function RightPanel({ topic, comments, onMutated }: RightPanelProps) {
 
   // Anti-overlap pass after every render — measures real heights so a card
   // that was just expanded pushes its neighbours down instead of overlapping.
+  // Uses translate3d so positioning runs on the GPU compositor (no layout
+  // re-flow per scroll tick).
   useLayoutEffect(() => {
     const zone = anchorZoneRef.current;
     if (!zone) return;
     const cards = Array.from(
       zone.querySelectorAll<HTMLDivElement>('[data-anchor-card]'),
     );
+    // Read all heights first to avoid layout thrash from interleaving
+    // reads + writes.
+    const heights = cards.map(
+      (c) => c.offsetHeight || FALLBACK_CARD_HEIGHT,
+    );
     let prevBottom = -Infinity;
-    for (const card of cards) {
+    cards.forEach((card, i) => {
       const desired = Number(card.dataset.desiredTop ?? '0');
       const top = Math.max(desired, prevBottom + CARD_GAP);
-      card.style.top = `${top}px`;
-      prevBottom = top + (card.offsetHeight || FALLBACK_CARD_HEIGHT);
-    }
+      card.style.transform = `translate3d(0, ${top}px, 0)`;
+      prevBottom = top + heights[i]!;
+    });
   });
 
   const anchored: Comment[] = [];
@@ -96,10 +103,11 @@ export function RightPanel({ topic, comments, onMutated }: RightPanelProps) {
               data-desired-top={desiredTop}
               style={{
                 position: 'absolute',
-                top: desiredTop,
+                top: 0,
                 left: 0,
                 right: 0,
-                transition: 'top 140ms ease-out',
+                transform: `translate3d(0, ${desiredTop}px, 0)`,
+                willChange: 'transform',
               }}
               className="px-2"
             >
