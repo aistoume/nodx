@@ -17,6 +17,7 @@ import { getDocument, upsertDocument } from '../db/documents.js';
 import { markdownToHtml } from '../lib/markdown.js';
 import { ChatComposer, ChatThread } from './ChatThread.js';
 import { DocumentView } from './DocumentView.js';
+import { SpawnChildButton } from './SpawnChildButton.js';
 import { SurveyCard } from './SurveyCard.js';
 
 interface CenterPanelProps {
@@ -30,7 +31,7 @@ export function CenterPanel({
   topic,
   comments,
   onMutated,
-  onSelectTopic: _onSelectTopic,
+  onSelectTopic,
 }: CenterPanelProps) {
   if (!topic) {
     return (
@@ -50,6 +51,7 @@ export function CenterPanel({
       topic={topic}
       comments={comments}
       onMutated={onMutated}
+      onSelectTopic={onSelectTopic}
     />
   );
 }
@@ -58,10 +60,12 @@ function Conversation({
   topic,
   comments,
   onMutated,
+  onSelectTopic,
 }: {
   topic: Topic;
   comments: import('@nodx/models').Comment[];
   onMutated: () => void;
+  onSelectTopic: (id: string) => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [document, setDocument] = useState<TopicDocument | null>(null);
@@ -239,6 +243,7 @@ function Conversation({
         chatMessages={chatMessages}
         anchorableComments={anchorableComments}
         onMutated={handleDocViewMutated}
+        onSelectTopic={onSelectTopic}
       />
     );
   }
@@ -316,6 +321,18 @@ function Conversation({
       <ChatComposer
         onSend={handlePreDocChatSend}
         disabled={chatThinking || aiThinking || decomposingFor !== null}
+        topSlot={
+          <SpawnChildButton
+            parentTopicId={topic.id}
+            disabled={
+              chatThinking || aiThinking || decomposingFor !== null
+            }
+            onCreated={(childId) => {
+              onMutated();
+              onSelectTopic(childId);
+            }}
+          />
+        }
       />
     </main>
   );

@@ -19,6 +19,7 @@ import {
 import { setAnchorPositions } from '../lib/anchor-layout.js';
 import { markdownToHtml } from '../lib/markdown.js';
 import { ChatComposer, ChatThread } from './ChatThread.js';
+import { SpawnChildButton } from './SpawnChildButton.js';
 
 interface DocumentViewProps {
   topic: Topic;
@@ -29,6 +30,8 @@ interface DocumentViewProps {
   anchorableComments: Comment[];
   /** Bumped after any DB mutation (comment / doc / message). */
   onMutated: () => void;
+  /** Switch the active topic — used after spawn-child / deep-dive. */
+  onSelectTopic: (id: string) => void;
 }
 
 interface PendingSelection {
@@ -56,6 +59,7 @@ export function DocumentView({
   chatMessages,
   anchorableComments,
   onMutated,
+  onSelectTopic,
 }: DocumentViewProps) {
   const editor = useEditor(
     {
@@ -417,7 +421,20 @@ export function DocumentView({
         </div>
       </div>
 
-      <ChatComposer onSend={handleChatSend} disabled={chatThinking} />
+      <ChatComposer
+        onSend={handleChatSend}
+        disabled={chatThinking}
+        topSlot={
+          <SpawnChildButton
+            parentTopicId={topic.id}
+            disabled={chatThinking}
+            onCreated={(childId) => {
+              onMutated();
+              onSelectTopic(childId);
+            }}
+          />
+        }
+      />
 
       {pendingSelection && activePanel === 'menu' && (
         <SelectionMenu
