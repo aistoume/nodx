@@ -19,7 +19,20 @@ export interface AnthropicCallParams {
   maxTokens: number;
   system?: string;
   temperature?: number;
+  /**
+   * Enable Anthropic's built-in `web_search` server tool. Costs ~$10/1000
+   * searches; capped at 5 uses per call. Anthropic executes the search
+   * server-side, so we don't have to run the tool loop ourselves — we just
+   * accumulate text_delta events as before; tool blocks are ignored.
+   */
+  enableWebSearch?: boolean;
 }
+
+const WEB_SEARCH_TOOL = {
+  type: 'web_search_20250305',
+  name: 'web_search',
+  max_uses: 5,
+} as const;
 
 export interface AnthropicTextResponse {
   text: string;
@@ -50,6 +63,7 @@ export async function callAnthropic(
     stream: true,
   };
   if (params.system) body.system = params.system;
+  if (params.enableWebSearch) body.tools = [WEB_SEARCH_TOOL];
 
   const upstream = await fetch(ANTHROPIC_URL, {
     method: 'POST',

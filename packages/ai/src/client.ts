@@ -22,6 +22,13 @@ export interface CompleteOptions<T> {
   system?: string;
   /** [0, 1]. Lower = more deterministic — useful when the schema is strict. */
   temperature?: number;
+  /**
+   * Enable Anthropic's built-in web_search tool so the model can fetch
+   * current information for prompts whose answers depend on freshness
+   * (prices, news, current state-of-the-art). Off by default — costs
+   * extra (~$0.05/call) and adds latency.
+   */
+  enableWebSearch?: boolean;
   /** Lets the caller cancel an in-flight request (e.g. unmounting a panel). */
   signal?: AbortSignal;
 }
@@ -78,6 +85,7 @@ export async function complete<T>(
       ...(opts.temperature !== undefined
         ? { temperature: opts.temperature }
         : {}),
+      ...(opts.enableWebSearch ? { enable_web_search: true } : {}),
     }),
     signal: opts.signal,
   });
@@ -138,6 +146,7 @@ export interface CompleteTextOptions {
   maxTokens: number;
   system?: string;
   temperature?: number;
+  enableWebSearch?: boolean;
   signal?: AbortSignal;
 }
 
@@ -171,6 +180,7 @@ export async function completeText(
       ...(opts.temperature !== undefined
         ? { temperature: opts.temperature }
         : {}),
+      ...(opts.enableWebSearch ? { enable_web_search: true } : {}),
     }),
     signal: opts.signal,
   });

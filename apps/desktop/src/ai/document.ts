@@ -30,6 +30,10 @@ export async function generateInitialDocument(
     // can easily run 2-4k output tokens. Pad to the worker's 8k cap.
     maxTokens: 8000,
     temperature: 0.6,
+    // Doc draft routinely cites current data (prices, market sizing, recent
+    // policy moves). Without web search the model is bounded by its training
+    // cutoff and ends up speaking in 2024/2025 tense.
+    enableWebSearch: true,
   });
   return {
     markdown: r.text.trim(),
@@ -58,6 +62,7 @@ export async function refineSelection(
     model: REFINE_SELECTION_PROMPT_MODEL,
     maxTokens: 4000,
     temperature: 0.5,
+    enableWebSearch: true,
   });
   return {
     markdown: r.text.trim(),

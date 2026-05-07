@@ -226,6 +226,47 @@ describe('POST /v1/complete', () => {
     expect(parsed.stream).toBe(true);
   });
 
+  it('forwards enable_web_search → tools[web_search] in upstream body', async () => {
+    let upstreamBody: string | null = null;
+    vi.stubGlobal('fetch', async (_input: unknown, init?: RequestInit) => {
+      upstreamBody = init?.body as string;
+      return mockSSE({ text: 'ok' });
+    });
+
+    await postJson(
+      {
+        model: 'claude-haiku-4-5',
+        prompt: 'hi',
+        enable_web_search: true,
+      },
+      { authorization: 'Bearer tok' },
+    );
+
+    expect(upstreamBody).not.toBeNull();
+    const parsed = JSON.parse(upstreamBody!) as {
+      tools?: Array<{ type: string; name: string }>;
+    };
+    expect(parsed.tools).toEqual([
+      { type: 'web_search_20250305', name: 'web_search', max_uses: 5 },
+    ]);
+  });
+
+  it('does not include tools when enable_web_search is absent', async () => {
+    let upstreamBody: string | null = null;
+    vi.stubGlobal('fetch', async (_input: unknown, init?: RequestInit) => {
+      upstreamBody = init?.body as string;
+      return mockSSE({ text: 'ok' });
+    });
+
+    await postJson(
+      { model: 'claude-haiku-4-5', prompt: 'hi' },
+      { authorization: 'Bearer tok' },
+    );
+
+    const parsed = JSON.parse(upstreamBody!) as { tools?: unknown };
+    expect(parsed.tools).toBeUndefined();
+  });
+
   it('surfaces a mid-stream Anthropic error event as 502', async () => {
     vi.stubGlobal('fetch', async () => {
       const lines = [
