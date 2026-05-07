@@ -51,6 +51,7 @@ export async function askCoach(
     maxTokens: 800,
     system: COACH_SYSTEM,
     temperature: 0.7,
+    enableWebSearch: true,
   });
 
   return {

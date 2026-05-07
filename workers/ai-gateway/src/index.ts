@@ -11,6 +11,7 @@ interface CompleteRequestBody {
   max_tokens?: unknown;
   system?: unknown;
   temperature?: unknown;
+  enable_web_search?: unknown;
 }
 
 const ALLOWED_MODELS = new Set([
@@ -80,7 +81,14 @@ async function handleComplete(req: Request, env: Env): Promise<Response> {
   if ('error' in validation) {
     return json({ error: validation.error }, 400);
   }
-  const { model, prompt, maxTokens, system, temperature } = validation;
+  const {
+    model,
+    prompt,
+    maxTokens,
+    system,
+    temperature,
+    enableWebSearch,
+  } = validation;
 
   try {
     const result = await callAnthropic({
@@ -90,6 +98,7 @@ async function handleComplete(req: Request, env: Env): Promise<Response> {
       maxTokens,
       system,
       temperature,
+      enableWebSearch,
     });
     return json(result);
   } catch (err) {
@@ -118,6 +127,7 @@ interface ValidatedComplete {
   maxTokens: number;
   system: string | undefined;
   temperature: number | undefined;
+  enableWebSearch: boolean;
 }
 
 function validateCompleteBody(
@@ -153,7 +163,16 @@ function validateCompleteBody(
       ? body.temperature
       : undefined;
 
-  return { model: body.model, prompt: body.prompt, maxTokens, system, temperature };
+  const enableWebSearch = body.enable_web_search === true;
+
+  return {
+    model: body.model,
+    prompt: body.prompt,
+    maxTokens,
+    system,
+    temperature,
+    enableWebSearch,
+  };
 }
 
 function constantTimeEquals(a: string, b: string): boolean {
