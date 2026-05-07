@@ -115,18 +115,20 @@ export function DocumentView({
   // Outer scroll container so we can listen for scroll → re-anchor.
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
 
-  // Doc position cache: comment id → ProseMirror position.
-  // Built only when comments / editor doc change (string-search is O(n×m)).
-  // Scroll handler reuses the cache and just calls coordsAtPos — fast.
-  const docPosCacheRef = useRef<Map<string, number>>(new Map());
   const rafIdRef = useRef<number | null>(null);
 
-  const rebuildDocPosCache = useCallback(() => {
+  // Compute anchor positions from scratch every call. Combined search +
+  // coordsAtPos in one pass; rAF-throttled by schedulePublish so scroll
+  // bursts coalesce to one update per frame. The earlier cached version
+  // was sensitive to useCallback identity churn (anchorableComments is a
+  // fresh array on every CenterPanel render); this single-function form
+  // sidesteps that.
+  const publishAnchors = useCallback(() => {
     if (!editor) {
-      docPosCacheRef.current = new Map();
+      setAnchorPositions(new Map());
       return;
     }
-    const cache = new Map<string, number>();
+    const next = new Map<string, number>();
     for (const c of anchorableComments) {
       const { quote } = parseQuotedContent(c.content);
       if (!quote) continue;
@@ -142,48 +144,35 @@ export function DocumentView({
         }
         return true;
       });
-      if (foundPos != null) cache.set(c.id, foundPos);
-    }
-    docPosCacheRef.current = cache;
-  }, [editor, anchorableComments]);
-
-  /** Recompute viewport coords for every cached doc position and publish. */
-  const publishFromCache = useCallback(() => {
-    if (!editor) return;
-    const next = new Map<string, number>();
-    for (const [id, pos] of docPosCacheRef.current) {
+      if (foundPos == null) continue;
       try {
-        const coords = editor.view.coordsAtPos(pos);
-        next.set(id, coords.top);
+        const coords = editor.view.coordsAtPos(foundPos);
+        next.set(c.id, coords.top);
       } catch {
-        // pos may be off-screen / detached — skip
+        // pos off-screen / view detached — skip silently
       }
     }
     setAnchorPositions(next);
-  }, [editor]);
+  }, [editor, anchorableComments]);
 
-  /** Schedule a publish on the next animation frame; coalesces bursts. */
   const schedulePublish = useCallback(() => {
     if (rafIdRef.current != null) return;
     rafIdRef.current = requestAnimationFrame(() => {
       rafIdRef.current = null;
-      publishFromCache();
+      publishAnchors();
     });
-  }, [publishFromCache]);
+  }, [publishAnchors]);
 
-  // Rebuild cache + publish on editor mount and when comments / doc change.
+  // Initial mount + editor.update + comments change → publish.
   useEffect(() => {
     if (!editor) return;
-    const refresh = () => {
-      rebuildDocPosCache();
-      schedulePublish();
-    };
-    refresh();
-    editor.on('update', refresh);
+    schedulePublish();
+    const handler = () => schedulePublish();
+    editor.on('update', handler);
     return () => {
-      editor.off('update', refresh);
+      editor.off('update', handler);
     };
-  }, [editor, rebuildDocPosCache, schedulePublish]);
+  }, [editor, schedulePublish]);
 
   // Scroll / resize: just re-translate cached positions into viewport coords.
   // No state churn beyond the rAF-throttled setAnchorPositions, no DOM scan.
