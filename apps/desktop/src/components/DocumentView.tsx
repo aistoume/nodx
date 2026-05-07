@@ -18,6 +18,7 @@ import {
 } from '../db/messages.js';
 import { setAnchorPositions } from '../lib/anchor-layout.js';
 import { markdownToHtml } from '../lib/markdown.js';
+import { ChatComposer, ChatThread } from './ChatThread.js';
 
 interface DocumentViewProps {
   topic: Topic;
@@ -110,7 +111,6 @@ export function DocumentView({
   // Chat-mode state.
   const [chatThinking, setChatThinking] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
-  const chatScrollAnchor = useRef<HTMLDivElement | null>(null);
 
   // Outer scroll container so we can listen for scroll → re-anchor.
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
@@ -207,11 +207,6 @@ export function DocumentView({
       setAnchorPositions(new Map());
     };
   }, []);
-
-  // When new chat messages land, scroll the chat anchor into view.
-  useEffect(() => {
-    chatScrollAnchor.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [chatMessages.length, chatThinking]);
 
   const handleChatSend = async (content: string) => {
     setChatError(null);
@@ -425,25 +420,11 @@ export function DocumentView({
             </pre>
           )}
 
-          {(chatMessages.length > 0 || chatThinking || chatError) && (
-            <section className="mt-10 pt-6 border-t border-border">
-              <div className="text-[11px] uppercase tracking-wider text-ink-muted font-medium mb-3">
-                追问 · 文档之外的对话
-              </div>
-              <ul className="flex flex-col gap-3">
-                {chatMessages.map((m) => (
-                  <ChatBubble key={m.id} message={m} />
-                ))}
-                {chatThinking && <ChatThinkingBubble />}
-              </ul>
-              {chatError && (
-                <pre className="mt-3 text-xs text-red-600 bg-red-50 p-2 rounded whitespace-pre-wrap">
-                  {chatError}
-                </pre>
-              )}
-              <div ref={chatScrollAnchor} />
-            </section>
-          )}
+          <ChatThread
+            messages={chatMessages}
+            thinking={chatThinking}
+            error={chatError}
+          />
         </div>
       </div>
 
@@ -738,108 +719,6 @@ function AskPopover({
         >
           {submitting ? '思考中…' : '提交  ⌘↵'}
         </button>
-      </div>
-    </div>
-  );
-}
-
-function ChatBubble({ message }: { message: Message }) {
-  const isUser = message.role === 'user';
-  return (
-    <li className={'flex ' + (isUser ? 'justify-end' : 'justify-start')}>
-      <div
-        className={
-          'max-w-[80%] rounded-lg px-3.5 py-2 text-sm whitespace-pre-wrap break-words selection:bg-yellow-200 selection:text-ink ' +
-          (isUser
-            ? 'bg-accent text-white'
-            : 'bg-surface border border-border text-ink')
-        }
-      >
-        {message.content}
-      </div>
-    </li>
-  );
-}
-
-function ChatThinkingBubble() {
-  return (
-    <li className="flex justify-start">
-      <div className="rounded-lg px-3.5 py-2.5 bg-surface border border-border text-ink-muted text-xs flex items-center gap-2">
-        <span className="flex gap-1">
-          <ChatDot delay="0s" />
-          <ChatDot delay="0.15s" />
-          <ChatDot delay="0.3s" />
-        </span>
-        <span>AI 思考中…</span>
-      </div>
-    </li>
-  );
-}
-
-function ChatDot({ delay }: { delay: string }) {
-  return (
-    <span
-      className="inline-block w-1.5 h-1.5 rounded-full bg-ink-muted/60 animate-bounce"
-      style={{ animationDelay: delay }}
-    />
-  );
-}
-
-function ChatComposer({
-  onSend,
-  disabled,
-}: {
-  onSend: (content: string) => Promise<void> | void;
-  disabled: boolean;
-}) {
-  const [draft, setDraft] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  const send = async () => {
-    if (!draft.trim() || submitting || disabled) return;
-    setSubmitting(true);
-    try {
-      const content = draft;
-      setDraft('');
-      await onSend(content);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const blocked = submitting || disabled;
-
-  return (
-    <div className="border-t border-border bg-surface shrink-0">
-      <div className="max-w-3xl mx-auto px-8 py-3">
-        <div className="flex gap-2 items-end">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                e.preventDefault();
-                void send();
-              }
-            }}
-            placeholder={
-              disabled
-                ? 'AI 思考中…'
-                : '继续追问 / 让 AI 帮你想下一步…  Cmd/Ctrl + Enter 发送'
-            }
-            disabled={blocked}
-            rows={2}
-            className="flex-1 resize-none px-3 py-2 text-sm border border-border rounded-md bg-canvas focus:outline-none focus:border-accent focus:bg-surface transition font-sans disabled:opacity-60"
-          />
-          <button
-            type="button"
-            onClick={() => void send()}
-            disabled={blocked || !draft.trim()}
-            className="px-4 py-2 text-sm font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition shrink-0"
-          >
-            {submitting ? '…' : '发送'}
-          </button>
-        </div>
       </div>
     </div>
   );

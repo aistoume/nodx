@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SurveyFactor } from '@nodx/ai';
 import type { Message, Topic, TopicDocument } from '@nodx/models';
+import { askCoach } from '../ai/chat.js';
 import { generateInitialDocument } from '../ai/document.js';
 import { isAiConfigured } from '../ai/gateway.js';
 import { decomposeSelected, generateSurvey } from '../ai/survey.js';
 import {
+  createAiMessage,
   createSurveyMessage,
+  createUserMessage,
   listMessages,
   parseSurveyContent,
   updateMessageContent,
 } from '../db/messages.js';
 import { getDocument, upsertDocument } from '../db/documents.js';
 import { markdownToHtml } from '../lib/markdown.js';
+import { ChatComposer, ChatThread } from './ChatThread.js';
 import { DocumentView } from './DocumentView.js';
 import { SurveyCard } from './SurveyCard.js';
 
@@ -70,6 +74,10 @@ function Conversation({
 
   // Per-session guard so we don't double-fire auto-survey across rerenders.
   const autoSurveyFiredFor = useRef<Set<string>>(new Set());
+
+  // Chat state for pre-doc free-form conversation.
+  const [chatThinking, setChatThinking] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
 
   const refreshAll = useCallback(async () => {
     setLoading(true);
@@ -184,6 +192,31 @@ function Conversation({
     }
   };
 
+  /** Free-form chat in pre-doc state — same shape as DocumentView's. */
+  const handlePreDocChatSend = async (content: string) => {
+    setChatError(null);
+    try {
+      await createUserMessage(topic.id, content);
+      const fresh = await listMessages(topic.id);
+      setMessages(fresh);
+      onMutated();
+      if (!isAiConfigured()) {
+        setChatError('AI 网关未配置，跳过 AI 回复。');
+        return;
+      }
+      setChatThinking(true);
+      const reply = await askCoach(fresh);
+      await createAiMessage(topic.id, reply.text);
+      const after = await listMessages(topic.id);
+      setMessages(after);
+      onMutated();
+    } catch (err) {
+      setChatError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setChatThinking(false);
+    }
+  };
+
   // Prefer doc view whenever a doc exists.
   if (document) {
     const chatMessages = messages.filter((m) => m.type === 'text');
@@ -262,8 +295,19 @@ function Conversation({
               AI 调用失败: {aiError}
             </pre>
           )}
+
+          <ChatThread
+            messages={messages.filter((m) => m.type === 'text')}
+            thinking={chatThinking}
+            error={chatError}
+          />
         </div>
       </div>
+
+      <ChatComposer
+        onSend={handlePreDocChatSend}
+        disabled={chatThinking || aiThinking || decomposingFor !== null}
+      />
     </main>
   );
 }
