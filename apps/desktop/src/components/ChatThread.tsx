@@ -96,9 +96,15 @@ function Dot({ delay }: { delay: string }) {
 interface ChatComposerProps {
   onSend: (content: string) => Promise<void> | void;
   disabled: boolean;
+  /** Rendered above the textarea row — used for the spawn-child button. */
+  topSlot?: React.ReactNode;
 }
 
-export function ChatComposer({ onSend, disabled }: ChatComposerProps) {
+export function ChatComposer({
+  onSend,
+  disabled,
+  topSlot,
+}: ChatComposerProps) {
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -118,7 +124,8 @@ export function ChatComposer({ onSend, disabled }: ChatComposerProps) {
 
   return (
     <div className="border-t border-border bg-surface shrink-0">
-      <div className="max-w-3xl mx-auto px-8 py-3">
+      <div className="max-w-3xl mx-auto px-8 py-3 flex flex-col gap-2">
+        {topSlot}
         <div className="flex gap-2 items-end">
           <textarea
             value={draft}

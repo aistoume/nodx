@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Topic, TopicStatus } from '@nodx/models';
 import {
   ALL_TOPIC_STATUSES,
@@ -137,18 +137,13 @@ export function LeftPanel({
       {!loading && !loadError && topics.length === 0 && (
         <p className="text-xs text-ink-muted italic">还没有对话。先建一个吧。</p>
       )}
-      <ul className="flex flex-col gap-0.5">
-        {topics.map((t) => (
-          <TopicRow
-            key={t.id}
-            topic={t}
-            selected={t.id === selectedTopicId}
-            onSelect={() => onSelectTopic(t.id)}
-            onArchive={() => handleArchive(t.id)}
-            onDelete={() => handleDelete(t.id)}
-          />
-        ))}
-      </ul>
+      <TopicTree
+        topics={topics}
+        selectedTopicId={selectedTopicId}
+        onSelect={onSelectTopic}
+        onArchive={handleArchive}
+        onDelete={handleDelete}
+      />
 
       {archivedTopics.length > 0 && (
         <>
@@ -179,35 +174,175 @@ export function LeftPanel({
   );
 }
 
+/* ── Tree ────────────────────────────────────────────── */
+
+interface TreeNode {
+  topic: Topic;
+  depth: number;
+  children: TreeNode[];
+}
+
+function buildTopicTree(topics: Topic[]): TreeNode[] {
+  // Topics whose parentId points outside the active list (parent archived /
+  // deleted) are hoisted to top-level so they don't disappear from the UI.
+  const validIds = new Set(topics.map((t) => t.id));
+  const byParent = new Map<string | null, Topic[]>();
+  for (const t of topics) {
+    const effective =
+      t.parentId && validIds.has(t.parentId) ? t.parentId : null;
+    const list = byParent.get(effective) ?? [];
+    list.push(t);
+    byParent.set(effective, list);
+  }
+  for (const list of byParent.values()) {
+    list.sort((a, b) => b.meta.lastActivity - a.meta.lastActivity);
+  }
+  function buildLevel(
+    parentId: string | null,
+    depth: number,
+  ): TreeNode[] {
+    return (byParent.get(parentId) ?? []).map((t) => ({
+      topic: t,
+      depth,
+      children: buildLevel(t.id, depth + 1),
+    }));
+  }
+  return buildLevel(null, 0);
+}
+
+function TopicTree({
+  topics,
+  selectedTopicId,
+  onSelect,
+  onArchive,
+  onDelete,
+}: {
+  topics: Topic[];
+  selectedTopicId: string | null;
+  onSelect: (id: string) => void;
+  onArchive: (id: string) => Promise<void> | void;
+  onDelete: (id: string) => Promise<void> | void;
+}) {
+  const tree = useMemo(() => buildTopicTree(topics), [topics]);
+  return (
+    <ul className="flex flex-col gap-0.5">
+      {tree.map((n) => (
+        <TopicTreeNode
+          key={n.topic.id}
+          node={n}
+          selectedTopicId={selectedTopicId}
+          onSelect={onSelect}
+          onArchive={onArchive}
+          onDelete={onDelete}
+        />
+      ))}
+    </ul>
+  );
+}
+
+function TopicTreeNode({
+  node,
+  selectedTopicId,
+  onSelect,
+  onArchive,
+  onDelete,
+}: {
+  node: TreeNode;
+  selectedTopicId: string | null;
+  onSelect: (id: string) => void;
+  onArchive: (id: string) => Promise<void> | void;
+  onDelete: (id: string) => Promise<void> | void;
+}) {
+  return (
+    <>
+      <TopicRow
+        topic={node.topic}
+        depth={node.depth}
+        selected={node.topic.id === selectedTopicId}
+        onSelect={() => onSelect(node.topic.id)}
+        onArchive={() => onArchive(node.topic.id)}
+        onDelete={() => onDelete(node.topic.id)}
+      />
+      {node.children.map((child) => (
+        <TopicTreeNode
+          key={child.topic.id}
+          node={child}
+          selectedTopicId={selectedTopicId}
+          onSelect={onSelect}
+          onArchive={onArchive}
+          onDelete={onDelete}
+        />
+      ))}
+    </>
+  );
+}
+
 function TopicRow({
   topic,
+  depth,
   selected,
   onSelect,
   onArchive,
   onDelete,
 }: {
   topic: Topic;
+  depth: number;
   selected: boolean;
   onSelect: () => void;
   onArchive: () => void;
   onDelete: () => void;
 }) {
+  // Visual indent per nesting level. Children rows also get a left guide
+  // line so the tree shape reads at a glance.
+  const isChild = depth > 0;
+  const paddingLeft = 10 + depth * 14;
   return (
     <li className="group relative rounded-md hover:bg-canvas">
+      {isChild && (
+        <span
+          aria-hidden
+          className="absolute top-0 bottom-0 w-px bg-border/70"
+          style={{ left: paddingLeft - 6 }}
+        />
+      )}
       <button
         type="button"
         onClick={onSelect}
         className={
-          'w-full text-left px-2.5 py-2 pr-20 rounded-md text-sm transition ' +
+          'w-full text-left py-2 pr-20 rounded-md text-sm transition flex flex-col gap-0.5 ' +
           (selected ? 'bg-accent-tint text-accent font-medium' : 'text-ink')
         }
+        style={{ paddingLeft }}
       >
-        <div className="truncate">{topic.title}</div>
-        <div className="mt-0.5 flex items-center gap-2 text-[11px]">
+        <div className="truncate flex items-center gap-1">
+          {isChild && (
+            <span
+              aria-hidden
+              className={
+                'shrink-0 text-[11px] ' +
+                (selected ? 'text-accent/70' : 'text-ink-muted/60')
+              }
+            >
+              ↳
+            </span>
+          )}
+          <span className="truncate">{topic.title}</span>
+        </div>
+        <div className="flex items-center gap-2 text-[11px]">
           <StatusBadge status={topic.status} />
           <span className={selected ? 'text-accent/70' : 'text-ink-muted'}>
             {topic.meta.messageCount} 条
           </span>
+          {topic.meta.childCount > 0 && (
+            <span
+              className={
+                selected ? 'text-accent/70' : 'text-ink-muted'
+              }
+              title={`${topic.meta.childCount} 个子话题`}
+            >
+              · {topic.meta.childCount} 子
+            </span>
+          )}
         </div>
       </button>
       <div className="absolute right-1 top-1.5 flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
