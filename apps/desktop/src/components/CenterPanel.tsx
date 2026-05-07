@@ -103,6 +103,8 @@ function Conversation({
   }, [topic.id]);
 
   // On topic enter: load + auto-fire Survey if conversation is empty.
+  // Child topics skip Survey + doc generation entirely — they're meant to
+  // be focused chat threads riding on the parent's context.
   useEffect(() => {
     setAiError(null);
     setAiPhase('');
@@ -111,6 +113,8 @@ function Conversation({
       // If a doc already exists, the user already passed the Survey stage
       // — nothing more to do.
       if (doc) return;
+      // Child topic: lightweight chat-only entry, no Survey.
+      if (topic.parentId) return;
       if (
         msgs.length === 0 &&
         isAiConfigured() &&
@@ -255,13 +259,15 @@ function Conversation({
       <header className="border-b border-border px-8 py-4 bg-surface shrink-0">
         <div className="max-w-3xl mx-auto">
           <p className="text-[11px] uppercase tracking-wider text-ink-muted">
-            起步{topic.parentId ? ' · 子' : ''}
+            {topic.parentId ? '子话题' : '起步'}
           </p>
           <h1 className="text-xl font-semibold leading-tight mt-0.5">
             {topic.title}
           </h1>
           <p className="text-xs text-ink-muted mt-2">
-            选完关注维度后，AI 会生成完整的思考文档替换这里。
+            {topic.parentId
+              ? '直接在下方与 AI 对话——围绕这个子话题深入即可。需要时可以再 ↳ 派生孙话题。'
+              : '选完关注维度后，AI 会生成完整的思考文档替换这里。'}
           </p>
         </div>
       </header>
@@ -280,7 +286,9 @@ function Conversation({
 
           {!loading && !surveyMsg && !aiThinking && !aiError && (
             <p className="text-sm text-ink-muted italic">
-              等待 AI 生成 Survey…（如果一直没出现，检查 worker 是否在跑）
+              {topic.parentId
+                ? '在下方输入问题或想法，AI 会陪你聊；不会自动生成结构化文档。'
+                : '等待 AI 生成 Survey…（如果一直没出现，检查 worker 是否在跑）'}
             </p>
           )}
 
