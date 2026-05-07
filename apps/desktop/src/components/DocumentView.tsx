@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import type { Message, Topic } from '@nodx/models';
+import type { Comment, Message, Topic } from '@nodx/models';
 import { askCoach } from '../ai/chat.js';
 import { refineSelection } from '../ai/document.js';
 import { explainSelection } from '../ai/explain.js';
@@ -9,12 +9,14 @@ import { isAiConfigured } from '../ai/gateway.js';
 import {
   createComment,
   formatQuotedContent,
+  parseQuotedContent,
 } from '../db/comments.js';
 import { upsertDocument } from '../db/documents.js';
 import {
   createAiMessage,
   createUserMessage,
 } from '../db/messages.js';
+import { setAnchorPositions } from '../lib/anchor-layout.js';
 import { markdownToHtml } from '../lib/markdown.js';
 
 interface DocumentViewProps {
@@ -22,6 +24,8 @@ interface DocumentViewProps {
   initialHtml: string;
   /** Text-only chat messages (Survey / factor_list filtered out). */
   chatMessages: Message[];
+  /** Quote-bearing comments that should anchor visually to the doc. */
+  anchorableComments: Comment[];
   /** Bumped after any DB mutation (comment / doc / message). */
   onMutated: () => void;
 }
@@ -49,6 +53,7 @@ export function DocumentView({
   topic,
   initialHtml,
   chatMessages,
+  anchorableComments,
   onMutated,
 }: DocumentViewProps) {
   const editor = useEditor(
@@ -106,6 +111,77 @@ export function DocumentView({
   const [chatThinking, setChatThinking] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const chatScrollAnchor = useRef<HTMLDivElement | null>(null);
+
+  // Outer scroll container so we can listen for scroll → re-anchor.
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null);
+
+  // Compute viewport-Y for each anchorable comment by string-searching the
+  // editor doc for its quote, then asking ProseMirror for screen coords.
+  // Republished on editor update / scroll / resize so cards in the right
+  // panel can track in real time.
+  const publishAnchors = useCallback(() => {
+    if (!editor) {
+      setAnchorPositions(new Map());
+      return;
+    }
+    const next = new Map<string, number>();
+    for (const c of anchorableComments) {
+      const { quote } = parseQuotedContent(c.content);
+      if (!quote) continue;
+      let foundPos: number | null = null;
+      editor.state.doc.descendants((node, pos) => {
+        if (foundPos !== null) return false;
+        if (node.isText && node.text) {
+          const idx = node.text.indexOf(quote);
+          if (idx >= 0) {
+            foundPos = pos + idx;
+            return false;
+          }
+        }
+        return true;
+      });
+      if (foundPos == null) continue;
+      try {
+        const coords = editor.view.coordsAtPos(foundPos);
+        next.set(c.id, coords.top);
+      } catch {
+        // pos may be out of view — skip
+      }
+    }
+    setAnchorPositions(next);
+  }, [editor, anchorableComments]);
+
+  // Run after first paint and whenever inputs change.
+  useEffect(() => {
+    if (!editor) return;
+    // Wait one frame so DOM is laid out before we measure.
+    const raf = requestAnimationFrame(publishAnchors);
+    const onUpdate = () => publishAnchors();
+    editor.on('update', onUpdate);
+    return () => {
+      cancelAnimationFrame(raf);
+      editor.off('update', onUpdate);
+    };
+  }, [editor, publishAnchors]);
+
+  // Re-publish on scroll (cheap — coordsAtPos is fast) and on resize.
+  useEffect(() => {
+    const el = scrollAreaRef.current;
+    if (!el) return;
+    const onScroll = () => publishAnchors();
+    el.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [publishAnchors]);
+
+  // Clear anchors when the component unmounts so a stale set doesn't bleed
+  // into the next topic / chat-mode state.
+  useEffect(() => {
+    return () => setAnchorPositions(new Map());
+  }, []);
 
   // When new chat messages land, scroll the chat anchor into view.
   useEffect(() => {
@@ -315,7 +391,7 @@ export function DocumentView({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollAreaRef} className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-8 py-6">
           <EditorContent editor={editor} />
           {error && (
