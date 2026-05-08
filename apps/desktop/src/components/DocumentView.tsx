@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import type { Comment, Message, Topic } from '@nodx/models';
@@ -160,7 +167,11 @@ export function DocumentView({
   }, [editor, anchorableComments]);
 
   const publishAnchorsRef = useRef(publishAnchors);
-  useEffect(() => {
+  // useLayoutEffect — runs synchronously after commit, before any RAF in
+  // the next frame can fire. Plain useEffect has occasionally been beaten
+  // by an in-flight RAF that captured the previous publishAnchors before
+  // the ref got updated.
+  useLayoutEffect(() => {
     publishAnchorsRef.current = publishAnchors;
   });
 
@@ -172,12 +183,16 @@ export function DocumentView({
     });
   }, []);
 
-  // Run a publish when the editor instance changes (topic switch) or when
-  // anchorableComments changes (note added / deleted / quote text edited).
+  // Trigger a publish when:
+  //   - editor instance changes (topic switch recreates the editor)
+  //   - anchorableComments changes (note added / deleted / type changed)
+  //   - initialHtml changes (topic switch where editor is reused via
+  //     setContent(emitUpdate=false) — no 'update' event would fire,
+  //     so we'd otherwise miss it)
   useEffect(() => {
     if (!editor) return;
     schedulePublish();
-  }, [editor, anchorableComments, schedulePublish]);
+  }, [editor, anchorableComments, initialHtml, schedulePublish]);
 
   // Editor doc-content changes (typing, paste, AI replace) → re-anchor.
   useEffect(() => {
