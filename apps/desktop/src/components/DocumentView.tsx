@@ -141,6 +141,25 @@ export function DocumentView({
       setAnchorPositions(new Map());
       return;
     }
+
+    // Flatten the doc's text nodes into one continuous string with a
+    // parallel array mapping each character's index back to its
+    // ProseMirror position. This is how we resolve a quote that crosses
+    // text-node boundaries (which it does whenever the user's selection
+    // spans bold/italic/link spans — Sonnet-generated docs are full of
+    // these). Per-text-node indexOf would miss every such case.
+    let flatText = '';
+    const flatToDocPos: number[] = [];
+    editor.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text) {
+        for (let i = 0; i < node.text.length; i++) {
+          flatToDocPos[flatText.length + i] = pos + i;
+        }
+        flatText += node.text;
+      }
+      return true;
+    });
+
     const next = new Map<string, number>();
     let noQuote = 0;
     let quoteNotInDoc = 0;
@@ -151,24 +170,18 @@ export function DocumentView({
         noQuote++;
         continue;
       }
-      let foundPos: number | null = null;
-      editor.state.doc.descendants((node, pos) => {
-        if (foundPos !== null) return false;
-        if (node.isText && node.text) {
-          const idx = node.text.indexOf(quote);
-          if (idx >= 0) {
-            foundPos = pos + idx;
-            return false;
-          }
-        }
-        return true;
-      });
-      if (foundPos == null) {
+      const idx = flatText.indexOf(quote);
+      if (idx < 0) {
+        quoteNotInDoc++;
+        continue;
+      }
+      const docPos = flatToDocPos[idx];
+      if (docPos == null) {
         quoteNotInDoc++;
         continue;
       }
       try {
-        const coords = editor.view.coordsAtPos(foundPos);
+        const coords = editor.view.coordsAtPos(docPos);
         next.set(c.id, coords.top);
       } catch {
         coordsFailed++;
@@ -182,6 +195,7 @@ export function DocumentView({
       quoteNotInDoc,
       coordsFailed,
       editorReady: Boolean(editor.view?.dom?.isConnected),
+      flatLen: flatText.length,
     });
     setAnchorPositions(next);
 
@@ -313,7 +327,11 @@ export function DocumentView({
         setActivePanel(null);
         return;
       }
-      const text = e.state.doc.textBetween(from, to, ' ').trim();
+      // '' separator keeps the quote consistent with how publishAnchors
+      // searches: a flat concatenation of every text node's content with
+      // no inter-block padding. Mismatched separators here used to make
+      // multi-block selections un-anchorable.
+      const text = e.state.doc.textBetween(from, to, '').trim();
       if (text.length < 2) {
         setPendingSelection(null);
         setActivePanel(null);
