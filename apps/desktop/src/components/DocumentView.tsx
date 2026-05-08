@@ -225,9 +225,15 @@ export function DocumentView({
   });
 
   const schedulePublish = useCallback(() => {
+    // eslint-disable-next-line no-console
+    console.log('[anchor] schedulePublish called', {
+      raffed: rafIdRef.current != null,
+    });
     if (rafIdRef.current != null) return;
     rafIdRef.current = requestAnimationFrame(() => {
       rafIdRef.current = null;
+      // eslint-disable-next-line no-console
+      console.log('[anchor] RAF fired, calling publishAnchors');
       publishAnchorsRef.current();
     });
   }, []);
@@ -239,6 +245,12 @@ export function DocumentView({
   //     setContent(emitUpdate=false) — no 'update' event would fire,
   //     so we'd otherwise miss it)
   useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('[anchor] trigger effect', {
+      hasEditor: !!editor,
+      commentCount: anchorableComments.length,
+      initialHtmlLen: initialHtml?.length ?? 0,
+    });
     if (!editor) return;
     schedulePublish();
   }, [editor, anchorableComments, initialHtml, schedulePublish]);
