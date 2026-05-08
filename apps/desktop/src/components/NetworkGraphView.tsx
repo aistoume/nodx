@@ -48,6 +48,49 @@ function savePositions(cy: Core): void {
 }
 
 /**
+ * Find the topmost ancestor (root) of a given topic by walking parentId
+ * up. Stops if a parent is missing from the active set. Returns the id
+ * of the root, or null if the input id isn't in the topics list.
+ */
+function findRootId(
+  topicId: string,
+  byId: Map<string, Topic>,
+): string | null {
+  let curr = byId.get(topicId);
+  if (!curr) return null;
+  while (curr.parentId) {
+    const parent = byId.get(curr.parentId);
+    if (!parent) break;
+    curr = parent;
+  }
+  return curr.id;
+}
+
+/**
+ * Collect a root topic plus every descendant in a single subtree.
+ * Order: root first, then children depth-first (handy for header copy
+ * that wants the root's title).
+ */
+function collectSubtree(rootId: string, topics: Topic[]): Topic[] {
+  const byId = new Map(topics.map((t) => [t.id, t]));
+  const byParent = new Map<string | null, Topic[]>();
+  for (const t of topics) {
+    const list = byParent.get(t.parentId) ?? [];
+    list.push(t);
+    byParent.set(t.parentId, list);
+  }
+  const out: Topic[] = [];
+  const visit = (id: string): void => {
+    const t = byId.get(id);
+    if (!t) return;
+    out.push(t);
+    for (const child of byParent.get(id) ?? []) visit(child.id);
+  };
+  visit(rootId);
+  return out;
+}
+
+/**
  * Walk the parent chain to compute each topic's depth (root = 0). Stops
  * at the first ancestor whose id isn't in the active set (defensive
  * against archived parents). Memoised inside the call so each node is
@@ -102,10 +145,23 @@ export function NetworkGraphView({
     callbacksRef.current = { onSelectTopic, onSwitchToDialog };
   });
 
+  // Restrict the canvas to the currently-selected topic's root subtree —
+  // one main topic = one network. Selecting a child still shows the same
+  // canvas (child shares the same root). Selecting a sibling root swaps
+  // the canvas entirely.
+  const subtree = useMemo<Topic[]>(() => {
+    if (!selectedTopicId) return [];
+    const byId = new Map(topics.map((t) => [t.id, t]));
+    const rootId = findRootId(selectedTopicId, byId);
+    if (!rootId) return [];
+    return collectSubtree(rootId, topics);
+  }, [topics, selectedTopicId]);
+  const rootTopic = subtree[0] ?? null;
+
   const elements = useMemo<ElementDefinition[]>(() => {
-    const validIds = new Set(topics.map((t) => t.id));
-    const depths = computeDepths(topics);
-    const nodes: ElementDefinition[] = topics.map((t) => ({
+    const validIds = new Set(subtree.map((t) => t.id));
+    const depths = computeDepths(subtree);
+    const nodes: ElementDefinition[] = subtree.map((t) => ({
       group: 'nodes',
       data: {
         id: t.id,
@@ -116,7 +172,7 @@ export function NetworkGraphView({
         childCount: t.meta.childCount,
       },
     }));
-    const edges: ElementDefinition[] = topics
+    const edges: ElementDefinition[] = subtree
       .filter((t) => t.parentId && validIds.has(t.parentId))
       .map((t) => ({
         group: 'edges',
@@ -128,7 +184,7 @@ export function NetworkGraphView({
         },
       }));
     return [...nodes, ...edges];
-  }, [topics]);
+  }, [subtree]);
 
   // Mount once.
   useEffect(() => {
@@ -226,22 +282,33 @@ export function NetworkGraphView({
   return (
     <div className="flex flex-col h-full bg-canvas">
       <header className="border-b border-border px-6 py-3 bg-surface shrink-0 flex items-center justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-wider text-ink-muted">
-            网络图
+            网络图 · 主话题画布
           </p>
-          <p className="text-sm text-ink mt-0.5">
-            {topics.length} 个话题 · 父子连接显示拆解结构
+          <p className="text-sm text-ink mt-0.5 truncate">
+            {rootTopic ? (
+              <>
+                <span className="font-medium">{rootTopic.title}</span>
+                <span className="text-ink-muted ml-2 text-xs">
+                  · {subtree.length} 个话题
+                </span>
+              </>
+            ) : (
+              <span className="text-ink-muted">未选中主话题</span>
+            )}
           </p>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-ink-muted">
+        <div className="flex items-center gap-3 text-[11px] text-ink-muted shrink-0">
           <Legend />
           <span className="opacity-60">点击节点 → 进入对话</span>
         </div>
       </header>
-      {topics.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-ink-muted text-sm">
-          还没有话题。先在左栏新建一个吧。
+      {subtree.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center text-ink-muted text-sm text-center px-8">
+          {topics.length === 0
+            ? '还没有话题。先在左栏新建一个吧。'
+            : '左栏选中一个话题，即可看它的主话题画布（包含所有子话题）。'}
         </div>
       ) : (
         <div ref={containerRef} className="flex-1 min-h-0" />
