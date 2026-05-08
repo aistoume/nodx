@@ -75,37 +75,50 @@ export function App() {
     <div className="flex flex-col h-full">
       <Header view={view} onViewChange={setView} />
 
-      {view === 'dialog' ? (
-        <div className="grid grid-cols-[240px_1fr_340px] flex-1 min-h-0">
-          <LeftPanel
-            topics={topics}
-            archivedTopics={archivedTopics}
-            loading={loading}
-            loadError={loadError}
-            selectedTopicId={selectedTopicId}
-            onSelectTopic={setSelectedTopicId}
-            onMutated={refreshAll}
-          />
-          <CenterPanel
-            topic={selectedTopic}
-            comments={comments}
-            onMutated={refreshAll}
-            onSelectTopic={setSelectedTopicId}
-          />
-          <RightPanel
-            topic={selectedTopic}
-            comments={comments}
-            onMutated={refreshAll}
-          />
-        </div>
-      ) : (
-        <NetworkGraphView
+      {/* LeftPanel persists across views — clicking a topic from graph
+          mode swaps the canvas's root subtree without forcing the user
+          back into dialog mode. RightPanel only renders in dialog mode
+          since its anchored cards are tied to the doc editor. */}
+      <div
+        className={
+          'grid flex-1 min-h-0 ' +
+          (view === 'dialog'
+            ? 'grid-cols-[240px_1fr_340px]'
+            : 'grid-cols-[240px_1fr]')
+        }
+      >
+        <LeftPanel
           topics={topics}
+          archivedTopics={archivedTopics}
+          loading={loading}
+          loadError={loadError}
           selectedTopicId={selectedTopicId}
           onSelectTopic={setSelectedTopicId}
-          onSwitchToDialog={() => setView('dialog')}
+          onMutated={refreshAll}
         />
-      )}
+        {view === 'dialog' ? (
+          <>
+            <CenterPanel
+              topic={selectedTopic}
+              comments={comments}
+              onMutated={refreshAll}
+              onSelectTopic={setSelectedTopicId}
+            />
+            <RightPanel
+              topic={selectedTopic}
+              comments={comments}
+              onMutated={refreshAll}
+            />
+          </>
+        ) : (
+          <NetworkGraphView
+            topics={topics}
+            selectedTopicId={selectedTopicId}
+            onSelectTopic={setSelectedTopicId}
+            onSwitchToDialog={() => setView('dialog')}
+          />
+        )}
+      </div>
 
       <ExplainTrigger
         topicId={selectedTopicId}
