@@ -54,6 +54,21 @@ export function App() {
     void refreshTopics();
   }, [refreshTopics]);
 
+  // Tauri 2 doesn't ship a Cmd+R reload by default — wire it up in JS so
+  // dev hot-reloads / debug refreshes don't require restarting the dev
+  // command. Plain location.reload() is enough since SQLite + Worker
+  // state are external.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'r' && !e.shiftKey) {
+        e.preventDefault();
+        window.location.reload();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   useEffect(() => {
     void refreshComments();
   }, [refreshComments]);
