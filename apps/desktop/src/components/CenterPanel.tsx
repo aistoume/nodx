@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SurveyFactor } from '@nodx/ai';
 import type { Message, Topic, TopicDocument } from '@nodx/models';
 import { askCoach } from '../ai/chat.js';
-import { generateInitialDocument } from '../ai/document.js';
+import {
+  generateFocusedDocument,
+  generateInitialDocument,
+  stripHtml,
+} from '../ai/document.js';
 import { isAiConfigured } from '../ai/gateway.js';
 import { decomposeSelected, generateSurvey } from '../ai/survey.js';
 import {
@@ -102,30 +106,35 @@ function Conversation({
     }
   }, [topic.id]);
 
-  // On topic enter: load + auto-fire Survey if conversation is empty.
-  // Child topics skip Survey + doc generation entirely — they're meant to
-  // be focused chat threads riding on the parent's context.
+  // On topic enter: load and, if the conversation is empty, auto-fire the
+  // appropriate AI flow.
+  //   - Top-level topic → Survey (5–7 factors → user picks → decompose → doc).
+  //   - Child topic    → focused doc directly on the child's title, seeded
+  //                       with the parent doc as context. No Survey.
   useEffect(() => {
     setAiError(null);
     setAiPhase('');
     void (async () => {
       const { msgs, doc } = await refreshAll();
-      // If a doc already exists, the user already passed the Survey stage
-      // — nothing more to do.
       if (doc) return;
-      // Child topic: lightweight chat-only entry, no Survey.
-      if (topic.parentId) return;
-      if (
-        msgs.length === 0 &&
-        isAiConfigured() &&
-        !autoSurveyFiredFor.current.has(topic.id)
-      ) {
-        autoSurveyFiredFor.current.add(topic.id);
+      if (msgs.length > 0) return;
+      if (!isAiConfigured()) return;
+      if (autoSurveyFiredFor.current.has(topic.id)) return;
+      autoSurveyFiredFor.current.add(topic.id);
+
+      if (topic.parentId) {
+        // Child topic — focused doc, no Survey.
         setAiThinking(true);
-        setAiPhase('生成 Survey…');
+        setAiPhase('围绕子话题生成思考文档…');
         try {
-          const survey = await generateSurvey(topic.title);
-          await createSurveyMessage(topic.id, survey.factors);
+          const parentDoc = await getDocument(topic.parentId);
+          const parentText = parentDoc ? stripHtml(parentDoc.content) : '';
+          const result = await generateFocusedDocument(
+            topic.title,
+            parentText,
+          );
+          const html = markdownToHtml(result.markdown);
+          await upsertDocument(topic.id, html);
           await refreshAll();
           onMutated();
         } catch (err) {
@@ -135,6 +144,23 @@ function Conversation({
           setAiThinking(false);
           setAiPhase('');
         }
+        return;
+      }
+
+      // Top-level topic — Survey flow.
+      setAiThinking(true);
+      setAiPhase('生成 Survey…');
+      try {
+        const survey = await generateSurvey(topic.title);
+        await createSurveyMessage(topic.id, survey.factors);
+        await refreshAll();
+        onMutated();
+      } catch (err) {
+        autoSurveyFiredFor.current.delete(topic.id);
+        setAiError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setAiThinking(false);
+        setAiPhase('');
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -266,7 +292,7 @@ function Conversation({
           </h1>
           <p className="text-xs text-ink-muted mt-2">
             {topic.parentId
-              ? '直接在下方与 AI 对话——围绕这个子话题深入即可。需要时可以再 ↳ 派生孙话题。'
+              ? 'AI 正基于父话题上下文生成聚焦文档（不会再做 Survey）。'
               : '选完关注维度后，AI 会生成完整的思考文档替换这里。'}
           </p>
         </div>
@@ -287,7 +313,7 @@ function Conversation({
           {!loading && !surveyMsg && !aiThinking && !aiError && (
             <p className="text-sm text-ink-muted italic">
               {topic.parentId
-                ? '在下方输入问题或想法，AI 会陪你聊；不会自动生成结构化文档。'
+                ? '稍等，AI 正在围绕子话题写文档…'
                 : '等待 AI 生成 Survey…（如果一直没出现，检查 worker 是否在跑）'}
             </p>
           )}

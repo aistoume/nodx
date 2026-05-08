@@ -1,7 +1,9 @@
 import {
   DOCUMENT_DRAFT_PROMPT_MODEL,
+  FOCUSED_DOCUMENT_PROMPT_MODEL,
   REFINE_SELECTION_PROMPT_MODEL,
   buildDocumentDraftPrompt,
+  buildFocusedDocumentPrompt,
   buildRefineSelectionPrompt,
   type DecomposedFactor,
 } from '@nodx/ai';
@@ -40,6 +42,41 @@ export async function generateInitialDocument(
     inputTokens: r.usage.inputTokens,
     outputTokens: r.usage.outputTokens,
   };
+}
+
+/**
+ * Doc generation for a child topic — single specific question, no Survey or
+ * decompose. Optionally seeded with the parent topic's plain-text content so
+ * the model doesn't re-derive ground already covered upstream.
+ */
+export async function generateFocusedDocument(
+  question: string,
+  parentContext?: string,
+): Promise<GenerateDocumentResult> {
+  const r = await ai.completeText({
+    prompt: buildFocusedDocumentPrompt({ question, parentContext }),
+    model: FOCUSED_DOCUMENT_PROMPT_MODEL,
+    maxTokens: 8000,
+    temperature: 0.6,
+    enableWebSearch: true,
+  });
+  return {
+    markdown: r.text.trim(),
+    inputTokens: r.usage.inputTokens,
+    outputTokens: r.usage.outputTokens,
+  };
+}
+
+/**
+ * Quick HTML → plain text. Used to feed a parent topic's doc back into a
+ * child topic's generation prompt — preserves textual content; loses
+ * formatting (we only need the words).
+ */
+export function stripHtml(html: string): string {
+  if (typeof document === 'undefined') return html;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return (tmp.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 export interface RefineSelectionResult {
