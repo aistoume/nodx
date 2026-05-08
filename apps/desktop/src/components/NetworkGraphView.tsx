@@ -16,6 +16,62 @@ function ensureCytoscapeReady(): void {
   cytoscapeInitialised = true;
 }
 
+const POSITIONS_STORAGE_KEY = 'nodx:graph-positions:v1';
+
+interface SavedPosition {
+  x: number;
+  y: number;
+}
+
+function loadPositions(): Map<string, SavedPosition> {
+  try {
+    const raw = localStorage.getItem(POSITIONS_STORAGE_KEY);
+    if (!raw) return new Map();
+    const parsed = JSON.parse(raw) as Record<string, SavedPosition>;
+    return new Map(Object.entries(parsed));
+  } catch {
+    return new Map();
+  }
+}
+
+function savePositions(cy: Core): void {
+  try {
+    const obj: Record<string, SavedPosition> = {};
+    cy.nodes().forEach((n) => {
+      const p = n.position();
+      obj[n.id()] = { x: p.x, y: p.y };
+    });
+    localStorage.setItem(POSITIONS_STORAGE_KEY, JSON.stringify(obj));
+  } catch {
+    // localStorage might be unavailable / quota exceeded; non-fatal
+  }
+}
+
+/**
+ * Walk the parent chain to compute each topic's depth (root = 0). Stops
+ * at the first ancestor whose id isn't in the active set (defensive
+ * against archived parents). Memoised inside the call so each node is
+ * resolved at most once.
+ */
+function computeDepths(topics: Topic[]): Map<string, number> {
+  const validIds = new Set(topics.map((t) => t.id));
+  const parentOf = new Map(topics.map((t) => [t.id, t.parentId]));
+  const memo = new Map<string, number>();
+  function resolve(id: string): number {
+    if (memo.has(id)) return memo.get(id)!;
+    const parentId = parentOf.get(id);
+    if (!parentId || !validIds.has(parentId)) {
+      memo.set(id, 0);
+      return 0;
+    }
+    const d = resolve(parentId) + 1;
+    memo.set(id, d);
+    return d;
+  }
+  for (const t of topics) resolve(t.id);
+  return memo;
+}
+
 interface NetworkGraphViewProps {
   topics: Topic[];
   selectedTopicId: string | null;
@@ -26,9 +82,9 @@ interface NetworkGraphViewProps {
 
 /**
  * Cytoscape-based topology of all active topics. Nodes coloured by status
- * via the four-status palette in `index.css`. Edges = parent-child
- * relationships derived from `Topic.parentId` (we don't query the `edges`
- * table yet — that's reserved for future cross-branch semantic edges).
+ * via the four-status palette. Edges = parent-child relationships derived
+ * from `Topic.parentId`. Node positions persist to localStorage so the
+ * graph doesn't reshuffle every time the user comes back to this tab.
  */
 export function NetworkGraphView({
   topics,
@@ -40,7 +96,7 @@ export function NetworkGraphView({
   const cyRef = useRef<Core | null>(null);
 
   // Stable callback refs so the cy click handler doesn't need re-binding
-  // every render (Cytoscape doesn't make that ergonomic).
+  // every render.
   const callbacksRef = useRef({ onSelectTopic, onSwitchToDialog });
   useEffect(() => {
     callbacksRef.current = { onSelectTopic, onSwitchToDialog };
@@ -48,12 +104,14 @@ export function NetworkGraphView({
 
   const elements = useMemo<ElementDefinition[]>(() => {
     const validIds = new Set(topics.map((t) => t.id));
+    const depths = computeDepths(topics);
     const nodes: ElementDefinition[] = topics.map((t) => ({
       group: 'nodes',
       data: {
         id: t.id,
         label: t.title,
         status: t.status,
+        depth: depths.get(t.id) ?? 0,
         messageCount: t.meta.messageCount,
         childCount: t.meta.childCount,
       },
@@ -72,7 +130,7 @@ export function NetworkGraphView({
     return [...nodes, ...edges];
   }, [topics]);
 
-  // Mount once; the elements effect updates contents on data change.
+  // Mount once.
   useEffect(() => {
     if (!containerRef.current) return;
     ensureCytoscapeReady();
@@ -92,33 +150,66 @@ export function NetworkGraphView({
       callbacksRef.current.onSwitchToDialog();
     });
 
+    // Persist positions when the user drags a node or after auto-layout.
+    cy.on('dragfree', 'node', () => savePositions(cy));
+    cy.on('layoutstop', () => savePositions(cy));
+
     return () => {
       cy.destroy();
       cyRef.current = null;
     };
   }, []);
 
-  // Sync elements + run layout whenever topics change.
+  // Sync elements + run layout whenever topics change. Saved positions
+  // win; only nodes without a saved position trigger a cose-bilkent pass.
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
+
+    const saved = loadPositions();
+    const positionedElements: ElementDefinition[] = elements.map((el) => {
+      if (el.group !== 'nodes') return el;
+      const id = el.data.id;
+      if (typeof id !== 'string') return el;
+      const pos = saved.get(id);
+      if (!pos) return el;
+      return { ...el, position: { x: pos.x, y: pos.y } };
+    });
+
     cy.batch(() => {
       cy.elements().remove();
-      cy.add(elements);
+      cy.add(positionedElements);
     });
+
     if (elements.length === 0) return;
-    cy.layout({
-      name: 'cose-bilkent',
-      animate: false,
-      randomize: true,
-      // tuned for ~5-50 nodes; loose enough to read labels, tight enough
-      // to fit on a typical viewport
-      nodeRepulsion: 8000,
-      idealEdgeLength: 110,
-      gravity: 0.35,
-      fit: true,
-      padding: 30,
-    } as cytoscape.LayoutOptions).run();
+
+    const nodeIds = elements
+      .filter((el) => el.group === 'nodes')
+      .map((el) => el.data.id as string);
+    const allSaved = nodeIds.every((id) => saved.has(id));
+
+    if (allSaved) {
+      // No new nodes — keep everyone exactly where they were last time.
+      cy.layout({
+        name: 'preset',
+        fit: true,
+        padding: 30,
+      } as cytoscape.LayoutOptions).run();
+    } else {
+      // Some nodes are new (or no positions saved at all). cose-bilkent
+      // with randomize:false starts from existing positions and only
+      // arranges the unplaced ones.
+      cy.layout({
+        name: 'cose-bilkent',
+        animate: false,
+        randomize: !saved.size,
+        nodeRepulsion: 8000,
+        idealEdgeLength: 130,
+        gravity: 0.35,
+        fit: true,
+        padding: 30,
+      } as cytoscape.LayoutOptions).run();
+    }
   }, [elements]);
 
   // Highlight the active topic.
@@ -182,26 +273,54 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   );
 }
 
-// Stylesheet — uses data() selectors so each status maps to the right colour
-// without callback functions (which Cytoscape's TS types are picky about).
+// Per-level widths give a subtle visual hierarchy: root topics are widest,
+// each nesting level shrinks slightly. Height auto-fits the (wrapped)
+// label; padding keeps the text from kissing the border.
 const GRAPH_STYLE: StylesheetCSS[] = [
   {
     selector: 'node',
     css: {
       label: 'data(label)',
       'text-wrap': 'wrap',
-      'text-max-width': '140',
       'font-size': '12px',
       'font-family':
         '-apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif',
+      'line-height': 1.3,
       color: '#1a1a1a',
       'text-valign': 'center',
       'text-halign': 'center',
-      width: '140px',
-      height: '60px',
+      width: 'label',
+      height: 'label',
+      padding: '14px',
       shape: 'round-rectangle',
       'border-width': 2,
       'background-opacity': 0.9,
+    },
+  },
+  {
+    // Root topics — give the label more breathing room so longer questions
+    // wrap into a comfortable rectangle rather than stretching wide.
+    selector: 'node[depth = 0]',
+    css: {
+      'text-max-width': '180px',
+      'min-width': '180px',
+      'font-size': '13px',
+      'font-weight': 600,
+    },
+  },
+  {
+    selector: 'node[depth = 1]',
+    css: {
+      'text-max-width': '150px',
+      'min-width': '150px',
+    },
+  },
+  {
+    selector: 'node[depth >= 2]',
+    css: {
+      'text-max-width': '120px',
+      'min-width': '120px',
+      'font-size': '11px',
     },
   },
   {
