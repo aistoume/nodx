@@ -188,7 +188,7 @@ export function DocumentView({
       }
     }
     // eslint-disable-next-line no-console
-    console.debug('[anchor] publish', {
+    console.log('[anchor] publish', {
       total: anchorableComments.length,
       anchored: next.size,
       noQuote,
