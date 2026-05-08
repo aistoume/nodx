@@ -224,16 +224,27 @@ export function DocumentView({
     publishAnchorsRef.current = publishAnchors;
   });
 
+  /**
+   * Run publishAnchors on the next animation frame, coalescing bursts of
+   * scroll/update events down to one publish per frame. Falls back to
+   * setTimeout(0) if requestAnimationFrame doesn't fire — under React
+   * StrictMode dev double-invoke + cleanup, a queued RAF can be silently
+   * cancelled and we'd never know.
+   */
   const schedulePublish = useCallback(() => {
-    // eslint-disable-next-line no-console
-    console.log('[anchor] schedulePublish called', {
-      raffed: rafIdRef.current != null,
-    });
     if (rafIdRef.current != null) return;
-    rafIdRef.current = requestAnimationFrame(() => {
+    let timerFired = false;
+    const fallback = window.setTimeout(() => {
+      if (timerFired) return;
+      timerFired = true;
       rafIdRef.current = null;
-      // eslint-disable-next-line no-console
-      console.log('[anchor] RAF fired, calling publishAnchors');
+      publishAnchorsRef.current();
+    }, 32);
+    rafIdRef.current = requestAnimationFrame(() => {
+      if (timerFired) return;
+      timerFired = true;
+      window.clearTimeout(fallback);
+      rafIdRef.current = null;
       publishAnchorsRef.current();
     });
   }, []);
@@ -244,16 +255,14 @@ export function DocumentView({
   //   - initialHtml changes (topic switch where editor is reused via
   //     setContent(emitUpdate=false) — no 'update' event would fire,
   //     so we'd otherwise miss it)
+  // Trigger effect: fires on editor/anchorableComments/initialHtml change.
+  // Calls publishAnchors directly (bypasses the RAF coalescer) — the
+  // trigger frequency is low (data-driven, not scroll-driven), and direct
+  // calls eliminate the StrictMode-cancelled-RAF class of bugs we hit.
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('[anchor] trigger effect', {
-      hasEditor: !!editor,
-      commentCount: anchorableComments.length,
-      initialHtmlLen: initialHtml?.length ?? 0,
-    });
     if (!editor) return;
-    schedulePublish();
-  }, [editor, anchorableComments, initialHtml, schedulePublish]);
+    publishAnchorsRef.current();
+  }, [editor, anchorableComments, initialHtml]);
 
   // Editor doc-content changes (typing, paste, AI replace) → re-anchor.
   useEffect(() => {
