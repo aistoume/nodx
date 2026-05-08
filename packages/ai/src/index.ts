@@ -61,10 +61,14 @@ export {
 export {
   DOCUMENT_DRAFT_PROMPT_VERSION,
   DOCUMENT_DRAFT_PROMPT_MODEL,
+  FOCUSED_DOCUMENT_PROMPT_VERSION,
+  FOCUSED_DOCUMENT_PROMPT_MODEL,
   REFINE_SELECTION_PROMPT_VERSION,
   REFINE_SELECTION_PROMPT_MODEL,
   buildDocumentDraftPrompt,
+  buildFocusedDocumentPrompt,
   buildRefineSelectionPrompt,
   type DocumentDraftInput,
+  type FocusedDocumentInput,
   type RefineSelectionInput,
 } from './prompts/document.js';

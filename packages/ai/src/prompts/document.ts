@@ -55,6 +55,49 @@ ${decomposedBlock}
 `;
 }
 
+export const FOCUSED_DOCUMENT_PROMPT_VERSION = '2026-05-07.v1';
+export const FOCUSED_DOCUMENT_PROMPT_MODEL: ModelId = MODELS.sonnet;
+
+export interface FocusedDocumentInput {
+  /** The child topic's title — the specific question to deepen. */
+  question: string;
+  /** Plain-text dump of the parent topic's doc, if any. Used so the AI
+   *  doesn't re-derive ground covered upstream. Trimmed to ~8k chars. */
+  parentContext?: string;
+}
+
+/**
+ * Doc generation for a child topic. Skips the Survey/decompose stage and
+ * goes straight to a focused thinking document on a single question. Used
+ * by `generateFocusedDocument` in apps/desktop/src/ai/document.ts.
+ */
+export function buildFocusedDocumentPrompt(input: FocusedDocumentInput): string {
+  const parentBlock =
+    input.parentContext && input.parentContext.trim()
+      ? `【父话题上下文】（用户在大主题下已经梳理过的内容）
+${input.parentContext.trim().slice(0, 8000)}
+
+`
+      : '';
+
+  return `你是深度思考者。下面是一个"子话题"——用户在更大决策里挑出的一个具体角度，希望你围绕它写一份聚焦的思考文档。
+
+${parentBlock}【子话题（要深入想清楚的具体问题）】
+${input.question}
+
+文档要求：
+1. 用 Markdown 格式输出。
+2. **首段**（不带任何标题）：用 2-3 句话框定这个具体问题的本质和决策杠杆——为什么它值得单独拎出来想清楚。
+3. 接下来 **2-4 个 H2 章节**（## {小标题}），每个聚焦这个问题的一个关键角度。结构由你自己挑（不要套用通用三段论），要贴着这个具体问题。
+4. 每个章节内容：150-250 字的**真实分析**（具体观点、决策杠杆、可能的反例），不要含糊的"需要考虑 X"。可附 \`### 待回答\` 小节，把该角度还需用户判断的点列出来，每条以 \`> [需用户判断]\` 引用块开头。
+5. 最后一个 H2：\`## 下一步\` ——3-5 个具体可执行的动作（带主语和时间约束）。
+6. **不要重复父话题已经讨论过的内容**——专注于这个具体角度的深挖。
+7. **直接输出 Markdown 正文**，不要 \\\`\\\`\\\` 代码块包装，不要"以下是文档"等前缀。
+
+开始写：
+`;
+}
+
 export const REFINE_SELECTION_PROMPT_VERSION = '2026-05-05.v1';
 export const REFINE_SELECTION_PROMPT_MODEL: ModelId = MODELS.sonnet;
 

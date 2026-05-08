@@ -53,9 +53,43 @@ describe('buildRefineSelectionPrompt', () => {
   });
 });
 
+describe('buildFocusedDocumentPrompt', () => {
+  it('embeds the child question without survey/decompose machinery', async () => {
+    const { buildFocusedDocumentPrompt } = await import('./document.js');
+    const out = buildFocusedDocumentPrompt({
+      question: '现金储备最低能撑多久？',
+    });
+    expect(out).toContain('现金储备最低能撑多久？');
+    expect(out).toContain('子话题');
+    expect(out).toContain('## 下一步');
+    expect(out).not.toContain('Survey');
+  });
+
+  it('embeds parent context when provided', async () => {
+    const { buildFocusedDocumentPrompt } = await import('./document.js');
+    const out = buildFocusedDocumentPrompt({
+      question: '现金储备最低能撑多久？',
+      parentContext: '父话题: 要不要 ALL IN AI？\n核心权衡: 押注比例与退路。',
+    });
+    expect(out).toContain('父话题上下文');
+    expect(out).toContain('要不要 ALL IN AI');
+  });
+
+  it('omits the parent block when context is empty', async () => {
+    const { buildFocusedDocumentPrompt } = await import('./document.js');
+    const out = buildFocusedDocumentPrompt({
+      question: 'q',
+      parentContext: '',
+    });
+    expect(out).not.toContain('父话题上下文');
+  });
+});
+
 describe('document prompt metadata', () => {
-  it('routes both to sonnet (reasoning-heavy)', () => {
+  it('routes all three to sonnet (reasoning-heavy)', async () => {
+    const { FOCUSED_DOCUMENT_PROMPT_MODEL } = await import('./document.js');
     expect(DOCUMENT_DRAFT_PROMPT_MODEL).toContain('sonnet');
+    expect(FOCUSED_DOCUMENT_PROMPT_MODEL).toContain('sonnet');
     expect(REFINE_SELECTION_PROMPT_MODEL).toContain('sonnet');
   });
 });
