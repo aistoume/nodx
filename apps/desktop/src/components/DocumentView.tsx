@@ -136,13 +136,21 @@ export function DocumentView({
   // deps stable, so listeners registered with it stay current.
   const publishAnchors = useCallback(() => {
     if (!editor) {
+      // eslint-disable-next-line no-console
+      console.debug('[anchor] skip — no editor yet');
       setAnchorPositions(new Map());
       return;
     }
     const next = new Map<string, number>();
+    let noQuote = 0;
+    let quoteNotInDoc = 0;
+    let coordsFailed = 0;
     for (const c of anchorableComments) {
       const { quote } = parseQuotedContent(c.content);
-      if (!quote) continue;
+      if (!quote) {
+        noQuote++;
+        continue;
+      }
       let foundPos: number | null = null;
       editor.state.doc.descendants((node, pos) => {
         if (foundPos !== null) return false;
@@ -155,15 +163,42 @@ export function DocumentView({
         }
         return true;
       });
-      if (foundPos == null) continue;
+      if (foundPos == null) {
+        quoteNotInDoc++;
+        continue;
+      }
       try {
         const coords = editor.view.coordsAtPos(foundPos);
         next.set(c.id, coords.top);
       } catch {
-        // pos off-screen / view detached — skip silently
+        coordsFailed++;
       }
     }
+    // eslint-disable-next-line no-console
+    console.debug('[anchor] publish', {
+      total: anchorableComments.length,
+      anchored: next.size,
+      noQuote,
+      quoteNotInDoc,
+      coordsFailed,
+      editorReady: Boolean(editor.view?.dom?.isConnected),
+    });
     setAnchorPositions(next);
+
+    // If we had comments but couldn't anchor any of them, the editor view
+    // is probably not in the DOM yet (just-mounted race). Retry once after
+    // the next layout pass.
+    if (
+      anchorableComments.length > 0 &&
+      next.size === 0 &&
+      anchorableComments.some(
+        (c) => parseQuotedContent(c.content).quote != null,
+      )
+    ) {
+      window.setTimeout(() => {
+        publishAnchorsRef.current();
+      }, 200);
+    }
   }, [editor, anchorableComments]);
 
   const publishAnchorsRef = useRef(publishAnchors);
