@@ -118,15 +118,15 @@ export function DocumentView({
 
   // Outer scroll container so we can listen for scroll → re-anchor.
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
-
   const rafIdRef = useRef<number | null>(null);
 
-  // Compute anchor positions from scratch every call. Combined search +
-  // coordsAtPos in one pass; rAF-throttled by schedulePublish so scroll
-  // bursts coalesce to one update per frame. The earlier cached version
-  // was sensitive to useCallback identity churn (anchorableComments is a
-  // fresh array on every CenterPanel render); this single-function form
-  // sidesteps that.
+  // publishAnchors closes over `editor` and `anchorableComments`. Both can
+  // change between schedulePublish() being called and its RAF firing
+  // (renders triggered by topic change, child-topic creation refreshing
+  // topics, comments arriving asynchronously). To avoid the RAF callback
+  // calling a stale publishAnchors, we keep the latest one in a ref and
+  // dereference it inside the RAF body. schedulePublish itself is empty-
+  // deps stable, so listeners registered with it stay current.
   const publishAnchors = useCallback(() => {
     if (!editor) {
       setAnchorPositions(new Map());
@@ -159,18 +159,29 @@ export function DocumentView({
     setAnchorPositions(next);
   }, [editor, anchorableComments]);
 
+  const publishAnchorsRef = useRef(publishAnchors);
+  useEffect(() => {
+    publishAnchorsRef.current = publishAnchors;
+  });
+
   const schedulePublish = useCallback(() => {
     if (rafIdRef.current != null) return;
     rafIdRef.current = requestAnimationFrame(() => {
       rafIdRef.current = null;
-      publishAnchors();
+      publishAnchorsRef.current();
     });
-  }, [publishAnchors]);
+  }, []);
 
-  // Initial mount + editor.update + comments change → publish.
+  // Run a publish when the editor instance changes (topic switch) or when
+  // anchorableComments changes (note added / deleted / quote text edited).
   useEffect(() => {
     if (!editor) return;
     schedulePublish();
+  }, [editor, anchorableComments, schedulePublish]);
+
+  // Editor doc-content changes (typing, paste, AI replace) → re-anchor.
+  useEffect(() => {
+    if (!editor) return;
     const handler = () => schedulePublish();
     editor.on('update', handler);
     return () => {
@@ -178,8 +189,7 @@ export function DocumentView({
     };
   }, [editor, schedulePublish]);
 
-  // Scroll / resize: just re-translate cached positions into viewport coords.
-  // No state churn beyond the rAF-throttled setAnchorPositions, no DOM scan.
+  // Scroll / resize: re-translate positions to viewport coords.
   useEffect(() => {
     const el = scrollAreaRef.current;
     if (!el) return;
