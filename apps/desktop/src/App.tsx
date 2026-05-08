@@ -5,6 +5,7 @@ import { LeftPanel } from './components/LeftPanel.js';
 import { CenterPanel } from './components/CenterPanel.js';
 import { RightPanel } from './components/RightPanel.js';
 import { ExplainTrigger } from './components/ExplainTrigger.js';
+import { NetworkGraphView } from './components/NetworkGraphView.js';
 import { listArchivedTopics, listTopics } from './db/topics.js';
 import { listComments } from './db/comments.js';
 
@@ -98,14 +99,12 @@ export function App() {
           />
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center text-ink-muted">
-          <div className="text-center">
-            <p className="text-sm">网络图视图将于 Week 3 接入</p>
-            <p className="text-xs mt-2 opacity-70">
-              Cytoscape.js + cose-bilkent 布局 + 跨支语义边
-            </p>
-          </div>
-        </div>
+        <NetworkGraphView
+          topics={topics}
+          selectedTopicId={selectedTopicId}
+          onSelectTopic={setSelectedTopicId}
+          onSwitchToDialog={() => setView('dialog')}
+        />
       )}
 
       <ExplainTrigger
