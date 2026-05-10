@@ -275,6 +275,16 @@ export function NetworkGraphView({
       .map((el) => el.data.id as string);
     const allSaved = nodeIds.every((id) => saved.has(id));
 
+    // If the root itself has no saved position, our parent-relative
+    // pre-seeding produced nothing useful (every unsaved node also has
+    // no saved parent to anchor against), so every node would land at
+    // (0,0). cose-bilkent with randomize:false can't disambiguate
+    // overlapping nodes — the result is the root invisible because it
+    // overlaps with everyone or with the canvas origin. Force a fresh
+    // randomized layout in that case.
+    const rootId = subtree[0]?.id;
+    const rootSaved = rootId != null && saved.has(rootId);
+
     if (allSaved) {
       // No new nodes — keep everyone exactly where they were last time.
       cy.layout({
@@ -283,13 +293,12 @@ export function NetworkGraphView({
         padding: 30,
       } as cytoscape.LayoutOptions).run();
     } else {
-      // Some nodes are new (or no positions saved at all). cose-bilkent
-      // with randomize:false starts from existing positions and only
-      // arranges the unplaced ones.
       cy.layout({
         name: 'cose-bilkent',
         animate: false,
-        randomize: !saved.size,
+        // Root not saved → fresh randomize. Root saved → keep it as
+        // the anchor; pre-seeded children are refined from there.
+        randomize: !rootSaved,
         nodeRepulsion: 8000,
         idealEdgeLength: 130,
         gravity: 0.35,
