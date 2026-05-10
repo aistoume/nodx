@@ -168,6 +168,10 @@ export function NetworkGraphView({
         label: t.title,
         status: t.status,
         depth: depths.get(t.id) ?? 0,
+        // isRoot is a boolean truthy flag used by the `[?isRoot]`
+        // cytoscape selector (more reliable than `[depth = 0]` which
+        // can silently miss numeric matches in some builds).
+        isRoot: t.parentId == null ? 1 : 0,
         // Stash parentId on the node so the position-seeding pass can
         // place a brand-new child near its already-placed parent
         // instead of letting Cytoscape default it to (0,0) — which
@@ -439,6 +443,16 @@ const GRAPH_STYLE: StylesheetCSS[] = [
     css: {
       label: 'data(label)',
       'text-wrap': 'wrap',
+      // Fixed width + label-driven height: every node ends up the same
+      // width regardless of title length; height grows to fit wrapped
+      // text. Mixing `width: 'label'` with a depth-keyed `min-width`
+      // selector (the earlier approach) wasn't reliable in cytoscape —
+      // a root with a long Chinese title would balloon to several
+      // hundred px wide, then cy.fit() would zoom out far enough that
+      // the title appeared off-screen relative to the smaller siblings.
+      width: '170px',
+      'text-max-width': '150px',
+      height: 'label',
       'font-size': '12px',
       'font-family':
         '-apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif',
@@ -446,8 +460,6 @@ const GRAPH_STYLE: StylesheetCSS[] = [
       color: '#1a1a1a',
       'text-valign': 'center',
       'text-halign': 'center',
-      width: 'label',
-      height: 'label',
       padding: '14px',
       shape: 'round-rectangle',
       'border-width': 2,
@@ -455,29 +467,13 @@ const GRAPH_STYLE: StylesheetCSS[] = [
     },
   },
   {
-    // Root topics — give the label more breathing room so longer questions
-    // wrap into a comfortable rectangle rather than stretching wide.
-    selector: 'node[depth = 0]',
+    // Root topics get a slightly bolder label so the hierarchy is
+    // still readable, but they share the same box footprint as the
+    // children so layout stays predictable.
+    selector: 'node[?isRoot]',
     css: {
-      'text-max-width': '180px',
-      'min-width': '180px',
       'font-size': '13px',
-      'font-weight': 600,
-    },
-  },
-  {
-    selector: 'node[depth = 1]',
-    css: {
-      'text-max-width': '150px',
-      'min-width': '150px',
-    },
-  },
-  {
-    selector: 'node[depth >= 2]',
-    css: {
-      'text-max-width': '120px',
-      'min-width': '120px',
-      'font-size': '11px',
+      'font-weight': 'bold',
     },
   },
   {
