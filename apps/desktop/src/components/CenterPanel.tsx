@@ -18,6 +18,7 @@ import {
   updateMessageContent,
 } from '../db/messages.js';
 import { getDocument, upsertDocument } from '../db/documents.js';
+import { createTopic } from '../db/topics.js';
 import { markdownToHtml } from '../lib/markdown.js';
 import { ChatComposer, ChatThread } from './ChatThread.js';
 import { DocumentView } from './DocumentView.js';
@@ -200,6 +201,19 @@ function Conversation({
       const data = parseSurveyContent(surveyMessage.content);
       data.selectedIds = selectedFactors.map((f) => f.id);
       await updateMessageContent(surveyMessage.id, JSON.stringify(data));
+
+      // Spawn a child topic per picked factor as an empty placeholder.
+      // We DON'T pre-generate their docs here — that would stack N
+      // additional Sonnet calls behind decompose+doc and instantly
+      // blow Anthropic's rate limit. Each child's focused doc fires
+      // lazily the first time the user enters that child topic.
+      setAiPhase(`派生 ${selectedFactors.length} 个子话题…`);
+      for (const factor of selectedFactors) {
+        await createTopic({
+          title: factor.title,
+          parentId: topic.id,
+        });
+      }
 
       setAiPhase('第一性原理拆解…');
       const decomposed = await decomposeSelected(
