@@ -168,6 +168,12 @@ export function NetworkGraphView({
         label: t.title,
         status: t.status,
         depth: depths.get(t.id) ?? 0,
+        // Stash parentId on the node so the position-seeding pass can
+        // place a brand-new child near its already-placed parent
+        // instead of letting Cytoscape default it to (0,0) — which
+        // makes the parent edge a zero-length line and the user sees
+        // "no link".
+        parentId: t.parentId ?? '',
         messageCount: t.meta.messageCount,
         childCount: t.meta.childCount,
       },
@@ -223,13 +229,38 @@ export function NetworkGraphView({
     if (!cy) return;
 
     const saved = loadPositions();
+
+    // Track sibling counts per parent so we can fan brand-new children
+    // out around the parent instead of stacking at (0,0).
+    const siblingIndex = new Map<string, number>();
     const positionedElements: ElementDefinition[] = elements.map((el) => {
       if (el.group !== 'nodes') return el;
       const id = el.data.id;
       if (typeof id !== 'string') return el;
       const pos = saved.get(id);
-      if (!pos) return el;
-      return { ...el, position: { x: pos.x, y: pos.y } };
+      if (pos) return { ...el, position: { x: pos.x, y: pos.y } };
+
+      // No saved position. Seed near the parent if the parent has one
+      // saved, with a fan-out so siblings don't pile up. Without this,
+      // Cytoscape defaults to (0,0) for every new node, the parent edge
+      // becomes a zero-length line, and the relationship visually
+      // disappears.
+      const parentId =
+        typeof el.data.parentId === 'string' && el.data.parentId
+          ? el.data.parentId
+          : null;
+      const parentPos = parentId ? saved.get(parentId) : undefined;
+      if (parentPos) {
+        const idx = siblingIndex.get(parentId!) ?? 0;
+        siblingIndex.set(parentId!, idx + 1);
+        // Spread siblings horizontally below the parent.
+        const offsetX = (idx - 1.5) * 140 + (Math.random() - 0.5) * 30;
+        return {
+          ...el,
+          position: { x: parentPos.x + offsetX, y: parentPos.y + 180 },
+        };
+      }
+      return el;
     });
 
     cy.batch(() => {
