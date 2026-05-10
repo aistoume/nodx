@@ -314,17 +314,8 @@ export function NetworkGraphView({
       return el;
     });
 
-    // Replace all elements in one shot. Plain remove + add can leave
-    // edges in a weird half-rendered state on a freshly-created cy —
-    // the edges exist in the data layer but the canvas doesn't paint
-    // them until something else triggers a redraw. json() is the
-    // documented atomic-replace path and behaves more consistently.
     cy.elements().remove();
     cy.add(positionedElements);
-    // Belt-and-suspenders: force every element's style to be re-
-    // evaluated. cose-bilkent's first layout on a brand-new cy
-    // occasionally leaves edges un-painted until the next style pass.
-    cy.style().update();
 
     if (elements.length === 0) return;
 
@@ -362,32 +353,31 @@ export function NetworkGraphView({
           padding: 30,
         } as cytoscape.LayoutOptions).run();
       }
-      // Final defensive pass: schedule another resize+fit+style refresh
-      // on the next tick PLUS a tiny zoom nudge to force the canvas to
-      // repaint. The zoom-nudge is a known workaround for cytoscape's
-      // bezier edges occasionally not painting after the first layout
-      // on a fresh cy instance — the data is there but the canvas
-      // skipped them, and only an event-driven render (click, pan,
-      // zoom) revives them. Doing the nudge ourselves removes the
-      // need for the user to click anything.
+      // Quick post-layout cleanup: resize + fit. No zoom nudges, no
+      // forced restyle — those were breaking interaction (clicks
+      // started panning the canvas instead of hitting nodes).
       window.setTimeout(() => {
         if (cyRef.current !== cy) return;
         cy.resize();
         cy.fit(undefined, 30);
-        cy.style().update();
-        const z = cy.zoom();
-        cy.zoom(z * 1.000001);
-        cy.zoom(z);
       }, 0);
     };
 
-    // Always defer the first layout to the next animation frame. Even
-    // when containerRef.clientWidth is non-zero in the synchronous
-    // check, cytoscape can still get into a state where edges aren't
-    // painted on a fresh cy. A one-frame delay gives the browser time
-    // to fully wire up the canvas before we throw a layout at it.
-    const rafId = requestAnimationFrame(runLayout);
-    return () => cancelAnimationFrame(rafId);
+    // If the container hasn't been measured yet (0×0), wait one frame
+    // before laying out. Otherwise we run immediately — synchronously
+    // — so user interaction state (drag, click) is wired up by the
+    // time the user can see the graph.
+    const container = containerRef.current;
+    const containerReady =
+      container != null &&
+      container.clientWidth > 0 &&
+      container.clientHeight > 0;
+    if (containerReady) {
+      runLayout();
+    } else {
+      const rafId = requestAnimationFrame(runLayout);
+      return () => cancelAnimationFrame(rafId);
+    }
   }, [elementsSignature, elements]);
 
   // Highlight the active topic.
@@ -527,11 +517,17 @@ const GRAPH_STYLE: StylesheetCSS[] = [
     selector: 'edge',
     css: {
       width: 1.5,
-      'line-color': '#cbd5e1',
+      'line-color': '#94a3b8',
       'target-arrow-color': '#94a3b8',
       'target-arrow-shape': 'triangle',
-      'arrow-scale': 0.9,
-      'curve-style': 'bezier',
+      'arrow-scale': 1,
+      // 'straight' is more reliable than 'bezier' on first paint —
+      // bezier needs control points computed and the renderer
+      // sometimes skips that pass on a freshly-instantiated cy,
+      // leaving edges in the data but invisible on canvas until the
+      // user interacts. Straight lines are computed directly from
+      // node positions, no extra pass.
+      'curve-style': 'straight',
     },
   },
 ];
