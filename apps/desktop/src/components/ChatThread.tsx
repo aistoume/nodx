@@ -111,12 +111,16 @@ export function ChatComposer({
   const send = async () => {
     if (!draft.trim() || submitting || disabled) return;
     setSubmitting(true);
+    const content = draft;
+    let sentOk = false;
     try {
-      const content = draft;
-      setDraft('');
       await onSend(content);
+      sentOk = true;
     } finally {
       setSubmitting(false);
+      // Only clear the textarea on success so the user can retry
+      // immediately if the AI call failed (rate limit etc.).
+      if (sentOk) setDraft('');
     }
   };
 
