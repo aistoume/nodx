@@ -262,9 +262,21 @@ export function NetworkGraphView({
     const cy = cyRef.current;
     if (!cy) return;
 
-    // Bail if structure unchanged — cy already holds the right graph,
-    // and re-adding would just trigger another fragile re-render.
-    if (elementsSignature === appliedSignatureRef.current) return;
+    // Bail if structure unchanged AND cy already has those elements.
+    // The cy-empty check matters: in React 19 StrictMode dev, the
+    // mount-unmount-remount dance destroys cy but useRef state
+    // (appliedSignatureRef) persists. Without this guard the second
+    // mount's freshly-created (empty) cy stays empty forever — the
+    // ref says "already applied" but cy doesn't actually have any
+    // elements. Result: blank canvas until the user picks a different
+    // topic and the signature changes.
+    const cyIsEmpty = cy.elements().length === 0;
+    if (
+      !cyIsEmpty &&
+      elementsSignature === appliedSignatureRef.current
+    ) {
+      return;
+    }
     appliedSignatureRef.current = elementsSignature;
 
     const saved = loadPositions();
