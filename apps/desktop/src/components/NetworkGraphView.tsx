@@ -226,11 +226,27 @@ export function NetworkGraphView({
     // Cytoscape caches container dimensions at init. In a flex layout the
     // container can be 0×0 on first paint, in which case the initial
     // layout/fit happen against bad dimensions and edges/nodes render at
-    // funky coords. A ResizeObserver makes the cy match reality.
+    // funky coords. A ResizeObserver makes the cy match reality. The
+    // FIRST time we see a non-zero size, force a fit so the initial
+    // (broken) fit gets superseded.
     let observer: ResizeObserver | null = null;
+    let firstNonZeroFit = false;
     if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
-      observer = new ResizeObserver(() => {
-        if (cyRef.current) cyRef.current.resize();
+      observer = new ResizeObserver((entries) => {
+        if (!cyRef.current) return;
+        cyRef.current.resize();
+        const entry = entries[0];
+        if (!entry) return;
+        const { width, height } = entry.contentRect;
+        if (
+          !firstNonZeroFit &&
+          width > 0 &&
+          height > 0 &&
+          cyRef.current.elements().length > 0
+        ) {
+          firstNonZeroFit = true;
+          cyRef.current.fit(undefined, 30);
+        }
       });
       observer.observe(containerRef.current);
     }
@@ -290,45 +306,55 @@ export function NetworkGraphView({
 
     if (elements.length === 0) return;
 
-    // Defensive resize before layout — picks up the latest container
-    // dimensions if this mount happened while the grid was still settling.
-    cy.resize();
-
     const nodeIds = elements
       .filter((el) => el.group === 'nodes')
       .map((el) => el.data.id as string);
     const allSaved = nodeIds.every((id) => saved.has(id));
 
-    // If the root itself has no saved position, our parent-relative
-    // pre-seeding produced nothing useful (every unsaved node also has
-    // no saved parent to anchor against), so every node would land at
-    // (0,0). cose-bilkent with randomize:false can't disambiguate
-    // overlapping nodes — the result is the root invisible because it
-    // overlaps with everyone or with the canvas origin. Force a fresh
-    // randomized layout in that case.
     const rootId = subtree[0]?.id;
     const rootSaved = rootId != null && saved.has(rootId);
 
-    if (allSaved) {
-      // No new nodes — keep everyone exactly where they were last time.
-      cy.layout({
-        name: 'preset',
-        fit: true,
-        padding: 30,
-      } as cytoscape.LayoutOptions).run();
+    const runLayout = () => {
+      // Defensive resize right before layout — picks up the latest
+      // container dimensions in case the grid was still settling
+      // when this effect first fired.
+      cy.resize();
+      if (allSaved) {
+        // No new nodes — keep everyone exactly where they were last time.
+        cy.layout({
+          name: 'preset',
+          fit: true,
+          padding: 30,
+        } as cytoscape.LayoutOptions).run();
+      } else {
+        cy.layout({
+          name: 'cose-bilkent',
+          animate: false,
+          // Root not saved → fresh randomize. Root saved → keep it as
+          // the anchor; pre-seeded children are refined from there.
+          randomize: !rootSaved,
+          nodeRepulsion: 8000,
+          idealEdgeLength: 130,
+          gravity: 0.35,
+          fit: true,
+          padding: 30,
+        } as cytoscape.LayoutOptions).run();
+      }
+    };
+
+    // If the container hasn't been measured yet (0×0), wait one frame
+    // before laying out. Otherwise the layout + fit run against bad
+    // dimensions and edges render as if they connect to phantom points.
+    const container = containerRef.current;
+    const containerReady =
+      container != null &&
+      container.clientWidth > 0 &&
+      container.clientHeight > 0;
+    if (containerReady) {
+      runLayout();
     } else {
-      cy.layout({
-        name: 'cose-bilkent',
-        animate: false,
-        // Root not saved → fresh randomize. Root saved → keep it as
-        // the anchor; pre-seeded children are refined from there.
-        randomize: !rootSaved,
-        nodeRepulsion: 8000,
-        idealEdgeLength: 130,
-        gravity: 0.35,
-        fit: true,
-        padding: 30,
-      } as cytoscape.LayoutOptions).run();
+      const rafId = requestAnimationFrame(runLayout);
+      return () => cancelAnimationFrame(rafId);
     }
   }, [elements]);
 
