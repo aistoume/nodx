@@ -90,31 +90,6 @@ function collectSubtree(rootId: string, topics: Topic[]): Topic[] {
   return out;
 }
 
-/**
- * Walk the parent chain to compute each topic's depth (root = 0). Stops
- * at the first ancestor whose id isn't in the active set (defensive
- * against archived parents). Memoised inside the call so each node is
- * resolved at most once.
- */
-function computeDepths(topics: Topic[]): Map<string, number> {
-  const validIds = new Set(topics.map((t) => t.id));
-  const parentOf = new Map(topics.map((t) => [t.id, t.parentId]));
-  const memo = new Map<string, number>();
-  function resolve(id: string): number {
-    if (memo.has(id)) return memo.get(id)!;
-    const parentId = parentOf.get(id);
-    if (!parentId || !validIds.has(parentId)) {
-      memo.set(id, 0);
-      return 0;
-    }
-    const d = resolve(parentId) + 1;
-    memo.set(id, d);
-    return d;
-  }
-  for (const t of topics) resolve(t.id);
-  return memo;
-}
-
 interface NetworkGraphViewProps {
   topics: Topic[];
   selectedTopicId: string | null;
@@ -160,18 +135,12 @@ export function NetworkGraphView({
 
   const elements = useMemo<ElementDefinition[]>(() => {
     const validIds = new Set(subtree.map((t) => t.id));
-    const depths = computeDepths(subtree);
     const nodes: ElementDefinition[] = subtree.map((t) => ({
       group: 'nodes',
       data: {
         id: t.id,
         label: t.title,
         status: t.status,
-        depth: depths.get(t.id) ?? 0,
-        // isRoot is a boolean truthy flag used by the `[?isRoot]`
-        // cytoscape selector (more reliable than `[depth = 0]` which
-        // can silently miss numeric matches in some builds).
-        isRoot: t.parentId == null ? 1 : 0,
         // Stash parentId on the node so the position-seeding pass can
         // place a brand-new child near its already-placed parent
         // instead of letting Cytoscape default it to (0,0) — which
@@ -464,16 +433,6 @@ const GRAPH_STYLE: StylesheetCSS[] = [
       shape: 'round-rectangle',
       'border-width': 2,
       'background-opacity': 0.9,
-    },
-  },
-  {
-    // Root topics get a slightly bolder label so the hierarchy is
-    // still readable, but they share the same box footprint as the
-    // children so layout stays predictable.
-    selector: 'node[?isRoot]',
-    css: {
-      'font-size': '13px',
-      'font-weight': 'bold',
     },
   },
   {
