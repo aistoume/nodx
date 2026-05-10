@@ -84,6 +84,19 @@ function Conversation({
   // Per-session guard so we don't double-fire auto-survey across rerenders.
   const autoSurveyFiredFor = useRef<Set<string>>(new Set());
 
+  // Bumping retryNonce re-runs the auto-fire effect from scratch, after
+  // clearing the once-per-topic guard. Used by the "重试" button when
+  // the auto Survey / focused-doc call fails (rate limit, network, etc.).
+  const [retryNonce, setRetryNonce] = useState(0);
+
+  // If the survey-pick stage (decompose + doc gen) fails, we stash what
+  // would have been retried so the "重试" button can fire it again with
+  // the same selection.
+  const [retrySurveyPick, setRetrySurveyPick] = useState<{
+    surveyMessage: Message;
+    selectedFactors: SurveyFactor[];
+  } | null>(null);
+
   // Chat state for pre-doc free-form conversation.
   const [chatThinking, setChatThinking] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
@@ -115,6 +128,11 @@ function Conversation({
   useEffect(() => {
     setAiError(null);
     setAiPhase('');
+    // A retry click clears the once-per-topic guard so the effect can
+    // re-fire the same flow from scratch.
+    if (retryNonce > 0) {
+      autoSurveyFiredFor.current.delete(topic.id);
+    }
     void (async () => {
       const { msgs, doc } = await refreshAll();
       if (doc) return;
@@ -165,7 +183,7 @@ function Conversation({
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topic.id]);
+  }, [topic.id, retryNonce]);
 
   /**
    * User typed a custom factor on the Survey card. Append to the message
@@ -196,6 +214,9 @@ function Conversation({
   ) => {
     setDecomposingFor(surveyMessage.id);
     setAiError(null);
+    // Stash the context so the retry button can re-fire with the same
+    // selection if anything below blows up (rate limit, model error).
+    setRetrySurveyPick({ surveyMessage, selectedFactors });
     try {
       // Lock the survey card.
       const data = parseSurveyContent(surveyMessage.content);
@@ -232,6 +253,8 @@ function Conversation({
 
       await refreshAll();
       onMutated();
+      // Success — clear the retry context so the button disappears.
+      setRetrySurveyPick(null);
     } catch (err) {
       setAiError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -353,9 +376,27 @@ function Conversation({
           )}
 
           {aiError && (
-            <pre className="mt-3 text-xs text-red-600 bg-red-50 p-2 rounded whitespace-pre-wrap">
-              AI 调用失败: {aiError}
-            </pre>
+            <div className="mt-3 bg-red-50 border border-red-200 rounded p-2 flex items-start gap-2">
+              <pre className="flex-1 text-xs text-red-700 whitespace-pre-wrap break-all">
+                AI 调用失败: {aiError}
+              </pre>
+              <button
+                type="button"
+                onClick={() => {
+                  setAiError(null);
+                  if (retrySurveyPick) {
+                    const { surveyMessage, selectedFactors } = retrySurveyPick;
+                    void handleSurveyPick(surveyMessage, selectedFactors);
+                  } else {
+                    setRetryNonce((n) => n + 1);
+                  }
+                }}
+                disabled={aiThinking || decomposingFor !== null}
+                className="shrink-0 px-2.5 py-1 text-xs font-medium rounded border border-red-300 text-red-700 hover:bg-red-100 disabled:opacity-50 transition"
+              >
+                重试
+              </button>
+            </div>
           )}
 
           <ChatThread
