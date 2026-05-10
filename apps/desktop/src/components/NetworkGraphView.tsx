@@ -314,12 +314,17 @@ export function NetworkGraphView({
       return el;
     });
 
-    // Replace elements atomically via cy.json — cleaner than
-    // batch(remove + add), which has known quirks where edges
-    // briefly point to removed nodes mid-batch and don't always
-    // re-render after add. json() swaps the whole graph in one go.
+    // Replace all elements in one shot. Plain remove + add can leave
+    // edges in a weird half-rendered state on a freshly-created cy —
+    // the edges exist in the data layer but the canvas doesn't paint
+    // them until something else triggers a redraw. json() is the
+    // documented atomic-replace path and behaves more consistently.
     cy.elements().remove();
     cy.add(positionedElements);
+    // Belt-and-suspenders: force every element's style to be re-
+    // evaluated. cose-bilkent's first layout on a brand-new cy
+    // occasionally leaves edges un-painted until the next style pass.
+    cy.style().update();
 
     if (elements.length === 0) return;
 
@@ -357,6 +362,17 @@ export function NetworkGraphView({
           padding: 30,
         } as cytoscape.LayoutOptions).run();
       }
+      // Final defensive pass: schedule another resize+fit+style refresh
+      // on the next tick. By then any pending edge geometry has been
+      // committed; this guarantees the first paint shows arrows even
+      // when cytoscape's auto-render after layout skipped them.
+      window.setTimeout(() => {
+        if (cyRef.current === cy) {
+          cy.resize();
+          cy.fit(undefined, 30);
+          cy.style().update();
+        }
+      }, 0);
     };
 
     // If the container hasn't been measured yet (0×0), wait one frame
