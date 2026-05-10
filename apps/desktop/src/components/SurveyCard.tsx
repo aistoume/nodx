@@ -16,8 +16,11 @@ interface SurveyCardProps {
   decomposing: boolean;
 }
 
-const MIN_PICK = 3;
-const MAX_PICK = 5;
+// Suggested range — shown to the user as guidance, not a hard cap. The
+// only enforced floor is "at least 1" so we have something to decompose.
+const SUGGESTED_MIN = 3;
+const SUGGESTED_MAX = 5;
+const HARD_MIN = 1;
 const CUSTOM_ID_PREFIX = 'custom_';
 const MAX_CUSTOM_TITLE_LEN = 24;
 
@@ -86,14 +89,13 @@ export function SurveyCard({
   };
 
   const handleContinue = () => {
-    if (picked.size < MIN_PICK || picked.size > MAX_PICK) return;
+    if (picked.size < HARD_MIN) return;
     if (decomposing) return;
     const selectedFactors = data.factors.filter((f) => picked.has(f.id));
     void onPick(selectedFactors);
   };
 
-  const continueDisabled =
-    picked.size < MIN_PICK || picked.size > MAX_PICK || decomposing;
+  const continueDisabled = picked.size < HARD_MIN || decomposing;
 
   return (
     <li className="flex justify-start">
@@ -105,7 +107,7 @@ export function SurveyCard({
           <h3 className="text-sm font-medium text-ink">
             {isCompleted
               ? '已选定的关注维度'
-              : `选 ${MIN_PICK}–${MAX_PICK} 个最关心的维度`}
+              : `选感兴趣的维度（建议 ${SUGGESTED_MIN}–${SUGGESTED_MAX} 个，全选也行）`}
           </h3>
         </header>
 
@@ -203,7 +205,14 @@ export function SurveyCard({
         {!isCompleted && (
           <footer className="mt-3 flex items-center justify-between gap-3">
             <span className="text-xs text-ink-muted">
-              已选 {picked.size} / 需要 {MIN_PICK}–{MAX_PICK}
+              已选 {picked.size}
+              {picked.size > 0 &&
+                (picked.size < SUGGESTED_MIN ||
+                  picked.size > SUGGESTED_MAX) && (
+                  <span className="ml-1 opacity-70">
+                    （建议 {SUGGESTED_MIN}–{SUGGESTED_MAX}，但你说了算）
+                  </span>
+                )}
             </span>
             <button
               type="button"
