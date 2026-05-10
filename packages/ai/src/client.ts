@@ -62,12 +62,78 @@ export class GatewayError extends Error {
   }
 }
 
+// ──────────────────────────────────────────────────────────────────────
+// Sonnet rate-limit guard
+//
+// Anthropic's per-minute input-token cap is 30k for new orgs on Sonnet
+// 4.6. Multiple parallel Sonnet calls (e.g. user opens 4 child topics
+// at once → 4 focused-doc generations fire in parallel) blow that
+// straight away. We do two things:
+//   1. Serialise Sonnet calls — one in flight at a time, others wait
+//      their turn in a Promise chain. Haiku is excluded; its limit is
+//      much higher and survey/explain calls are short.
+//   2. Auto-retry once on 429 after a 35s wait (Anthropic's window is
+//      a sliding minute, so 35s is enough for most over-limit calls).
+// ──────────────────────────────────────────────────────────────────────
+
+let sonnetChain: Promise<unknown> = Promise.resolve();
+
+function isSonnet(modelId: ModelId): boolean {
+  return modelId.includes('sonnet');
+}
+
+function enqueue<T>(modelId: ModelId, fn: () => Promise<T>): Promise<T> {
+  if (!isSonnet(modelId)) return fn();
+  // Use the chain as a barrier — each call awaits the previous before
+  // running. We catch failures so the chain never poisons subsequent
+  // callers with a rejected promise.
+  const result = sonnetChain.then(fn, fn);
+  sonnetChain = result.catch(() => undefined);
+  return result;
+}
+
+async function withRateLimitRetry<T>(
+  modelId: ModelId,
+  fn: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    // Only retry Sonnet 429s automatically. Haiku's per-minute limit is
+    // ~10× Sonnet's, so a 429 there is usually account-level (no point
+    // retrying inside a 35s window). Plus skipping Haiku keeps unit
+    // tests that mock 429 from waiting 35s.
+    if (
+      err instanceof GatewayError &&
+      err.status === 429 &&
+      isSonnet(modelId)
+    ) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[ai-gateway] hit 429 on sonnet, waiting 35s and retrying once',
+      );
+      await new Promise((r) => setTimeout(r, 35_000));
+      return await fn();
+    }
+    throw err;
+  }
+}
+
 /**
  * Call the AI gateway, validate the response against the supplied Zod schema,
  * and return both the parsed object and the raw text. The raw text survives
  * past the parse so callers can show "the model returned: …" on schema fail.
  */
 export async function complete<T>(
+  cfg: GatewayConfig,
+  opts: CompleteOptions<T>,
+): Promise<CompleteResult<T>> {
+  return enqueue(opts.model, () =>
+    withRateLimitRetry(opts.model, () =>completeOnce(cfg, opts)),
+  );
+}
+
+async function completeOnce<T>(
   cfg: GatewayConfig,
   opts: CompleteOptions<T>,
 ): Promise<CompleteResult<T>> {
@@ -163,6 +229,15 @@ export interface CompleteTextResult {
  * `complete` so malformed JSON fails loudly instead of leaking into the UI.
  */
 export async function completeText(
+  cfg: GatewayConfig,
+  opts: CompleteTextOptions,
+): Promise<CompleteTextResult> {
+  return enqueue(opts.model, () =>
+    withRateLimitRetry(opts.model, () =>completeTextOnce(cfg, opts)),
+  );
+}
+
+async function completeTextOnce(
   cfg: GatewayConfig,
   opts: CompleteTextOptions,
 ): Promise<CompleteTextResult> {
