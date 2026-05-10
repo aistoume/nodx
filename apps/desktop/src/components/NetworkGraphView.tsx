@@ -214,9 +214,29 @@ export function NetworkGraphView({
 
     // Persist positions when the user drags a node or after auto-layout.
     cy.on('dragfree', 'node', () => savePositions(cy));
-    cy.on('layoutstop', () => savePositions(cy));
+    // On layout end: resize against the latest container metrics (in case
+    // the container was 0×0 when cy initialised) and fit so every node
+    // is in view. Then persist positions.
+    cy.on('layoutstop', () => {
+      cy.resize();
+      cy.fit(undefined, 30);
+      savePositions(cy);
+    });
+
+    // Cytoscape caches container dimensions at init. In a flex layout the
+    // container can be 0×0 on first paint, in which case the initial
+    // layout/fit happen against bad dimensions and edges/nodes render at
+    // funky coords. A ResizeObserver makes the cy match reality.
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+      observer = new ResizeObserver(() => {
+        if (cyRef.current) cyRef.current.resize();
+      });
+      observer.observe(containerRef.current);
+    }
 
     return () => {
+      observer?.disconnect();
       cy.destroy();
       cyRef.current = null;
     };
@@ -269,6 +289,10 @@ export function NetworkGraphView({
     });
 
     if (elements.length === 0) return;
+
+    // Defensive resize before layout — picks up the latest container
+    // dimensions if this mount happened while the grid was still settling.
+    cy.resize();
 
     const nodeIds = elements
       .filter((el) => el.group === 'nodes')
