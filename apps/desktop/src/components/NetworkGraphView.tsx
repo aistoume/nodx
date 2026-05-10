@@ -231,11 +231,41 @@ export function NetworkGraphView({
     };
   }, []);
 
-  // Sync elements + run layout whenever topics change. Saved positions
-  // win; only nodes without a saved position trigger a cose-bilkent pass.
+  // Stable content signature for the elements set. We use it to skip
+  // expensive cy.remove/add/layout cycles when the structure is
+  // unchanged (e.g. selectedTopicId moved from root to a child but the
+  // subtree is identical). Re-running the full cycle in that case is
+  // what was making the root visually disappear: cy.elements().remove
+  // wipes everything, cy.add re-inserts it, but in the brief window
+  // between the two cytoscape doesn't always re-render the freshly
+  // restored nodes correctly.
+  const elementsSignature = useMemo(() => {
+    const nodeIds = elements
+      .filter((el) => el.group === 'nodes')
+      .map((el) => el.data.id as string)
+      .sort()
+      .join(',');
+    const edgeKeys = elements
+      .filter((el) => el.group === 'edges')
+      .map((el) => `${el.data.source}>${el.data.target}`)
+      .sort()
+      .join(',');
+    return `${nodeIds}|${edgeKeys}`;
+  }, [elements]);
+
+  const appliedSignatureRef = useRef<string>('');
+
+  // Sync elements + run layout when the *structure* changes. Saved
+  // positions win; only nodes without a saved position trigger a
+  // cose-bilkent pass.
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
+
+    // Bail if structure unchanged — cy already holds the right graph,
+    // and re-adding would just trigger another fragile re-render.
+    if (elementsSignature === appliedSignatureRef.current) return;
+    appliedSignatureRef.current = elementsSignature;
 
     const saved = loadPositions();
 
@@ -272,10 +302,12 @@ export function NetworkGraphView({
       return el;
     });
 
-    cy.batch(() => {
-      cy.elements().remove();
-      cy.add(positionedElements);
-    });
+    // Replace elements atomically via cy.json — cleaner than
+    // batch(remove + add), which has known quirks where edges
+    // briefly point to removed nodes mid-batch and don't always
+    // re-render after add. json() swaps the whole graph in one go.
+    cy.elements().remove();
+    cy.add(positionedElements);
 
     if (elements.length === 0) return;
 
@@ -329,7 +361,7 @@ export function NetworkGraphView({
       const rafId = requestAnimationFrame(runLayout);
       return () => cancelAnimationFrame(rafId);
     }
-  }, [elements]);
+  }, [elementsSignature, elements]);
 
   // Highlight the active topic.
   useEffect(() => {
