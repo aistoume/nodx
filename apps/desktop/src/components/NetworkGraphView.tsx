@@ -363,32 +363,31 @@ export function NetworkGraphView({
         } as cytoscape.LayoutOptions).run();
       }
       // Final defensive pass: schedule another resize+fit+style refresh
-      // on the next tick. By then any pending edge geometry has been
-      // committed; this guarantees the first paint shows arrows even
-      // when cytoscape's auto-render after layout skipped them.
+      // on the next tick PLUS a tiny zoom nudge to force the canvas to
+      // repaint. The zoom-nudge is a known workaround for cytoscape's
+      // bezier edges occasionally not painting after the first layout
+      // on a fresh cy instance — the data is there but the canvas
+      // skipped them, and only an event-driven render (click, pan,
+      // zoom) revives them. Doing the nudge ourselves removes the
+      // need for the user to click anything.
       window.setTimeout(() => {
-        if (cyRef.current === cy) {
-          cy.resize();
-          cy.fit(undefined, 30);
-          cy.style().update();
-        }
+        if (cyRef.current !== cy) return;
+        cy.resize();
+        cy.fit(undefined, 30);
+        cy.style().update();
+        const z = cy.zoom();
+        cy.zoom(z * 1.000001);
+        cy.zoom(z);
       }, 0);
     };
 
-    // If the container hasn't been measured yet (0×0), wait one frame
-    // before laying out. Otherwise the layout + fit run against bad
-    // dimensions and edges render as if they connect to phantom points.
-    const container = containerRef.current;
-    const containerReady =
-      container != null &&
-      container.clientWidth > 0 &&
-      container.clientHeight > 0;
-    if (containerReady) {
-      runLayout();
-    } else {
-      const rafId = requestAnimationFrame(runLayout);
-      return () => cancelAnimationFrame(rafId);
-    }
+    // Always defer the first layout to the next animation frame. Even
+    // when containerRef.clientWidth is non-zero in the synchronous
+    // check, cytoscape can still get into a state where edges aren't
+    // painted on a fresh cy. A one-frame delay gives the browser time
+    // to fully wire up the canvas before we throw a layout at it.
+    const rafId = requestAnimationFrame(runLayout);
+    return () => cancelAnimationFrame(rafId);
   }, [elementsSignature, elements]);
 
   // Highlight the active topic.
