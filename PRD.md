@@ -1,6 +1,6 @@
 # nodx — AI 决策思考工作台 PRD
 
-> 版本: v0.2（技术选型 2026.5 校准版）| 作者: LaoMo + AI | 日期: 2026-05-03
+> 版本: v0.5（新增思考快照索引：思考的 crawler + indexer + ranker）| 作者: LaoMo + AI | 日期: 2026-05-03
 
 ---
 
@@ -10,11 +10,7 @@
 
 **核心场景**：管理层做决策时，常常面对模糊问题（"要不要 ALL IN AI？""现在该投资股票吗？"）。传统工具帮你画图（xmind）或写字（Notion），但不帮你**思考**。nodx 用 AI 作为思考陪练，结合"网状对话 + 第一性原理拆解 + 原子化任务"，把模糊问题变成可执行决策。
 
-**差异化**：
-- vs ChatGPT：单线程对话 → nodx 是网状多对话
-- vs Notion AI：文档优先 → nodx 是结构化思考优先
-- vs xmind / 飞书 OKR：静态画图 → nodx 是 AI 协同思考过程
-- vs Roam Research：纯关联笔记 → nodx 有明确的决策方法论（第一性原理 + 原子化）
+**核心理念**：AI 不替你思考，AI 陪你思考；用户主导深挖，AI 在结论时整合。
 
 **目标用户**：
 - 主要：企业高管 / 创业者（决策场景）
@@ -22,46 +18,154 @@
 
 ---
 
-## 2. 核心功能
+## 2. 产品卖点与差异化
 
-### 2.1 引导式 Survey
+### 2.1 价值主张
+
+**AI 陪你想，不替你想——让每一次思考成为可积累、可复用的资产。**
+
+复杂决策从来不是一次想清楚的。它会被时间冲淡、被分支淹没、被新人重复推演、被不专业的判断浪费。nodx 用四个互补的能力，把思考从"一次性消耗品"变成**可深、可续、可复用的资产**。
+
+**三条不可妥协的信条**：
+
+1. **AI 陪练，不代劳**——抵抗"一键生成完整 mind map"的诱惑
+2. **用户主导方向与价值判断，AI 主导深度与专业**
+3. **思考是资产，不是消耗品**——每一次想透的问题都应该可被自己、被组织、未来的同行接得上
+
+### 2.2 四大卖点
+
+按战略权重排序（① 最重）：
+
+| # | 卖点 | 对抗什么 | 一句话 |
+|---|---|---|---|
+| ① | **可积累**（头牌） | 重复推理 + 思考孤立 | 思考资产化，跨人 / 跨时间复用 |
+| ② | **不丢失** | 时间遗忘 + 中断 | 思路复现，秒接续 |
+| ③ | **想得好** | 浅尝辄止 + 不专业 | 专家组协议，每个方向想到 Local Max |
+| ④ | **想得到** | 思想盲点 + 逻辑断层 | 盲点哨兵，抓住没想到的 |
+
+---
+
+#### 卖点 ① 可积累 —— 思考是资产，不是消耗品（核心差异点 / 最深护城河）
+
+每一次完整思考的过程和结论被结构化"快照化"，建立可检索索引。下次同类问题出现时，**先查老快照、再适配**（Fork & Adapt），避免从零重复推理。
+
+**类比**：Google 是**网页**的 crawler + indexer + ranker；nodx 是**思考过程**的 crawler + indexer + ranker。
+
+**具体能力**：
+- **个人记忆（V1，MVP）**：你自己的 Topic 自动入私有索引，下次提相似问题先查"我以前怎么想的"
+- **团队记忆（V2）**：组织内部共享，"我们公司之前讨论过这个吗？" —— 高管最痛点
+- **公共匿名索引（V3）**：opt-in 脱敏共享，跨公司思考模式复用
+- **策展专家库（V4）**：授权的真实专家文本（咨询报告 / 投资人札记 / 案例库）接入
+
+**护城河**：所有市面思考工具都是"一次性消耗品"—— ChatGPT / Claude 没有结构化复用、Notion / Roam 没有 AI 排序、FunBlocks 一键生成不可索引、Perplexity 检索的是网页不是思考过程。nodx 是唯一把思考"网页化 + Google 化"的产品。**这个护城河需要时间和用户量沉淀，竞品复制不了**。
+
+---
+
+#### 卖点 ② 不丢失 —— 思考不会被中断打断
+
+复杂问题往往不是一次能想透的，需要反复思考和推理。但间隔一段时间后，之前的思路被打断、被遗忘。nodx 能**重新复现当时的推理思路**，帮用户快速回忆思考要点和**卡点（stuck point）**。
+
+**具体能力**：
+- **"上次回顾"卡片**：隔 N 天重开话题，AI 自动生成回顾——你从哪出发、走过的推理路径、停在哪、卡在什么、期间有无相关新进展
+- **卡点标记**：用户可显式标记"我卡在这里了"，AI 结构化记录悬而未决的问题与卡住原因
+- **再推理触发**：AI 主动问"上次你卡在 X，要重新推一遍吗？还是已有新信息？"
+- **思考时间线**：每个话题记录"思考会话"（哪天想了多久），让用户看到自己的思考节奏
+
+**护城河**：竞品（FunBlocks AIFlow / Nodini.ai / TrAIn of Thought）都把思考当成"一次性会话"，没有任何一个解决"隔几天回来接不上"的问题。
+
+---
+
+#### 卖点 ③ 想得好 —— 每个方向都想到 Local Maximum
+
+针对用户选定的每个方向，AI 主导推理深度——但**不替用户决定方向**。用专家组协议把方向想到当前知识下的最优解。
+
+**具体能力**：
+- **专家组协议**：3–5 个互补 AI 专家（含强制的魔鬼代言人），按 Propose → Critique → Refine → Synthesize 四轮辩论
+- **Local Maximum 判定**：语义收敛 / 边际改进递减 / 硬上限，三选一即停
+- **用户作为 Chair**：任意 Round 可 `@专家X` 追问、替换成员、强制结束、拒绝结论
+- **第一性原理拆解**：每个方向从本质问题开始拆，不停留在表象
+
+**护城河**：vs FunBlocks 那种"输入问题 → AI 一键生成完整 mind map"—— nodx 坚持 AI 陪练而非代劳。但 AI 在用户选定方向后**主导深度**——这是与"一切让 AI 干"和"一切让人干"两端都不同的中间位置。
+
+---
+
+#### 卖点 ④ 想得到 —— 抓住思想上的漏洞
+
+帮用户把思想上、策略上、逻辑上的漏洞捕捉到，并给出应对分析和补充。AI 在这里当**哨兵**，不替用户决定，只提示用户没看到的。
+
+**具体能力**：
+- **引导式 Survey**：用户输入问题后，AI 不立刻回答，先给 5–7 个候选关注维度的多选卡片
+- **盲点扫描**：思考进行中 AI 持续扫描全图——"你完全没碰过 X 维度"
+- **隐含假设审计**：标出用户陈述里没说出口的假设
+- **跨支矛盾检测**：分支 A 说"快速扩张"、分支 B 说"保守现金"，高亮冲突让用户裁决
+- **逻辑断层检测**：发现"从 A 直接跳到 C，缺了 B"
+- **幽灵节点**：Survey 没选的维度保留可激活，避免遗漏
+
+**支撑能力（不单列卖点，但服务全局）**：
+- **网络链接式记忆**：跨分支 @ 引用 + AI 主动提示关联
+- **决策可移交**：五色备注（便签 / 解释 / 原子动作 / 卡点 / 引用）让思考过程能被同事接手——决策不再是"黑箱在某个人脑子里"
+
+### 2.3 与竞品的差异化
+
+| 对象 | 竞品做法 | nodx 做法 |
+|---|---|---|
+| ChatGPT / Claude | 单线程对话，原生分支不可视化、不可索引 | 网状多对话 + 可视化 + 快照可复用 |
+| FunBlocks AIFlow | AI 一键生成完整 mind map（代劳）；无专家辩论；无复用索引 | AI 陪练；专家组四轮辩论收敛到 Local Max；快照 Fork & Adapt |
+| Nodini.ai / TrAIn of Thought | 分支式对话，把思考当一次性会话；无跨时间接续 | 思路复现 + "上次回顾"卡片 |
+| Notion AI | 文档优先；无结构化辩论；无质量排序 | 结构化思考 + 专家级深度 + 执行落地闭环 |
+| xmind / Roam Research | 静态画图 / 纯手动关联笔记；无 AI 主导深度 | AI 协同 + 第一性原理 + 专家组 + 快照索引 |
+| Perplexity | 检索**网页** + 综合答案 | 检索**思考过程** + 适配复用 |
+
+**核心信条**（不可妥协，是产品的灵魂）：
+
+1. **AI 陪练 vs 代劳**——抵抗"一键生成完整 mind map"的诱惑
+2. **永不 replay，只 Fork & Adapt**——老快照是脚手架不是答案
+3. **用户主导方向与价值判断，AI 主导深度与专业**
+
+这三条让 nodx 与所有"AI 替你思考"的产品分野，也让快照系统成为可信、可用、可持续的资产，而不是"决策黑箱"。
+
+---
+
+## 3. 核心功能
+
+### 3.1 引导式 Survey
 用户输入问题 → AI 不立刻回答，先弹出 5–7 个候选关注维度的多选卡片 → 用户勾选 3–5 项 → 未选项保留为"幽灵节点"可后续激活。
 
-### 2.2 第一性原理拆解
+### 3.2 第一性原理拆解
 基于用户选中的维度，AI 用第一性原理把每个维度拆成关键子问题。每个子问题可点击「→ 深入讨论」生成子对话。
 
-### 2.3 网状对话工作台
+### 3.3 网状对话工作台
 - 每个节点 = 一个完整 AI 对话
 - 网络图作为导航与全局视图
 - 节点状态：探索中 / 已总结 / 已得出原子动作 / 幽灵
 - 关系类型：父子（实线箭头）/ AI 跨支语义关联（紫色虚线动画）
 
-### 2.4 三栏对话页面
+### 3.4 三栏对话页面
 - 左栏：面包屑 + 兄弟/子对话/幽灵节点列表 + 迷你网络图
-- 中栏：对话流（含 Survey 卡片、第一性原理拆解、@ 引用胶囊）
-- 右栏：Google Doc 风格四色备注（黄=便签 / 蓝=解释 / 绿=原子动作 / 紫=引用），虚线锚定到中栏对应段落
+- 中栏：对话流（含 Survey 卡片、第一性原理拆解、@ 引用胶囊、"上次回顾"卡片）
+- 右栏：Google Doc 风格五色备注（黄=便签 / 蓝=解释 / 绿=原子动作 / 紫=引用 / 红=卡点），虚线锚定到中栏对应段落
 
-### 2.5 即时解释
-用户在对话中选中任意文字 → 浮现「解释」按钮 → AI 在右栏生成蓝色解释卡片（不污染主对话流）
+### 3.5 即时解释
+用户在对话中选中任意文字 → 浮现「解释」按钮 → AI 在右栏生成蓝色解释卡片（不污染主对话流）。
 
-### 2.6 原子化检查器
+### 3.6 原子化检查器
 节点结论需满足 4 要素才算原子：**谁** + **做什么** + **何时** + **产出物**。AI 自动检查并提示补全。颗粒度可配置（战略级 = 周；执行级 = 天/小时）。
 
-### 2.7 子对话折叠 + 向上合并
-- 节点可折叠成单点（带 +N 徽章），减少前端渲染压力
-- 「合并回父对话」：AI 自动生成子对话核心结论摘要 → 用户编辑确认 → 插入父对话相应位置（保留来源标记）
+### 3.7 子对话折叠 + 向上合并
+- 节点可折叠成单点（带 +N 徽章），减少前端渲染压力。
+- 「合并回父对话」：AI 自动生成子对话核心结论摘要 → 用户编辑确认 → 插入父对话相应位置（保留来源标记）。
 
-### 2.8 @ 跨对话引用
-- 输入 `@` 自动补全所有对话节点
-- 嵌入为蓝色胶囊，点击跳转
-- AI 看到 @ 时只取被引用对话的总结作为上下文（节省 token）
-- 支持细粒度 `@对话名#段落`
-- **TODO**：反向引用（被引用方显示"被 X 引用 N 次"），V2 实现
+### 3.8 @ 跨对话引用
+- 输入 `@` 自动补全所有对话节点。
+- 嵌入为蓝色胶囊，点击跳转。
+- AI 看到 @ 时只取被引用对话的总结作为上下文（节省 token）。
+- 支持细粒度 `@对话名#段落`。
+- **TODO**：反向引用（被引用方显示"被 X 引用 N 次"），V2 实现。
 
-### 2.9 草稿区
+### 3.9 草稿区
 讨论中冒出来的无关新点子先扔草稿区（顶部抽屉），不创建节点污染网络图。整理时再决定并入对话或起新对话。
 
-### 2.10 决策汇报输出
+### 3.10 决策汇报输出
 任意节点上点「产出决策汇报」→ AI 扫描子树 → 生成三件产物：
 1. 决策摘要（3–5 句给老板）
 2. 行动清单（按时间/责任人组织的甘特图）
@@ -69,11 +173,131 @@
 
 支持导出 Word / Markdown / PPT 草稿。
 
+### 3.11 思路复现 / "上次回顾"卡片（卖点 ①）
+用户重新打开一个间隔较久的话题时，AI 自动在对话顶部生成"上次回顾"卡片：你从哪出发、走过的推理路径、停在哪、卡在什么、期间有无新进展。卡片末尾附「重新推理」按钮，带着卡点重新展开苏格拉底追问。
+
+### 3.12 卡点标记（卖点 ①）
+用户可在对话任意位置标记"我卡在这里了"，生成一条红色卡点备注（结构化记录：悬而未决的问题 + 卡住原因）。所有卡点跨话题聚合，形成全局"卡点清单"，与全局 Todo 并列。
+
+### 3.13 思考时间线（卖点 ①）
+每个话题按"思考会话"切分（一次连续思考为一个 session），可视化展示用户在该话题上的思考节奏与每次会话的小结。
+
+### 3.14 问题拆解 + 专家组协议（核心引擎）
+
+Survey 完成后，对每个用户选中的方向自动组建**专家组**，跑一套结构化的多智能体辩论协议，直到该方向收敛到 **Local Maximum Solution**。所有方向收敛 = 整体 Survey 阶段完成。
+
+> **理论锚点**：「想得好」= AI 主导推理深度，人主导方向与价值判断。专家组是"AI 主导"的具体实现；用户作为 **Chair（主席）** 全程掌控。
+
+**专家组组成（Panel Composition）**
+
+每方向 3–5 位 AI 专家，强制包含互补角色：
+- 🔵 **正方主推**：带框架给方案
+- 🔴 **魔鬼代言人**：必备，防止 echo chamber
+- 🟢 **实操经验**：『我做过这事，告诉你坑』
+- 🟡 **外部约束**：法务 / 监管 / 财务规则
+- 🟣 **用户自带（可选）**：用户拉真人朋友/同事的"AI 替身"
+
+AI 自动提议人格栈 → 用户可替换 / 增删 → 确认后开始辩论。
+
+**四轮辩论协议（Propose → Critique → Refine → Synthesize）**
+
+| Round | 名称 | 任务 |
+|---|---|---|
+| 1 | 独立首发 | 每位专家闭门写初判，避免相互污染 |
+| 2 | 交叉质疑 | 每位专家读他人初判，写反驳/补充 |
+| 3 | 修正立场 | 每位专家更新立场（明确被说服哪些、坚持哪些） |
+| 4 | 主持人综合 | 独立"主持人"角色阅读全部 transcript，输出 Local Max |
+
+**Local Maximum 判定（任一触发即停）**
+
+1. **语义收敛**：Round 3 各专家立场的 embedding 两两相似度均值 > 0.85
+2. **边际改进递减**：Haiku-as-judge 评第 N 轮 vs N-1 轮综合的改进分 < 阈值
+3. **硬上限**：最多 5 轮
+
+满足任意一条 → 该方向标记 `localMaximum: true`，主持人输出固化为 `LocalMaximumResult`。
+
+**用户作为 Chair 的权力**
+
+- 任意 Round 可 `@专家X` 插话追问
+- 替换 / 删减专家成员，循环可重启
+- 强制结束跳到 Synthesize
+- 拒绝 Local Max → 强制再来一轮
+- 跨方向打断（暂停 A，跳到 B）
+
+**与已有功能的衔接**
+
+- §3.1 Survey 选完方向 → 自动触发专家组组建
+- 每个方向的 Local Max → 作为该方向 Topic 的 `aiSummary` + `reasoningTrace`
+- 跨方向的 Local Max 集合 → 喂给「收尾整理者」生成决策汇报（§3.10）
+- 主持人输出的"未解开放问题" → 自动落到 `Comment.type='open_question'` 卡点（§3.12）
+
+### 3.15 思考快照索引（Thinking Snapshot Index）
+
+**愿景**：把每一次完整思考的过程和结论"快照化"，建立可检索的索引。下次同类问题出现时，先查老快照、再适配，避免从零重复推理。把思考从"一次性消耗品"变成**可积累、可复用的资产**。
+
+**类比**：Google 是网页的 crawler + indexer + ranker；nodx 是**思考过程的 crawler + indexer + ranker**。
+
+**核心原则：Fork & Adapt，绝不 Replay**
+
+决策依赖语境（公司、行业、时点），老答案直接给新人用就是误导。所有复用必须走「复用适配员」路径——**老快照是脚手架，不是答案**。
+
+**索引单元：Topic 级（不是整决策、不是单条消息）**
+
+每个达到 `localMaximum: true` 的 Topic 自动成为候选 Snapshot。整决策太粗、单消息太细，方向级最合适。
+
+**复用流程**
+
+```
+新用户提问
+  ↓
+向量检索（pgvector + Gemini Embedding 2）→ Top-K 候选
+  ↓
+多维重排：相似度 × 质量分 × 时效衰减 × 语境匹配
+  ↓
+Top-3 候选给用户："发现 3 个相似思考，要参考吗？"
+  ↓
+选某条 → 复用适配员（Sonnet）分析：相似处 / 不同处 / 该保留的框架 / 该重做的部分
+  ↓
+用户三选一：
+  A. as_is             - 完全采用（仅低风险/常识性问题）
+  B. fork_adapt        - 以老快照为种子，专家组只跑差异部分（推荐，省 60% token）
+  C. inspiration_only  - 完全重启，老快照仅作启发并排展示
+```
+
+**隐私分层（三档可见性）**
+
+| 档位 | 谁能搜到 | 默认 |
+|---|---|---|
+| `private` | 只有创建者 | ✅ 默认 |
+| `team` | 组织/团队内部 | 企业版（V2）|
+| `public_anonymous` | 全网，强脱敏 | 每次显式 opt-in（V3）|
+
+脱敏流程：AI 自动脱敏（去公司名 / 规模数字 / 人名 / 行业识别细节）→ 用户人工 review → 入库。
+
+**质量门槛 + 时效衰减**
+
+只有以下条件全部满足的快照能进 public 索引：
+- 质量评分 > 阈值（来自评分系统）
+- 创建超过 N 天（防止热乎错误污染）
+- 时效衰减：检索时按 `quality × exp(-age/τ)` 排序
+- 累计 3+ 负反馈 → 自动从公共索引下架
+
+**分阶段路径**
+
+| 阶段 | 索引范围 | 目标 | MVP 归属 |
+|---|---|---|---|
+| **V1 个人记忆** | 只索引你自己的 Topic | 下次问类似的能秒查自己以前怎么想的 | ✅ MVP V1 |
+| **V2 团队记忆** | 组织内部共享 | "我们公司之前讨论过这个吗？" | Backlog |
+| **V3 公共匿名索引** | opt-in 脱敏共享 | 跨公司思考模式复用 | Backlog |
+| **V4 策展专家库** | 授权的真实专家文本（咨询报告 / 投资人札记 / 案例库）| 让"专家级"真有据可依 | Backlog |
+
 ---
 
-## 3. AI 角色设计
+## 4. AI 角色设计
 
-每个对话页面里，AI 承担四种角色：
+AI 在 nodx 里承担十种角色，按触发场景划分：
+
+**对话内**
 
 | 角色 | 触发 | 任务 |
 |---|---|---|
@@ -81,10 +305,28 @@
 | 苏格拉底追问者 | 用户在对话中输入 | 用第一性原理反问，拆解到原子级 |
 | 即时解释者 | 用户选中文字 → 点解释 | 生成 50–150 字解释，写入右栏 |
 | 收尾整理者 | 用户点「总结」/「合并回父对话」 | 提取结论、原子动作、跨对话关联建议 |
+| 思考复现者 | 用户重开间隔 > 24h 的话题 | 生成"上次回顾"卡片，唤起卡点与推理路径 |
+
+**专家组协议（§3.14）**
+
+| 角色 | 触发 | 任务 |
+|---|---|---|
+| 领域分类员 | Survey 方向确认 | 给方向打领域标签（M&A / 市场进入 / ……），决定调哪个人格栈 |
+| 人格栈推荐器 | 领域确认后 | 从人格库选 3–5 个互补专家，提议给用户确认 |
+| Panel 成员（× N） | 四轮辩论 | 按各自 persona 独立首发 / 交叉质疑 / 修正立场 |
+| Panel 主持人 | Round 4 | 阅读全部 transcript 输出 Local Maximum 综合 |
+| 收敛判官 | 每轮末尾 | 算语义相似度 + 边际改进，决定是否停止辩论 |
+
+**快照索引（§3.15）**
+
+| 角色 | 触发 | 任务 |
+|---|---|---|
+| 快照策展员 | Topic 达到 `localMaximum` | 评估是否够格入库（质量分 / 原子化 / 置信度）；自动脱敏，请用户确认 |
+| 复用适配员 | 检索命中候选时 | 把老快照与新用户语境对照，输出相似 / 不同 / 该保留 / 该重做的分析 |
 
 ---
 
-## 4. 数据模型
+## 5. 数据模型
 
 ```typescript
 type Topic = {
@@ -101,13 +343,16 @@ type Topic = {
     lastActivity: number;
   };
   aiSummary?: string;       // AI 生成的对话总结（@ 引用时取这个）
+  reasoningTrace?: string;  // AI 持续维护的"推理路径"摘要 —— 思路复现核心
+  hasOpenQuestions: boolean;// 是否有未解决的卡点（网络图上打标记）
 };
 
 type Message = {
   id: string;
   topicId: string;
+  sessionId: string;        // 所属思考会话（支撑思路复现 / 时间线）
   role: 'user' | 'ai';
-  type: 'text' | 'survey' | 'factor_list' | 'explanation';
+  type: 'text' | 'survey' | 'factor_list' | 'explanation' | 'replay_card';
   content: string;          // markdown
   anchors?: string[];       // 段落锚点 id 列表（绑定右栏 comment）
   mentions?: string[];      // @ 引用的 topicId 列表
@@ -118,9 +363,9 @@ type Comment = {
   id: string;
   topicId: string;
   anchorId: string | null;  // 绑定的 message 段落锚点
-  type: 'note' | 'explanation' | 'atomic' | 'reference';
+  type: 'note' | 'explanation' | 'atomic' | 'reference' | 'open_question';
   content: string;
-  // for atomic
+  // type === 'atomic'
   atomicData?: {
     who: string;
     what: string;
@@ -128,7 +373,22 @@ type Comment = {
     deliverable: string;
     isComplete: boolean;
   };
+  // type === 'open_question'（卡点 / stuck point）
+  openQuestionData?: {
+    question: string;         // 悬而未决的问题
+    blockedReason?: string;   // 卡住原因（缺数据 / 缺判断 / 缺共识 ...）
+    resolvedAt?: number;      // 解决时间（null = 仍未解决）
+  };
   createdAt: number;
+};
+
+type ThinkingSession = {    // 一次连续的思考会话
+  id: string;
+  topicId: string;
+  startedAt: number;
+  endedAt: number;
+  messageCount: number;
+  aiRecap?: string;         // 会话结束时 AI 生成的小结
 };
 
 type Edge = {
@@ -146,20 +406,131 @@ type DraftItem = {
   content: string;
   createdAt: number;
 };
+
+// === 专家组协议（§3.14） ===
+
+type PersonaTemplate = {        // 人格库（系统预置 + 远期社区贡献）
+  id: string;
+  domain: string[];             // 适用领域，如 ['m&a', 'market-entry']
+  role: 'proposer' | 'critic' | 'practitioner' | 'constraint' | 'user_proxy';
+  displayName: string;          // "资深 M&A 律师 · Anna"
+  systemPrompt: string;
+  frameworks: string[];         // 擅长框架
+  evalScore?: number;           // 盲评基线，可证伪
+};
+
+type ExpertAgent = {            // Panel 中的一员（基于模板实例化）
+  id: string;
+  personaTemplateId: string;
+  displayName: string;
+  role: PersonaTemplate['role'];
+  systemPrompt: string;         // 可能基于模板做了上下文注入
+};
+
+type PanelExchange = {          // 一位专家在一轮里的发言
+  agentId: string;
+  content: string;
+  citations?: string[];         // 引用数据/资料（远期 RAG）
+  createdAt: number;
+};
+
+type PanelRound = {
+  roundNumber: 1 | 2 | 3 | 4 | 5;
+  type: 'initial' | 'critique' | 'refined' | 'synthesis';
+  exchanges: PanelExchange[];
+  stopSignalsHit?: ('semantic_convergence' | 'marginal_decay' | 'max_rounds')[];
+};
+
+type LocalMaximumResult = {
+  consensus: string[];           // 共识点
+  divergence: { point: string; conditions: string }[]; // 分歧点 + 前提
+  openQuestions: string[];       // 未解问题（自动落到 open_question 卡点）
+  bestAnswer: string;
+  confidence: number;            // 0-1
+  acceptedByUser: boolean;
+  acceptedAt?: number;
+};
+
+type ExpertPanel = {
+  id: string;
+  topicId: string;               // 挂在哪个方向 Topic 上
+  domain: string;
+  members: ExpertAgent[];
+  status: 'forming' | 'debating' | 'converged' | 'rejected_by_user';
+  rounds: PanelRound[];
+  localMaximum?: LocalMaximumResult;
+  createdAt: number;
+  updatedAt: number;
+};
+
+// === 思考快照索引（§3.15） ===
+
+type DirectionSnapshot = {       // 一个方向的浓缩
+  direction: string;
+  domain: string;
+  localMaximum: LocalMaximumResult;
+};
+
+type ThinkingSnapshot = {
+  id: string;
+  sourceTopicId: string;         // 来源 Topic
+  questionEmbedding: number[];   // Gemini Embedding 2，默认 768 维
+  domains: string[];             // 领域标签
+  qualityScore: number;          // 综合质量分（来自评分系统）
+  freshnessDate: number;         // 信息时效基准
+  visibility: 'private' | 'team' | 'public_anonymous';
+  payload: {
+    question: string;
+    directions: DirectionSnapshot[];
+    finalDecision?: string;
+    panelTranscriptsRef?: string; // Supabase Storage 路径，可选
+  };
+  contextMeta: {                 // 用于适配匹配
+    industry?: string;
+    companySizeRange?: string;
+    timeContext?: string;        // 如 "2024 高利率环境"
+    decisionScale?: 'tactical' | 'strategic';
+  };
+  reuseStats: {
+    reusedCount: number;
+    averageReuseRating: number;
+    downvoteCount: number;
+  };
+  sourceUserHash?: string;       // 不可逆匿名哈希
+  createdAt: number;
+};
+
+type SnapshotReuse = {           // 一次复用事件，反哺质量
+  id: string;
+  snapshotId: string;
+  newTopicId: string;
+  mode: 'as_is' | 'fork_adapt' | 'inspiration_only';
+  reuseRating?: number;          // 1-5
+  reuseFeedback?: string;
+  createdAt: number;
+};
 ```
 
 **关键设计**：
-- `aiSummary` 单独存储，避免 @ 引用时拉全文
-- `anchors` 用于实现"虚线锚定"——message 段落和 comment 通过 anchorId 绑定
-- 全局 Todo = 所有 `Comment.type === 'atomic'` 的并集，跨 topic 聚合
+- `aiSummary` 单独存储，避免 @ 引用时拉全文。
+- `reasoningTrace` 是思路复现的核心：AI 在每次会话后增量更新它，记录"推理走到哪一步、为什么"。
+- `ThinkingSession` 支撑"思考时间线"和"上次回顾"卡片；消息通过 `sessionId` 归属会话。
+- `anchors` 用于实现"虚线锚定"——message 段落和 comment 通过 anchorId 绑定。
+- 全局 Todo = 所有 `Comment.type === 'atomic'` 的并集；全局卡点清单 = 所有 `type === 'open_question'` 且未 resolved 的并集，均跨 topic 聚合。
+- "上次回顾"卡片 = 一条特殊 Message（`type === 'replay_card'`），插在对话顶部。
+- `ExpertPanel.localMaximum.bestAnswer` 收敛后会同步写入该方向 Topic 的 `aiSummary`；transcript 摘要写入 `reasoningTrace`。
+- `LocalMaximumResult.openQuestions` 自动转为 `Comment.type='open_question'`，与卡点系统统一聚合到全局清单。
+- `ThinkingSnapshot` 由「快照策展员」从已 `localMaximum` 的 Topic 抽取生成；脱敏经用户确认才入库。
+- 检索路径：用户提问 → `questionEmbedding` 余弦相似 + `qualityScore × exp(-age/τ)` 重排 → Top-3 候选。
+- **永不 replay**：所有复用必经「复用适配员」分析新旧语境差异，输出 fork-adapt 建议。
 
 ---
 
-## 5. 技术选型
+## 6. 技术选型
 
 > **2026 选型校准说明**：此版本基于 2026 年 5 月的技术现状重新校准。所有版本号、benchmark、价格信息均为最新；过时的旧推荐（如 React 18、Tauri 2.0、Tailwind v3、OpenAI Embedding）已替换。
 
-### 5.1 平台策略
+### 6.1 平台策略
 | 平台 | 选型 | 理由 |
 |---|---|---|
 | 桌面 | **Tauri 2.11+** (Rust + WebView) | 当前最新版（2026.4.30 发布）。比 Electron 体积小 10x、内存少 50%；Rust 安全沙箱；新版加强了权限/能力系统 |
@@ -170,7 +541,7 @@ type DraftItem = {
 > - Tauri 2.x 现在已**原生支持 iOS/Android**，理论上"一份 Tauri 跑全平台"。但移动端依然走 WebView，性能（尤其网络图渲染）不如 RN 原生组件，且 RN 移动生态（语音、相机、推送）成熟得多。决定仍走 Tauri（桌面）+ RN（移动）。
 > - **Flutter / Kotlin Multiplatform / .NET MAUI** 都已排除：网络图渲染生态弱于 Web，且现有 TS 业务代码无法跨复用。
 
-### 5.2 前端核心
+### 6.2 前端核心
 | 模块 | 选型 | 理由 |
 |---|---|---|
 | UI 框架 | **React 19.2** + **TypeScript 5.x** | 19.2 引入 Partial Pre-rendering 和 Activity 组件；refs 直接作 prop（不再需要 forwardRef）；async transitions |
@@ -182,7 +553,7 @@ type DraftItem = {
 | 路由（桌面） | **TanStack Router** | 类型安全的路由，比 React Router 6 类型推断更强 |
 | 路由（移动） | **Expo Router** | 文件路由，代码组织清晰 |
 
-### 5.3 后端 / 持久化
+### 6.3 后端 / 持久化
 | 模块 | 选型 | 理由 |
 |---|---|---|
 | 本地存储 | **SQLite** (Tauri SQL Plugin / expo-sqlite) | 离线优先；查询快；事务保证 |
@@ -193,31 +564,32 @@ type DraftItem = {
 
 > **为什么不选 Convex / Firebase**：Convex 的"实时优先"模型确实诱人（2024 开源、2025 支持自托管），但**没有 pgvector** —— nodx 强依赖向量搜索做跨支语义关联，所以 Supabase 仍胜出。Firebase 是 NoSQL（Firestore），无法用 SQL 做复杂层级查询，且无自托管选项，vendor lock-in 严重。
 
-### 5.4 AI 集成
+### 6.4 AI 集成
 | 用途 | 模型 | 理由 |
 |---|---|---|
-| 主对话 / 第一性原理追问 | **Claude Sonnet 4.6** | 推理质量高，上下文长（200k） |
+| 主对话 / 第一性原理追问 / 思路复现 | **Claude Sonnet 4.6** | 推理质量高，上下文长（200k） |
 | 即时解释 / 标签生成 | **Claude Haiku 4.5** | 便宜 10x，延迟低（适合 hover 触发） |
 | Embedding | **Gemini Embedding 2**（gemini-embedding-2，2026.4.30 GA）| 首个原生多模态嵌入模型；MTEB 多语言榜首（69.9）、英语榜首（68.32）；MRL 可截断维度（3072→1536→768）；$0.20/M tokens（批量 $0.10/M） |
 | 调用方式 | 流式输出（SSE） + 工具调用 | 提升 perceived latency |
 
-> **为什么混用 Anthropic + Google**：Claude 在结构化推理（第一性原理拆解、原子化检查）上表现最稳；Gemini Embedding 2 的多模态能力对 V2 至关重要（用户附图/PDF 决策场景）。两家都是稳定大厂，依赖风险可控。
+> **为什么混用 Anthropic + Google**：Claude 在结构化推理（第一性原理拆解、原子化检查、思路复现）上表现最稳；Gemini Embedding 2 的多模态能力对 V2 至关重要（用户附图/PDF 决策场景）。两家都是稳定大厂，依赖风险可控。
 
 **Token 优化策略**：
-- @ 引用只取 `aiSummary`（约 200 tokens），不取全文
-- 上下文窗口管理：父对话只取最近 10 条 + AI 总结，子对话单独维护
-- 备注/解释类调用走 Haiku
-- 缓存常见解释（PE / PEG / 美林时钟等通用术语）到 Redis
+- @ 引用只取 `aiSummary`（约 200 tokens），不取全文。
+- 上下文窗口管理：父对话只取最近 10 条 + AI 总结，子对话单独维护。
+- 备注/解释类调用走 Haiku。
+- 思路复现优先用 `reasoningTrace`（已浓缩），而非重读全部历史消息。
+- 缓存常见解释（PE / PEG / 美林时钟等通用术语）到 Redis。
 
-### 5.5 部署
-- 桌面：Tauri 自动更新（Updater）+ GitHub Releases 分发
-- 移动：Expo EAS Build → App Store / TestFlight / 国内应用市场
-- 后端：Supabase Cloud（起步阶段，月成本可控在 $25 内）
-- AI 网关：自建 Cloudflare Workers（鉴权、速率限制、用量统计）
+### 6.5 部署
+- 桌面：Tauri 自动更新（Updater）+ GitHub Releases 分发。
+- 移动：Expo EAS Build → App Store / TestFlight / 国内应用市场。
+- 后端：Supabase Cloud（起步阶段，月成本可控在 $25 内）。
+- AI 网关：自建 Cloudflare Workers（鉴权、速率限制、用量统计）。
 
 ---
 
-## 6. 系统架构
+## 7. 系统架构
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -250,15 +622,15 @@ type DraftItem = {
                                │
                        ┌───────▼────────────────┐
                        │ Anthropic Claude API   │
-                       │ OpenAI Embeddings      │
+                       │ Gemini Embedding 2     │
                        └────────────────────────┘
 ```
 
 ---
 
-## 7. 关键实现细节
+## 8. 关键实现细节
 
-### 7.1 Survey 候选生成（模板兜底 + AI 微调）
+### 8.1 Survey 候选生成（模板兜底 + AI 微调）
 ```
 1. 输入用户问题
 2. 用 keyword classifier 判断问题类型（决策类 / 研究类 / 学习类...）
@@ -267,7 +639,7 @@ type DraftItem = {
 5. 返回 5–7 个候选给用户勾选
 ```
 
-### 7.2 第一性原理拆解 Prompt
+### 8.2 第一性原理拆解 Prompt
 ```
 你是第一性原理思考教练。
 
@@ -293,7 +665,7 @@ type DraftItem = {
 }
 ```
 
-### 7.3 原子化检查器
+### 8.3 原子化检查器
 ```typescript
 // 调用 Claude Haiku
 async function checkAtomic(text: string): Promise<AtomicCheck> {
@@ -306,13 +678,14 @@ async function checkAtomic(text: string): Promise<AtomicCheck> {
 }
 ```
 
-### 7.4 网络图渲染（Cytoscape）
-- **布局**：根节点用 `preset` 固定中心，其余用 `cose-bilkent`（力导向 + 重力）
-- **折叠子树**：用 cytoscape-expand-collapse 插件，节点带 `+N` 徽章
-- **跨支语义边**：用 `taxi` 边样式 + CSS 动画 dashFlow
-- **大图性能**：>100 节点时启用 `headless` 模式 + LOD（level of detail）：远距离只显示节点不显示文字
+### 8.4 网络图渲染（Cytoscape）
+- **布局**：根节点用 `preset` 固定中心，其余用 `cose-bilkent`（力导向 + 重力）。
+- **折叠子树**：用 cytoscape-expand-collapse 插件，节点带 `+N` 徽章。
+- **跨支语义边**：用 `taxi` 边样式 + CSS 动画 dashFlow。
+- **卡点标记**：`hasOpenQuestions === true` 的节点显示红色角标。
+- **大图性能**：>100 节点时启用 `headless` 模式 + LOD（level of detail）：远距离只显示节点不显示文字。
 
-### 7.5 同步引擎（Yjs）
+### 8.5 同步引擎（Yjs）
 ```
 本地写入流程:
   1. UI 改动 → Zustand 更新
@@ -324,7 +697,7 @@ async function checkAtomic(text: string): Promise<AtomicCheck> {
 冲突解决: CRDT 自动处理，无需手动逻辑
 ```
 
-### 7.6 跨支语义关联（"全局总结"触发）
+### 8.6 跨支语义关联（"全局总结"触发）
 ```
 1. 取所有 status === 'summarized' 的 Topic 的 aiSummary（多模态附件也一并 embed）
 2. 批量计算 embedding（Gemini Embedding 2 batch API，省 50%）
@@ -334,7 +707,7 @@ async function checkAtomic(text: string): Promise<AtomicCheck> {
 6. 用户点击"接受"后 isUserConfirmed=true，固化到数据库
 ```
 
-### 7.7 决策汇报生成
+### 8.7 决策汇报生成
 ```
 1. 用户在某节点点「产出决策汇报」
 2. 后端 BFS 遍历该节点子树，收集：
@@ -347,9 +720,157 @@ async function checkAtomic(text: string): Promise<AtomicCheck> {
 6. 导出走 docx / pptx 模板引擎（同 Office 套件）
 ```
 
+### 8.8 思路复现（"上次回顾"卡片生成）
+```
+触发：用户重新打开一个 lastActivity 距今 > 24h 的 Topic
+
+1. 拉取该 Topic 的：
+   - reasoningTrace（已浓缩的推理路径）
+   - 所有 ThinkingSession（含每次会话的 aiRecap）
+   - 未 resolved 的 open_question（卡点）
+2. 拉取该 Topic 上次活跃后、用户其他对话里产生的、与之语义相关的新结论
+   （embedding 相似度 > 0.75）
+3. 单次 Claude Sonnet 调用，生成"上次回顾"卡片，结构固定四段：
+   - 起点：你从什么问题出发
+   - 路径：走过的 3–5 步推理（基于 reasoningTrace）
+   - 卡点：上次停在哪、卡在什么（基于 open_question）
+   - 新进展：期间有无相关新信息（基于第 2 步）
+4. 作为一条 type='replay_card' 的 Message 插入对话顶部
+5. 卡片末尾附「重新推理」按钮 → 触发苏格拉底追问者带着卡点重新展开
+
+reasoningTrace 维护：每次 ThinkingSession 结束（或用户点「总结」）时，
+Claude Haiku 增量更新 reasoningTrace —— 不重写，只追加/修订关键推理步骤。
+```
+
+### 8.9 专家组循环（§3.14 协议实现）
+
+```
+触发：用户在 Survey 确认某方向时
+
+1. 领域识别（Haiku JSON）
+   input : { topicTitle, parentContext }
+   output: { domain: string, confidence: number }
+
+2. 人格栈推荐（Sonnet）
+   input : { domain, frameworks }
+   output: { proposed: ExpertAgent[3..5] }
+   → 用户在 UI 编辑 / 确认 / 增删
+
+3. 四轮循环（每轮内 N 个 Panel 成员并行调用 Sonnet）
+
+   Round 1 (initial)
+     system = persona.systemPrompt
+     user   = 方向问题 + 上下文（不含其他专家发言）
+     → PanelExchange[]
+
+   Round 2 (critique)
+     user = 自己的 Round 1 + 其他人的 Round 1
+     prompt: "你会反驳/补充什么？"
+
+   Round 3 (refined)
+     user = 自己的 Round 1+2 + 其他人 Round 2 的质疑
+     prompt: "更新你的立场，明确哪些被说服、哪些坚持"
+
+   每轮末尾：收敛判官（Haiku）
+     - 计算 Round N 各专家立场两两 embedding 相似度
+       若 mean > 0.85 → stopSignalsHit += 'semantic_convergence'
+     - N ≥ 2 时，Haiku-as-judge 评 N vs N-1 综合改进分
+       若 score < 阈值 → stopSignalsHit += 'marginal_decay'
+     - N ≥ 5 → stopSignalsHit += 'max_rounds'
+     - 任一触发 → 跳到 Round 4
+
+   Round 4 (synthesis)
+     独立 Panel 主持人 Sonnet 调用
+     user = 全部 transcript
+     输出 LocalMaximumResult JSON
+
+4. 写回数据库
+   - ExpertPanel.localMaximum = result
+   - ExpertPanel.status       = 'converged'
+   - Topic.aiSummary          = bestAnswer
+   - Topic.reasoningTrace     = 摘要化 transcript
+   - openQuestions            → 自动创建 Comment.type='open_question'
+
+Token 预算（典型）：
+  4 专家 × 3 轮 × ~3k tokens + Round 4 综合 ~10k = ~46k Sonnet tokens / 方向
+  4 方向并行 ≈ ~180k tokens / 决策
+  按 Sonnet 4.6 $3/$15 计 → 约 $1.5–3 / 决策
+```
+
+### 8.10 思考快照：写入、检索、复用（§3.15 实现）
+
+**写入路径（触发：Topic.localMaximum 收敛）**
+
+```
+1. 快照策展员（Haiku）评估是否入库
+   - qualityScore > 阈值
+   - 至少 1 个原子动作落地
+   - 主持人 confidence > 0.6
+   不达标 → 跳过
+
+2. 自动脱敏（Sonnet）
+   - 去公司名、人名、内部代号
+   - 数字按数量级保留（"亿级"而非"3.7 亿"）
+   - 时间相对化（"2024 末高利率周期"而非"2024.12.15"）
+
+3. 用户确认脱敏结果（可手动修改）
+
+4. 默认 visibility = 'private'；用户可改 team / public
+
+5. 算 questionEmbedding（Gemini Embedding 2，768 维）
+
+6. 写入 Supabase + pgvector 索引
+```
+
+**检索路径（触发：用户提新问题，Survey 之前）**
+
+```
+1. 算新问题 embedding
+2. pgvector 召回 Top-50，cosine > 0.7
+3. 多维重排：
+     score = sim × 0.40
+           + qualityScore × 0.25
+           + freshness_decay(age) × 0.15
+           + contextMatch(industry, size, scale) × 0.20
+4. Top-3 候选展示
+5. 用户跳过 → 走正常 Survey 流程
+   用户选某条 → 进入复用适配
+```
+
+**复用适配（Sonnet，独立调用）**
+
+```
+输入：
+  - 老 Snapshot（question + directions + localMax）
+  - 新用户语境（industry / size / time / 问题措辞）
+
+输出 JSON：
+{
+  similarity: '高度相似' | '部分相似' | '仅启发性',
+  keepFrameworks: string[],      // 该保留的思维框架
+  rediscussDirections: string[], // 该重新讨论的方向
+  contextDifferences: string[],  // 关键语境差异
+  recommendedMode: 'as_is' | 'fork_adapt' | 'inspiration_only',
+  prefilledSurvey?: string[]     // 若 fork_adapt，预填的 Survey 维度
+}
+
+用户确认后：
+  - as_is：直接转结论到新 Topic 的 aiSummary
+  - fork_adapt：把 rediscussDirections 拉成新 Survey 选项，专家组只跑这些
+  - inspiration_only：老快照固定显示在侧栏，新 Topic 完全独立跑
+```
+
+**反哺循环**
+
+- 每次复用产生 `SnapshotReuse` 记录
+- 复用结束后请求用户评 `reuseRating`
+- > 3 星 → `snapshot.reuseStats.reusedCount++`
+- ≤ 2 星 → `downvoteCount++`，累计 3 次自动从 public 下架
+- private 快照不受社区评分影响，但用户自己可标记"以后别给我推这条"
+
 ---
 
-## 8. MVP 范围（V1）
+## 9. MVP 范围（V1）
 
 **必须做**：
 - ✅ 网络图视图（Cytoscape）
@@ -357,19 +878,25 @@ async function checkAtomic(text: string): Promise<AtomicCheck> {
 - ✅ Survey 卡片（模板兜底版本）
 - ✅ 第一性原理追问（Claude Sonnet）
 - ✅ 即时解释（Claude Haiku）
-- ✅ 四色备注 + 锚定
+- ✅ 五色备注 + 锚定（含卡点）
 - ✅ 子对话生成 + 折叠
 - ✅ 向上合并（AI 草稿 + 用户编辑）
 - ✅ @ 引用（不含反向引用）
 - ✅ 草稿区
 - ✅ 原子化检查器
+- ✅ **卡点标记 + "上次回顾"卡片（思路复现 MVP）**
+- ✅ **个人快照检索（思考资产化 V1）**：已完成 Topic 自动入私有索引；新问题先查"我以前怎么想的"
 - ✅ 决策汇报导出（Markdown 起步）
 - ✅ 桌面端（Tauri） + Mac 优先
 
 **V2 / Backlog**：
+- **专家组协议 + Local Maximum 判定（§3.14）**
+- **人格库系统（系统预置 + 用户自定义专家）**
+- **团队快照共享（企业版）+ 公共匿名快照索引 + 策展专家库（§3.15 V2–V4）**
 - 移动端（React Native）
 - 反向引用
-- 跨支语义关联自动建议
+- 跨支语义关联自动建议（AI 主动提示引用）
+- 思考时间线可视化
 - Word / PPT 模板导出
 - 多人协作
 - 移动端语音便签
@@ -377,35 +904,44 @@ async function checkAtomic(text: string): Promise<AtomicCheck> {
 
 ---
 
-## 9. 里程碑
+## 10. 里程碑
 
 | 阶段 | 时间 | 产出 |
 |---|---|---|
 | M0：原型确认 | 已完成 | HTML 交互原型 |
-| M1：核心闭环 | 4 周 | 桌面单机版，能跑通 Survey → 拆解 → 子对话 → 备注 → 决策汇报 |
-| M2：AI 打磨 | 2 周 | Prompt 优化，原子检查器准确率 > 85% |
+| M1：核心闭环 | 4 周 | 桌面单机版，跑通 Survey → 拆解 → 子对话 → 备注 → 卡点 → 上次回顾 → 决策汇报 |
+| M2：AI 打磨 | 2 周 | Prompt 优化，原子检查器准确率 > 85%，思路复现 eval |
 | M3：云同步 | 2 周 | Supabase 接入 + Yjs 同步 |
 | M4：移动端 | 4 周 | RN 只读版 + 语音便签 |
 | M5：公测 | 持续 | 邀请 10 位高管真实使用，迭代 |
 
 ---
 
-## 10. 风险与开放问题
+## 11. 风险与开放问题
 
 | 风险 | 应对 |
 |---|---|
-| AI 成本（Sonnet 调用频繁） | 严格区分 Sonnet/Haiku；缓存常见解释；@ 引用只取 summary |
+| AI 成本（Sonnet 调用频繁） | 严格区分 Sonnet/Haiku；缓存常见解释；@ 引用与思路复现只取浓缩字段 |
 | 网络图节点 100+ 性能 | Cytoscape headless + LOD；默认折叠到 2 层 |
 | 移动端体验受限 | 移动端定位为"输入终端"（语音便签 + 浏览），编辑能力降级 |
 | 第一性原理 Prompt 质量 | 准备 30 个真实决策问题做 eval；定期人工 review AI 输出 |
+| "思路复现"卡片质量 | reasoningTrace 需 AI 持续准确维护；"上次回顾"卡片用 eval 集验证"有没有真的帮用户接上思路" |
 | Yjs + Supabase 同步可靠性 | M3 阶段做压测；本地 SQLite 始终是 source of truth |
+| 竞品 FunBlocks 已有第一性原理 | 死守"AI 陪练 vs 代劳"差异；垂直决策场景 + 思路复现 + 执行落地形成组合护城河 |
+| 专家组 echo chamber（专家观点同源） | 协议强制必有"魔鬼代言人"角色；远期混用 Sonnet + Gemini + GPT 增加视角异质性 |
+| 专家组 Token 成本爆炸 | 默认 3 人栈，用户按需扩到 5；硬封顶 5 轮；Settings 提供"经济 / 平衡 / 深度"档位 |
+| Persona 幻觉（AI 假装专家在编） | 每个声明必须挂"依据"标签；远期接 RAG 接专业文档；盲评分数低于阈值的人格自动停用 |
+| 快照决策语境错配（A 公司答案用在 B 公司） | **强制走复用适配员**，禁止 as_is 用在战略级问题；UI 永远标"参考"不标"答案" |
+| 快照隐私泄漏 | 三层脱敏（AI + 用户 review + 法务条款）；public 默认关闭、每次显式 opt-in；战略级只允许 private/team |
+| 快照回声室（社区级决策同质化）| Top-3 多样性约束；UI 显示"已被参考 N 次"；AI 提示"你的情况可能不同" |
+| 快照过时（旧判断用在新环境） | 时效衰减函数 + UI 明显时间戳 + AI 标"这一条可能过时（关键事实变更）" |
 
 **待你拍板的开放问题**：
-1. **首发平台**：Mac 优先 vs Windows 优先 vs 同时？（我建议 Mac 优先，目标用户匹配）
+1. **首发平台**：Mac 优先 vs Windows 优先 vs 同时？（建议 Mac 优先，目标用户匹配）
 2. **AI 模型**：是否锁定 Claude？还是支持用户自己接 OpenAI / DeepSeek / 本地模型？
 3. **数据隐私**：决策内容敏感，是否需要"完全本地模式"（不上云、AI 走本地 LLM）？
-4. **MVP 是否需要登录**：单机版可以无账号，但失去同步能力；登录会增加上手成本
-5. **代码仓库结构**：单仓 monorepo 还是分仓？我建议 monorepo（pnpm workspace + Turborepo）
+4. **MVP 是否需要登录**：单机版可以无账号，但失去同步能力；登录会增加上手成本。
+5. **代码仓库结构**：单仓 monorepo 还是分仓？建议 monorepo（pnpm workspace + Turborepo）。
 
 ---
 
@@ -421,7 +957,7 @@ nodx/
 │       └── app/
 ├── packages/
 │   ├── models/           # 数据模型 + Zod 校验
-│   ├── ai/               # Claude / OpenAI 客户端 + Prompt 模板
+│   ├── ai/               # Claude / Gemini 客户端 + Prompt 模板
 │   ├── sync/             # Yjs Provider + Supabase 适配
 │   ├── store/            # Zustand stores
 │   ├── ui-core/          # 跨端 React 组件（NetworkGraph, ChatView 等）
@@ -460,4 +996,4 @@ nodx/
 
 ---
 
-**END of PRD v0.1**
+**END of PRD v0.5**

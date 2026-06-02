@@ -8,6 +8,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
+    "start": "concurrently -n gw,app -c blue,green --kill-others --handle-input \"pnpm --filter @nodx/ai-gateway dev\" \"wait-on -t 60000 tcp:8787 && pnpm desktop:dev\"",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
@@ -19,7 +20,9 @@
     "desktop:build": "pnpm --filter @nodx/desktop tauri build"
   },
   "devDependencies": {
+    "concurrently": "^9.1.0",
     "turbo": "^2.3.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "wait-on": "^8.0.1"
   }
 }

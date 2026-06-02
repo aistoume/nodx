@@ -69,10 +69,13 @@
   /* Graph view */
   #graph-view {
     flex-direction: column;
-    background: linear-gradient(135deg, #fafaf9 0%, #f0f4f8 100%);
+    background-color: #f7f7f4;
+    background-image: radial-gradient(#e0e0db 1.1px, transparent 1.1px);
+    background-size: 22px 22px;
     position: relative;
   }
   #network { flex: 1; width: 100%; cursor: grab; }
+  #network:active { cursor: grabbing; }
   .legend {
     position: absolute; bottom: 20px; left: 20px;
     background: var(--surface); border: 1px solid var(--border);
@@ -259,13 +262,17 @@
   }
 
   /* Network nodes */
-  .node rect { cursor: pointer; transition: filter 0.2s; }
-  .node:hover rect { filter: brightness(1.05); }
-  .node-label { font-size: 12px; pointer-events: none; }
-  .node-badge {
-    fill: var(--note-yellow-border); pointer-events: none;
-    font-size: 10px; font-weight: 600;
-  }
+  .node { cursor: pointer; }
+  .node .card-bg { transition: stroke-width 0.12s, filter 0.12s; }
+  .node:hover .card-bg { stroke-width: 2.6px; }
+  .node-label { font-size: 12.5px; pointer-events: none; }
+  .node-meta-label { font-size: 10px; pointer-events: none; fill: #9a9a96; }
+  .node-badge { fill: #fff; pointer-events: none; font-size: 10px; font-weight: 700; }
+  /* 横平竖直的连接线 */
+  .link { fill: none; }
+  .link-parent   { stroke: #c2c2bc; stroke-width: 1.6px; }
+  .link-ghost    { stroke: #d6d6d1; stroke-width: 1.4px; stroke-dasharray: 4 4; }
+  .link-semantic { stroke: #8B5CF6; stroke-width: 1.6px; stroke-dasharray: 6 4; }
 
   /* Toast */
   .toast {
@@ -317,9 +324,10 @@
       <small>10 个对话节点 · 1 个 AI 跨支建议关联</small>
     </div>
     <div class="graph-help">
-      💡 <strong>点击任意节点</strong>进入对话<br>
-      🖱️ 拖拽节点重排，滚轮缩放<br>
-      ⭕ 灰色节点 = Survey 没选的"幽灵"，可激活
+      💡 <strong>点击节点</strong>进入对话<br>
+      🖱️ 拖拽空白平移 · 滚轮缩放<br>
+      📐 横向树状布局，连线自动优化<br>
+      ⊹ 双击空白 = 适应窗口
     </div>
     <div class="legend">
       <span><span class="legend-dot" style="background:#3B82F6"></span>探索中</span>
@@ -540,131 +548,194 @@
     });
   });
 
-  // ========= D3 Network =========
+  // ========= 网络图：xmind 风格横向自动树 =========
   const svg = d3.select('#network');
   const container = svg.node().parentElement;
   let width = container.clientWidth;
   let height = container.clientHeight;
   svg.attr('width', width).attr('height', height);
 
-  const nodes = [
-    {id: 'root', label: '现在该投资股票吗？', status: 'exploring', isRoot: true},
-    {id: 'capital', label: '资金属性 & 承受能力', status: 'exploring'},
-    {id: 'timing', label: '当前市场时机', status: 'exploring', current: true, childCount: 2},
-    {id: 'purpose', label: '投资目的', status: 'exploring'},
-    {id: 'info', label: '信息优势', status: 'ghost'},
-    {id: 'liquidity', label: '流动性需求', status: 'ghost'},
-    {id: 'tax', label: '税务影响', status: 'ghost'},
-    {id: 'valuation', label: '估值水平', status: 'summarized'},
-    {id: 'cycle', label: '周期阶段', status: 'exploring'},
-    {id: 'risk', label: '最坏能亏多少？', status: 'atomic'},
-  ];
-  const links = [
-    {source: 'root', target: 'capital', type: 'parent'},
-    {source: 'root', target: 'timing', type: 'parent'},
-    {source: 'root', target: 'purpose', type: 'parent'},
-    {source: 'root', target: 'info', type: 'ghost'},
-    {source: 'root', target: 'liquidity', type: 'ghost'},
-    {source: 'root', target: 'tax', type: 'ghost'},
-    {source: 'timing', target: 'valuation', type: 'parent'},
-    {source: 'timing', target: 'cycle', type: 'parent'},
-    {source: 'capital', target: 'risk', type: 'parent'},
-    {source: 'valuation', target: 'cycle', type: 'semantic'},
-  ];
+  // 卡片阴影滤镜
+  const defs = svg.append('defs');
+  const shadow = defs.append('filter').attr('id', 'cardShadow')
+    .attr('x', '-20%').attr('y', '-30%').attr('width', '140%').attr('height', '180%');
+  shadow.append('feDropShadow')
+    .attr('dx', 0).attr('dy', 1).attr('stdDeviation', 2)
+    .attr('flood-color', '#000').attr('flood-opacity', 0.10);
 
-  function statusColor(s) {
-    return { exploring: '#3B82F6', summarized: '#10B981',
-             atomic: '#F59E0B', ghost: '#999' }[s];
+  // 节点 + 父子关系（树结构）
+  const rawNodes = [
+    {id: 'root',      label: '现在该投资股票吗？', status: 'root',       parent: null},
+    {id: 'capital',   label: '资金属性 & 承受能力', status: 'exploring',  parent: 'root'},
+    {id: 'timing',    label: '当前市场时机',       status: 'exploring',  parent: 'root', current: true},
+    {id: 'purpose',   label: '投资目的',           status: 'exploring',  parent: 'root'},
+    {id: 'valuation', label: '估值水平',           status: 'summarized', parent: 'timing'},
+    {id: 'cycle',     label: '周期阶段',           status: 'exploring',  parent: 'timing'},
+    {id: 'risk',      label: '最坏能亏多少？',     status: 'atomic',     parent: 'capital'},
+    {id: 'info',      label: '信息优势',           status: 'ghost',      parent: 'root'},
+    {id: 'liquidity', label: '流动性需求',         status: 'ghost',      parent: 'root'},
+    {id: 'tax',       label: '税务影响',           status: 'ghost',      parent: 'root'},
+  ];
+  // 跨支语义关联（非树边）
+  const semanticLinks = [{source: 'valuation', target: 'cycle'}];
+
+  const STATUS = {
+    root:       {bar: '#7da0c4', border: '#2C5282', bg: '#2C5282', text: '#fff'},
+    exploring:  {bar: '#3B82F6', border: '#cdd9ec', bg: '#fff',    text: '#1a1a1a'},
+    summarized: {bar: '#10B981', border: '#bfe6d4', bg: '#fff',    text: '#1a1a1a'},
+    atomic:     {bar: '#F59E0B', border: '#f0dcae', bg: '#fff',    text: '#1a1a1a'},
+    ghost:      {bar: '#b8b8b3', border: '#d8d8d3', bg: '#f1f1ee', text: '#9a9a96'},
+  };
+  const STATUS_LABEL = {
+    exploring: '探索中', summarized: '已总结',
+    atomic: '已得出原子动作', ghost: 'Survey 未选 · 可激活',
+  };
+
+  // 卡片尺寸
+  const NODE_W = 190, NODE_H = 52, ROOT_W = 212, ROOT_H = 60;
+  const nodeW = d => d.data.status === 'root' ? ROOT_W : NODE_W;
+  const nodeH = d => d.data.status === 'root' ? ROOT_H : NODE_H;
+
+  // 构建层级 + 横向树自动布局
+  const root = d3.stratify().id(d => d.id).parentId(d => d.parent)(rawNodes);
+  d3.tree()
+    .nodeSize([NODE_H + 24, NODE_W + 92])        // [垂直间距, 水平层距]
+    .separation((a, b) => a.parent === b.parent ? 1 : 1.3)(root);
+  // d3.tree 约定：d.x = 垂直坐标，d.y = 水平坐标（深度）
+
+  const nodeById = {};
+  root.descendants().forEach(d => nodeById[d.id] = d);
+
+  // 圆角直角连接线（横平竖直）
+  function elbow(s, t) {
+    const x1 = s.y + nodeW(s) / 2, y1 = s.x;     // 父节点右边缘中点
+    const x2 = t.y - nodeW(t) / 2, y2 = t.x;     // 子节点左边缘中点
+    const midX = x1 + (x2 - x1) / 2;
+    if (Math.abs(y2 - y1) < 0.5) return `M${x1},${y1}H${x2}`;
+    const dir = y2 > y1 ? 1 : -1;
+    const r = Math.min(10, Math.abs(y2 - y1) / 2, (x2 - x1) / 2);
+    return `M${x1},${y1}H${midX - r}`
+         + `Q${midX},${y1} ${midX},${y1 + dir * r}`
+         + `V${y2 - dir * r}`
+         + `Q${midX},${y2} ${midX + r},${y2}H${x2}`;
+  }
+  // 跨支语义曲线（右侧 C 形，区别于树边）
+  function semanticCurve(s, t) {
+    const x1 = s.y + nodeW(s) / 2, y1 = s.x;
+    const x2 = t.y + nodeW(t) / 2, y2 = t.x;
+    const b = 52;
+    return `M${x1},${y1}C${x1 + b},${y1} ${x2 + b},${y2} ${x2},${y2}`;
   }
 
-  const sim = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(d => d.id)
-      .distance(d => d.type === 'semantic' ? 220 : 140))
-    .force('charge', d3.forceManyBody().strength(-700))
-    .force('center', d3.forceCenter(width/2, height/2))
-    .force('collide', d3.forceCollide().radius(85));
+  // 可缩放容器
+  const viewport = svg.append('g');
+  const linkLayer = viewport.append('g');
+  const nodeLayer = viewport.append('g');
 
-  const linkSel = svg.append('g').selectAll('line')
-    .data(links).enter().append('line')
-    .attr('stroke', d => d.type === 'semantic' ? '#8B5CF6'
-                       : d.type === 'ghost' ? '#ccc' : '#bbb')
-    .attr('stroke-width', d => d.type === 'semantic' ? 2 : 1.5)
-    .attr('stroke-dasharray', d =>
-      d.type === 'ghost' ? '4,4' : d.type === 'semantic' ? '6,4' : null);
+  // 树连线
+  linkLayer.selectAll('path.tlink')
+    .data(root.links()).enter().append('path')
+    .attr('class', d => 'link ' +
+      (d.target.data.status === 'ghost' ? 'link-ghost' : 'link-parent'))
+    .attr('d', d => elbow(d.source, d.target));
 
-  const nodeSel = svg.append('g').selectAll('g')
-    .data(nodes).enter().append('g').attr('class', 'node')
-    .call(d3.drag()
-      .on('start', (e, d) => {
-        if (!e.active) sim.alphaTarget(0.3).restart();
-        d.fx = d.x; d.fy = d.y;
-      })
-      .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
-      .on('end', (e, d) => {
-        if (!e.active) sim.alphaTarget(0);
-        d.fx = null; d.fy = null;
-      }));
+  // 跨支语义连线
+  linkLayer.selectAll('path.slink')
+    .data(semanticLinks).enter().append('path')
+    .attr('class', 'link link-semantic')
+    .attr('d', d => semanticCurve(nodeById[d.source], nodeById[d.target]));
 
+  // 节点组
+  const nodeSel = nodeLayer.selectAll('g.node')
+    .data(root.descendants()).enter().append('g')
+    .attr('class', 'node')
+    .attr('transform', d => `translate(${d.y},${d.x})`);
+
+  // 卡片背景
   nodeSel.append('rect')
-    .attr('width', d => d.label.length * 13 + 32)
-    .attr('height', d => d.isRoot ? 50 : 38)
-    .attr('rx', d => d.isRoot ? 25 : 19)
-    .attr('x', d => -(d.label.length * 13 + 32)/2)
-    .attr('y', d => d.isRoot ? -25 : -19)
-    .attr('fill', d => d.isRoot ? '#2C5282'
-                     : d.status === 'ghost' ? '#f5f5f5' : '#fff')
-    .attr('stroke', d => statusColor(d.status))
-    .attr('stroke-width', d => d.current ? 3 : 2)
-    .attr('stroke-dasharray', d => d.status === 'ghost' ? '4,3' : null);
+    .attr('class', 'card-bg')
+    .attr('width', nodeW).attr('height', nodeH)
+    .attr('x', d => -nodeW(d) / 2).attr('y', d => -nodeH(d) / 2)
+    .attr('rx', 10)
+    .attr('fill', d => STATUS[d.data.status].bg)
+    .attr('stroke', d => d.data.current ? '#3B82F6' : STATUS[d.data.status].border)
+    .attr('stroke-width', d => d.data.current ? 2.5 : 1.6)
+    .attr('filter', d => d.data.status === 'ghost' ? null : 'url(#cardShadow)');
 
+  // 左侧状态色条（非 root）
+  nodeSel.filter(d => d.data.status !== 'root').append('rect')
+    .attr('width', 4).attr('height', NODE_H - 18)
+    .attr('x', -NODE_W / 2 + 9).attr('y', -(NODE_H - 18) / 2)
+    .attr('rx', 2)
+    .attr('fill', d => STATUS[d.data.status].bar);
+
+  // 标题
   nodeSel.append('text')
     .attr('class', 'node-label')
-    .attr('text-anchor', 'middle')
-    .attr('dy', 5)
-    .style('fill', d => d.isRoot ? 'white'
-                      : d.status === 'ghost' ? '#999' : '#1a1a1a')
-    .style('font-weight', d => d.isRoot ? '600' : '400')
-    .text(d => d.label);
+    .attr('x', d => -nodeW(d) / 2 + (d.data.status === 'root' ? 20 : 24))
+    .attr('y', d => d.data.status === 'root' ? 5 : -3)
+    .style('fill', d => STATUS[d.data.status].text)
+    .style('font-weight', d => d.data.status === 'root' ? '700' : '500')
+    .text(d => d.data.label);
 
-  // Atomic star icon
-  nodeSel.filter(d => d.status === 'atomic')
-    .append('text').attr('text-anchor', 'middle')
-    .attr('dy', -25).style('font-size', '14px').text('⭐');
+  // 副标题（状态文字，非 root）
+  nodeSel.filter(d => d.data.status !== 'root').append('text')
+    .attr('class', 'node-meta-label')
+    .attr('x', -NODE_W / 2 + 24).attr('y', 13)
+    .text(d => STATUS_LABEL[d.data.status]);
 
-  // Child count badge
-  nodeSel.filter(d => d.childCount > 0)
-    .append('circle').attr('r', 9).attr('cx', d => (d.label.length * 13 + 32)/2 - 4)
-    .attr('cy', -19).attr('fill', '#F59E0B');
-  nodeSel.filter(d => d.childCount > 0)
-    .append('text').attr('class', 'node-badge')
-    .attr('text-anchor', 'middle')
-    .attr('x', d => (d.label.length * 13 + 32)/2 - 4)
-    .attr('y', -16).style('fill', 'white')
-    .text(d => '+' + d.childCount);
+  // 原子动作星标
+  nodeSel.filter(d => d.data.status === 'atomic').append('text')
+    .attr('text-anchor', 'end')
+    .attr('x', NODE_W / 2 - 12).attr('y', -8)
+    .style('font-size', '12px').text('⭐');
 
-  // Click → enter dialog
+  // 子节点数量徽章（非 root 且有子节点）
+  nodeSel.filter(d => d.data.status !== 'root' && d.children && d.children.length)
+    .each(function(d) {
+      const g = d3.select(this), bx = NODE_W / 2;
+      g.append('circle').attr('cx', bx).attr('cy', 0).attr('r', 10)
+        .attr('fill', '#9aa0a6').attr('stroke', '#fff').attr('stroke-width', 1.5);
+      g.append('text').attr('class', 'node-badge')
+        .attr('text-anchor', 'middle').attr('x', bx).attr('y', 3.5)
+        .text(d.children.length);
+    });
+
+  // 点击进入对话
   nodeSel.on('click', (event, d) => {
-    if (d.status === 'ghost') {
-      showToast(`激活 "${d.label}"？这会创建一个新对话节点`);
+    if (d.data.status === 'ghost') {
+      showToast(`激活 "${d.data.label}"？这会把幽灵节点变为正式对话`);
       return;
     }
     document.querySelector('[data-view="dialog"]').click();
-    showToast(`进入对话: ${d.label}`);
+    showToast(`进入对话: ${d.data.label}`);
   });
 
-  sim.on('tick', () => {
-    linkSel
-      .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
-      .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
-    nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
-  });
+  // 缩放 + 平移
+  const zoom = d3.zoom().scaleExtent([0.35, 2])
+    .on('zoom', e => viewport.attr('transform', e.transform));
+  svg.call(zoom).on('dblclick.zoom', null);
+
+  // 适应窗口（自动居中 + 缩放）
+  function fitToView() {
+    const b = viewport.node().getBBox();
+    if (!b.width || !b.height) return;
+    const pad = 70;
+    const scale = Math.min((width - pad * 2) / b.width,
+                           (height - pad * 2) / b.height, 1.15);
+    const tx = (width - b.width * scale) / 2 - b.x * scale;
+    const ty = (height - b.height * scale) / 2 - b.y * scale;
+    svg.transition().duration(400)
+      .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+  }
+  fitToView();
+  svg.on('dblclick', fitToView);
 
   window.addEventListener('resize', () => {
     width = container.clientWidth;
     height = container.clientHeight;
     svg.attr('width', width).attr('height', height);
-    sim.force('center', d3.forceCenter(width/2, height/2));
-    sim.alpha(0.3).restart();
+    fitToView();
   });
 
   // ========= Anchor highlights =========

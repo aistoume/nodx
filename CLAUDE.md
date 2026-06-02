@@ -24,7 +24,7 @@
 
 ---
 
-## 3. 技术栈速查（详见 PRD §5）
+## 3. 技术栈速查（详见 PRD §6）
 
 ```
 桌面: Tauri 2.11+ (Rust + WebView)
@@ -85,7 +85,7 @@ nodx/
 
 **Week 1：脚手架 + 数据模型**
 - [ ] pnpm workspace + Turborepo 初始化
-- [ ] `packages/models` 实现核心类型（Topic / Message / Comment / Edge / DraftItem）
+- [ ] `packages/models` 实现核心类型（Topic / Message / Comment / ThinkingSession / Edge / DraftItem；Comment 含 open_question 卡点类型）
 - [ ] `apps/desktop` Tauri 项目脚手架
 - [ ] 本地 SQLite schema + migration（Tauri SQL Plugin）
 
@@ -182,14 +182,14 @@ nodx/
 
 或者更小颗粒度起步：
 
-> "请 Read PRD.md 第 4 节（数据模型）和第 5 节（技术选型），然后只做一件事：在当前目录初始化 pnpm workspace 和 Turborepo，创建 packages/models 的骨架（用 Zod 定义 Topic / Message / Comment / Edge / DraftItem 类型）。完成后我 review 再继续。"
+> "请 Read PRD.md 第 5 节（数据模型）和第 6 节（技术选型），然后只做一件事：在当前目录初始化 pnpm workspace 和 Turborepo，创建 packages/models 的骨架（用 Zod 定义 Topic / Message / Comment / ThinkingSession / Edge / DraftItem 类型）。完成后我 review 再继续。"
 
 ---
 
 ## 9. 当前项目状态
 
 - ✅ M0 原型确认（prototype.html）
-- ✅ PRD v0.2 完成（含 2026.5 技术选型校准）
+- ✅ PRD v0.5 完成（卖点章节 + 思路复现 + 专家组协议 + Local Maximum + 思考快照索引 + 2026.5 技术选型校准）
 - ✅ CLAUDE.md 工作上下文准备就绪
 - ⏳ M1 Week 1 待 Claude Code 接手开工
 
