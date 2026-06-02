@@ -116,6 +116,80 @@ CREATE TABLE topic_documents (
 );
 "#;
 
+/// Schema v4 — Expert Panel Protocol (PRD §3.14).
+///
+/// Adds the multi-agent debate scaffolding. Tables are normalised so
+/// individual exchanges can stream in as the AI generates them without
+/// re-writing a giant JSON blob on every step.
+///
+///   persona_templates  — reusable persona library
+///   expert_panels      — one per direction Topic (1:1). LocalMaximumResult
+///                        is flattened into this table (best_answer,
+///                        confidence, consensus_json, divergence_json,
+///                        open_questions_json, accepted_by_user, accepted_at)
+///                        because it's always 1:1 with the panel.
+///   panel_rounds       — one row per round (1–5)
+///   panel_exchanges    — one row per agent-utterance in a round
+///
+/// Field-name convention: snake_case in SQL, camelCase in Zod. Arrays /
+/// objects go in `*_json` TEXT columns and are JSON.parse'd at read time.
+/// Timestamps are INTEGER epoch-ms, matching v1.
+const V4_SQL: &str = r#"
+CREATE TABLE persona_templates (
+    id              TEXT PRIMARY KEY,
+    domain_json     TEXT NOT NULL DEFAULT '[]',
+    role            TEXT NOT NULL CHECK (role IN
+        ('proposer','critic','practitioner','constraint','user_proxy')),
+    display_name    TEXT NOT NULL CHECK (length(display_name) > 0),
+    system_prompt   TEXT NOT NULL CHECK (length(system_prompt) > 0),
+    frameworks_json TEXT NOT NULL DEFAULT '[]',
+    eval_score      REAL CHECK (eval_score IS NULL OR (eval_score >= 0 AND eval_score <= 1))
+);
+
+CREATE TABLE expert_panels (
+    id                   TEXT PRIMARY KEY,
+    topic_id             TEXT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    domain               TEXT NOT NULL CHECK (length(domain) > 0),
+    members_json         TEXT NOT NULL DEFAULT '[]',
+    status               TEXT NOT NULL CHECK (status IN
+        ('forming','debating','converged','rejected_by_user')),
+    -- LocalMaximumResult flattened (NULL until status='converged')
+    best_answer          TEXT,
+    confidence           REAL CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 1)),
+    consensus_json       TEXT,
+    divergence_json      TEXT,
+    open_questions_json  TEXT,
+    accepted_by_user     INTEGER CHECK (accepted_by_user IS NULL OR accepted_by_user IN (0, 1)),
+    accepted_at          INTEGER,
+    created_at           INTEGER NOT NULL,
+    updated_at           INTEGER NOT NULL
+);
+CREATE INDEX idx_expert_panels_topic ON expert_panels(topic_id);
+
+CREATE TABLE panel_rounds (
+    id                    TEXT PRIMARY KEY,
+    panel_id              TEXT NOT NULL REFERENCES expert_panels(id) ON DELETE CASCADE,
+    round_number          INTEGER NOT NULL CHECK (round_number BETWEEN 1 AND 5),
+    type                  TEXT NOT NULL CHECK (type IN
+        ('initial','critique','refined','synthesis')),
+    stop_signals_hit_json TEXT
+);
+CREATE INDEX idx_panel_rounds_panel ON panel_rounds(panel_id, round_number);
+
+CREATE TABLE panel_exchanges (
+    id              TEXT PRIMARY KEY,
+    round_id        TEXT NOT NULL REFERENCES panel_rounds(id) ON DELETE CASCADE,
+    -- agent_id refers to ExpertAgent.id inside expert_panels.members_json
+    -- (no FK — the agent lives inside a JSON blob, not its own table).
+    agent_id        TEXT NOT NULL,
+    content         TEXT NOT NULL CHECK (length(content) > 0),
+    citations_json  TEXT,
+    created_at      INTEGER NOT NULL
+);
+CREATE INDEX idx_panel_exchanges_round ON panel_exchanges(round_id);
+CREATE INDEX idx_panel_exchanges_agent ON panel_exchanges(agent_id);
+"#;
+
 pub fn all() -> Vec<Migration> {
     vec![
         Migration {
@@ -134,6 +208,12 @@ pub fn all() -> Vec<Migration> {
             version: 3,
             description: "topic_documents",
             sql: V3_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 4,
+            description: "expert_panel_protocol",
+            sql: V4_SQL,
             kind: MigrationKind::Up,
         },
     ]
