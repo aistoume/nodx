@@ -224,55 +224,133 @@ function TopicTree({
   onDelete: (id: string) => Promise<void> | void;
 }) {
   const tree = useMemo(() => buildTopicTree(topics), [topics]);
+
+  // child id → effective parent id (parent must still be in the active list).
+  const parentOf = useMemo(() => {
+    const validIds = new Set(topics.map((t) => t.id));
+    const m = new Map<string, string>();
+    for (const t of topics) {
+      if (t.parentId && validIds.has(t.parentId)) m.set(t.id, t.parentId);
+    }
+    return m;
+  }, [topics]);
+
+  // The set of topics that actually have children (i.e. are collapsible).
+  const collapsibleIds = useMemo(
+    () => new Set(parentOf.values()),
+    [parentOf],
+  );
+
+  // Collapsed parents. Default: everything expanded.
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  // Keep a selected topic visible: expand all of its ancestors.
+  useEffect(() => {
+    if (!selectedTopicId) return;
+    setCollapsed((prev) => {
+      if (prev.size === 0) return prev;
+      const ancestors: string[] = [];
+      let cur = selectedTopicId;
+      while (parentOf.has(cur)) {
+        cur = parentOf.get(cur)!;
+        ancestors.push(cur);
+      }
+      if (!ancestors.some((id) => prev.has(id))) return prev;
+      const next = new Set(prev);
+      for (const id of ancestors) next.delete(id);
+      return next;
+    });
+  }, [selectedTopicId, parentOf]);
+
+  const toggle = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const allCollapsed =
+    collapsibleIds.size > 0 &&
+    [...collapsibleIds].every((id) => collapsed.has(id));
+
   return (
-    <ul className="flex flex-col gap-0.5">
-      {tree.map((n) => (
-        <TopicTreeNode
-          key={n.topic.id}
-          node={n}
-          selectedTopicId={selectedTopicId}
-          onSelect={onSelect}
-          onArchive={onArchive}
-          onDelete={onDelete}
-        />
-      ))}
-    </ul>
+    <div className="flex flex-col gap-0.5">
+      {collapsibleIds.size > 0 && (
+        <button
+          type="button"
+          onClick={() =>
+            setCollapsed(allCollapsed ? new Set() : new Set(collapsibleIds))
+          }
+          className="self-end text-[10px] text-ink-muted hover:text-accent transition mb-0.5"
+        >
+          {allCollapsed ? '展开全部' : '折叠全部'}
+        </button>
+      )}
+      <ul className="flex flex-col gap-0.5">
+        {tree.map((n) => (
+          <TopicTreeNode
+            key={n.topic.id}
+            node={n}
+            collapsed={collapsed}
+            onToggle={toggle}
+            selectedTopicId={selectedTopicId}
+            onSelect={onSelect}
+            onArchive={onArchive}
+            onDelete={onDelete}
+          />
+        ))}
+      </ul>
+    </div>
   );
 }
 
 function TopicTreeNode({
   node,
+  collapsed,
+  onToggle,
   selectedTopicId,
   onSelect,
   onArchive,
   onDelete,
 }: {
   node: TreeNode;
+  collapsed: Set<string>;
+  onToggle: (id: string) => void;
   selectedTopicId: string | null;
   onSelect: (id: string) => void;
   onArchive: (id: string) => Promise<void> | void;
   onDelete: (id: string) => Promise<void> | void;
 }) {
+  const hasChildren = node.children.length > 0;
+  const isCollapsed = collapsed.has(node.topic.id);
   return (
     <>
       <TopicRow
         topic={node.topic}
         depth={node.depth}
+        hasChildren={hasChildren}
+        collapsed={isCollapsed}
+        onToggle={() => onToggle(node.topic.id)}
         selected={node.topic.id === selectedTopicId}
         onSelect={() => onSelect(node.topic.id)}
         onArchive={() => onArchive(node.topic.id)}
         onDelete={() => onDelete(node.topic.id)}
       />
-      {node.children.map((child) => (
-        <TopicTreeNode
-          key={child.topic.id}
-          node={child}
-          selectedTopicId={selectedTopicId}
-          onSelect={onSelect}
-          onArchive={onArchive}
-          onDelete={onDelete}
-        />
-      ))}
+      {hasChildren &&
+        !isCollapsed &&
+        node.children.map((child) => (
+          <TopicTreeNode
+            key={child.topic.id}
+            node={child}
+            collapsed={collapsed}
+            onToggle={onToggle}
+            selectedTopicId={selectedTopicId}
+            onSelect={onSelect}
+            onArchive={onArchive}
+            onDelete={onDelete}
+          />
+        ))}
     </>
   );
 }
@@ -280,6 +358,9 @@ function TopicTreeNode({
 function TopicRow({
   topic,
   depth,
+  hasChildren,
+  collapsed,
+  onToggle,
   selected,
   onSelect,
   onArchive,
@@ -287,64 +368,89 @@ function TopicRow({
 }: {
   topic: Topic;
   depth: number;
+  hasChildren: boolean;
+  collapsed: boolean;
+  onToggle: () => void;
   selected: boolean;
   onSelect: () => void;
   onArchive: () => void;
   onDelete: () => void;
 }) {
-  // Visual indent per nesting level. Children rows also get a left guide
-  // line so the tree shape reads at a glance.
+  // Indent per nesting level. The chevron (or leaf marker) lives in its own
+  // 16px column so the toggle is a real sibling button, not nested inside the
+  // row's select button.
   const isChild = depth > 0;
-  const paddingLeft = 10 + depth * 14;
+  const indent = depth * 14;
   return (
-    <li className="group relative rounded-md hover:bg-canvas">
+    <li
+      className={
+        'group relative rounded-md ' +
+        (selected ? 'bg-accent-tint' : 'hover:bg-canvas')
+      }
+    >
       {isChild && (
         <span
           aria-hidden
           className="absolute top-0 bottom-0 w-px bg-border/70"
-          style={{ left: paddingLeft - 6 }}
+          style={{ left: indent + 4 }}
         />
       )}
-      <button
-        type="button"
-        onClick={onSelect}
-        className={
-          'w-full text-left py-2 pr-20 rounded-md text-sm transition flex flex-col gap-0.5 ' +
-          (selected ? 'bg-accent-tint text-accent font-medium' : 'text-ink')
-        }
-        style={{ paddingLeft }}
-      >
-        <div className="truncate flex items-center gap-1">
-          {isChild && (
+      <div className="flex items-stretch">
+        <span style={{ width: indent }} className="shrink-0" aria-hidden />
+        <div className="w-6 shrink-0 flex items-center justify-center">
+          {hasChildren ? (
+            <button
+              type="button"
+              title={collapsed ? '展开子话题' : '折叠子话题'}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle();
+              }}
+              className={
+                'w-6 h-7 flex items-center justify-center rounded text-base leading-none hover:bg-border/60 hover:text-accent transition ' +
+                (selected ? 'text-accent' : 'text-ink-muted')
+              }
+            >
+              {collapsed ? '▸' : '▾'}
+            </button>
+          ) : isChild ? (
             <span
               aria-hidden
               className={
-                'shrink-0 text-[11px] ' +
+                'text-[11px] ' +
                 (selected ? 'text-accent/70' : 'text-ink-muted/60')
               }
             >
               ↳
             </span>
-          )}
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={onSelect}
+          className={
+            'flex-1 min-w-0 text-left py-2 pr-20 pl-1 rounded-md text-sm transition flex flex-col gap-0.5 ' +
+            (selected ? 'text-accent font-medium' : 'text-ink')
+          }
+        >
           <span className="truncate">{topic.title}</span>
-        </div>
-        <div className="flex items-center gap-2 text-[11px]">
-          <StatusBadge status={topic.status} />
-          <span className={selected ? 'text-accent/70' : 'text-ink-muted'}>
-            {topic.meta.messageCount} 条
-          </span>
-          {topic.meta.childCount > 0 && (
-            <span
-              className={
-                selected ? 'text-accent/70' : 'text-ink-muted'
-              }
-              title={`${topic.meta.childCount} 个子话题`}
-            >
-              · {topic.meta.childCount} 子
+          <div className="flex items-center gap-2 text-[11px]">
+            <StatusBadge status={topic.status} />
+            <span className={selected ? 'text-accent/70' : 'text-ink-muted'}>
+              {topic.meta.messageCount} 条
             </span>
-          )}
-        </div>
-      </button>
+            {topic.meta.childCount > 0 && (
+              <span
+                className={selected ? 'text-accent/70' : 'text-ink-muted'}
+                title={`${topic.meta.childCount} 个子话题`}
+              >
+                · {topic.meta.childCount} 子
+                {collapsed ? '（已折叠）' : ''}
+              </span>
+            )}
+          </div>
+        </button>
+      </div>
       <div className="absolute right-1 top-1.5 flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
         <PrimaryAction
           label="归档"

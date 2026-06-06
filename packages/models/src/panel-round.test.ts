@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PanelExchange } from './panel-exchange.js';
 import {
+  MAX_PANEL_ROUNDS,
   PanelRoundNumberSchema,
   PanelRoundSchema,
   PanelRoundTypeSchema,
@@ -56,15 +57,16 @@ describe('PanelStopSignalSchema', () => {
 });
 
 describe('PanelRoundNumberSchema', () => {
-  it('accepts 1 through 5', () => {
-    for (const n of [1, 2, 3, 4, 5] as const) {
+  it('accepts 1 through MAX_PANEL_ROUNDS', () => {
+    for (const n of [1, 3, 5, 8, MAX_PANEL_ROUNDS]) {
       expect(PanelRoundNumberSchema.parse(n)).toBe(n);
     }
   });
 
-  it('rejects 0 and 6', () => {
+  it('rejects 0, a non-integer, and above the ceiling', () => {
     expect(() => PanelRoundNumberSchema.parse(0)).toThrow();
-    expect(() => PanelRoundNumberSchema.parse(6)).toThrow();
+    expect(() => PanelRoundNumberSchema.parse(2.5)).toThrow();
+    expect(() => PanelRoundNumberSchema.parse(MAX_PANEL_ROUNDS + 1)).toThrow();
   });
 });
 
@@ -90,9 +92,12 @@ describe('PanelRoundSchema', () => {
     ).toEqual({ ...validRound, exchanges: [] });
   });
 
-  it('rejects roundNumber out of [1, 5]', () => {
+  it('rejects roundNumber out of [1, MAX_PANEL_ROUNDS]', () => {
     expect(() =>
-      PanelRoundSchema.parse({ ...validRound, roundNumber: 6 }),
+      PanelRoundSchema.parse({
+        ...validRound,
+        roundNumber: MAX_PANEL_ROUNDS + 1,
+      }),
     ).toThrow();
     expect(() =>
       PanelRoundSchema.parse({ ...validRound, roundNumber: 0 }),

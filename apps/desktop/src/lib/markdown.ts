@@ -16,3 +16,12 @@ export function markdownToHtml(md: string): string {
   const out = marked.parse(md, { async: false }) as string;
   return out;
 }
+
+/**
+ * Inline-only variant — renders emphasis / code / links but NOT block
+ * elements (no wrapping <p>, <ul>, headings). Use inside list items or
+ * spans where a block <p> would add unwanted margins.
+ */
+export function markdownToInlineHtml(md: string): string {
+  return marked.parseInline(md, { async: false }) as string;
+}

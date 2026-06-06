@@ -190,6 +190,135 @@ CREATE INDEX idx_panel_exchanges_round ON panel_exchanges(round_id);
 CREATE INDEX idx_panel_exchanges_agent ON panel_exchanges(agent_id);
 "#;
 
+/// Schema v5 — raise the debate round ceiling (PRD §3.14 "硬上限" made
+/// configurable). v4 pinned `panel_rounds.round_number` to `BETWEEN 1 AND 5`;
+/// the engine can now run more refinement rounds (the `@nodx/models` schema
+/// owns the real cap, MAX_PANEL_ROUNDS). SQLite can't ALTER a CHECK, so we
+/// rebuild the table with a looser `round_number >= 1` guard.
+///
+/// The child `panel_exchanges` is rebuilt alongside so the rebuild is
+/// foreign-key-safe: at no point does a live FK point at rows we delete, so
+/// nothing cascade-deletes. The final `RENAME` re-points the new exchanges
+/// table's FK onto `panel_rounds` (SQLite updates references on rename).
+/// Existing rounds/exchanges are copied over intact.
+const V5_SQL: &str = r#"
+CREATE TABLE _panel_rounds_v5 (
+    id                    TEXT PRIMARY KEY,
+    panel_id              TEXT NOT NULL REFERENCES expert_panels(id) ON DELETE CASCADE,
+    round_number          INTEGER NOT NULL CHECK (round_number >= 1),
+    type                  TEXT NOT NULL CHECK (type IN
+        ('initial','critique','refined','synthesis')),
+    stop_signals_hit_json TEXT
+);
+INSERT INTO _panel_rounds_v5 (id, panel_id, round_number, type, stop_signals_hit_json)
+    SELECT id, panel_id, round_number, type, stop_signals_hit_json FROM panel_rounds;
+
+CREATE TABLE _panel_exchanges_v5 (
+    id              TEXT PRIMARY KEY,
+    round_id        TEXT NOT NULL REFERENCES _panel_rounds_v5(id) ON DELETE CASCADE,
+    agent_id        TEXT NOT NULL,
+    content         TEXT NOT NULL CHECK (length(content) > 0),
+    citations_json  TEXT,
+    created_at      INTEGER NOT NULL
+);
+INSERT INTO _panel_exchanges_v5 (id, round_id, agent_id, content, citations_json, created_at)
+    SELECT id, round_id, agent_id, content, citations_json, created_at FROM panel_exchanges;
+
+DROP TABLE panel_exchanges;
+DROP TABLE panel_rounds;
+
+ALTER TABLE _panel_rounds_v5 RENAME TO panel_rounds;
+ALTER TABLE _panel_exchanges_v5 RENAME TO panel_exchanges;
+
+CREATE INDEX idx_panel_rounds_panel ON panel_rounds(panel_id, round_number);
+CREATE INDEX idx_panel_exchanges_round ON panel_exchanges(round_id);
+CREATE INDEX idx_panel_exchanges_agent ON panel_exchanges(agent_id);
+"#;
+
+/// Schema v6 — CBR pipeline write path (PRD §3.16 / §3.18).
+///
+/// Stores the de-identified, abstracted cases distilled from Topics that
+/// reached localMaximum, plus the case-to-case relation edges (simplified
+/// GraphRAG). This is the LOCAL SQLite shape; the PRD's §3.16 index list
+/// (pgvector HNSW on the embeddings, FTS GIN on the text) targets the M3
+/// Supabase/Postgres port. On SQLite we approximate:
+///   - embeddings: BLOB (Float32 LE, 768 dims each) — brute-force scan in V1
+///     (no native vector index); HNSW lands with Supabase.
+///   - keyword index: FTS5 (trigram tokenizer — substring-friendly for CJK),
+///     SQLite's equivalent of Postgres FTS GIN, kept in sync via triggers.
+///   - scalar filters: B-tree on domain / quality_score / freshness_date.
+///   - relations: composite index for the recursive-CTE 2-hop queries.
+///
+/// Retrieval is NOT built in this migration — only the write path needs it.
+const V6_SQL: &str = r#"
+CREATE TABLE abstracted_cases (
+    id                     TEXT PRIMARY KEY,
+    source_topic_id        TEXT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    -- structured AI output (problemSignature / reasoningPath / solutionPattern / outcome)
+    problem_signature_json TEXT NOT NULL,
+    reasoning_path_json    TEXT NOT NULL,
+    solution_pattern_json  TEXT NOT NULL,
+    outcome_json           TEXT NOT NULL,
+    -- text-ified signature/solution that get embedded + full-text indexed
+    signature_text         TEXT NOT NULL,
+    solution_text          TEXT NOT NULL,
+    -- 2 × 768-dim Gemini Embedding 2, Float32 little-endian (3072 bytes each)
+    problem_emb            BLOB NOT NULL,
+    solution_emb           BLOB NOT NULL,
+    -- denormalised scalar filters (B-tree indexed below)
+    domain                 TEXT NOT NULL,
+    decision_type          TEXT NOT NULL CHECK (decision_type IN
+        ('go_no_go','allocation','sequencing','tradeoff')),
+    quality_score          REAL NOT NULL CHECK (quality_score >= 0 AND quality_score <= 1),
+    visibility             TEXT NOT NULL CHECK (visibility IN
+        ('private','team','public_anonymous')),
+    freshness_date         INTEGER NOT NULL,
+    created_at             INTEGER NOT NULL
+);
+CREATE INDEX idx_cases_domain ON abstracted_cases(domain);
+CREATE INDEX idx_cases_quality ON abstracted_cases(quality_score);
+CREATE INDEX idx_cases_freshness ON abstracted_cases(freshness_date);
+
+-- Postgres FTS GIN equivalent: FTS5 over the text-ified signature/solution.
+-- trigram tokenizer gives substring matching that works for Chinese (no
+-- word boundaries). Standalone table mapped back to a case by case_id;
+-- kept in sync by triggers so the write path never has to touch it directly.
+CREATE VIRTUAL TABLE abstracted_cases_fts USING fts5(
+    case_id UNINDEXED,
+    signature_text,
+    solution_text,
+    tokenize = 'trigram'
+);
+CREATE TRIGGER trg_cases_fts_insert AFTER INSERT ON abstracted_cases BEGIN
+    INSERT INTO abstracted_cases_fts (case_id, signature_text, solution_text)
+    VALUES (NEW.id, NEW.signature_text, NEW.solution_text);
+END;
+CREATE TRIGGER trg_cases_fts_delete AFTER DELETE ON abstracted_cases BEGIN
+    DELETE FROM abstracted_cases_fts WHERE case_id = OLD.id;
+END;
+CREATE TRIGGER trg_cases_fts_update AFTER UPDATE ON abstracted_cases BEGIN
+    UPDATE abstracted_cases_fts
+    SET signature_text = NEW.signature_text, solution_text = NEW.solution_text
+    WHERE case_id = NEW.id;
+END;
+
+CREATE TABLE case_relations (
+    id              TEXT PRIMARY KEY,
+    source_case_id  TEXT NOT NULL REFERENCES abstracted_cases(id) ON DELETE CASCADE,
+    target_case_id  TEXT NOT NULL REFERENCES abstracted_cases(id) ON DELETE CASCADE,
+    relation_type   TEXT NOT NULL CHECK (relation_type IN
+        ('shares_framework','shares_domain','contrasts','composed_from','caused_by')),
+    weight          REAL NOT NULL CHECK (weight >= 0 AND weight <= 1),
+    created_at      INTEGER NOT NULL,
+    CHECK (source_case_id != target_case_id),
+    UNIQUE (source_case_id, target_case_id, relation_type)
+);
+-- Composite for the forward recursive-CTE traversal (WHERE source + type);
+-- a target index supports reverse / bidirectional walks.
+CREATE INDEX idx_case_relations_src ON case_relations(source_case_id, target_case_id, relation_type);
+CREATE INDEX idx_case_relations_tgt ON case_relations(target_case_id);
+"#;
+
 pub fn all() -> Vec<Migration> {
     vec![
         Migration {
@@ -214,6 +343,18 @@ pub fn all() -> Vec<Migration> {
             version: 4,
             description: "expert_panel_protocol",
             sql: V4_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 5,
+            description: "relax_panel_round_number_ceiling",
+            sql: V5_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 6,
+            description: "cbr_abstracted_cases_and_relations",
+            sql: V6_SQL,
             kind: MigrationKind::Up,
         },
     ]

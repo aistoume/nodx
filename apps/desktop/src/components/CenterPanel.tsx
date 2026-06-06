@@ -22,6 +22,7 @@ import { createTopic } from '../db/topics.js';
 import { markdownToHtml } from '../lib/markdown.js';
 import { ChatComposer, ChatThread } from './ChatThread.js';
 import { DocumentView } from './DocumentView.js';
+import { ExpertPanelView } from './panel/ExpertPanelView.js';
 import { SpawnChildButton } from './SpawnChildButton.js';
 import { SurveyCard } from './SurveyCard.js';
 
@@ -72,6 +73,9 @@ function Conversation({
   onMutated: () => void;
   onSelectTopic: (id: string) => void;
 }) {
+  // Center surface: the per-topic thinking document vs the expert-panel
+  // debate. They coexist on the same topic; the user toggles between them.
+  const [centerMode, setCenterMode] = useState<'doc' | 'panel'>('doc');
   const [messages, setMessages] = useState<Message[]>([]);
   const [document, setDocument] = useState<TopicDocument | null>(null);
   const [loading, setLoading] = useState(true);
@@ -297,21 +301,31 @@ function Conversation({
     onMutated();
   };
 
-  // Prefer doc view whenever a doc exists.
+  // Prefer doc view whenever a doc exists — and offer the expert-panel
+  // surface alongside it via the mode toggle.
   if (document) {
     const chatMessages = messages.filter((m) => m.type === 'text');
     const anchorableComments = comments.filter(
       (c) => c.type === 'note' || c.type === 'explanation',
     );
     return (
-      <DocumentView
-        topic={topic}
-        initialHtml={document.content}
-        chatMessages={chatMessages}
-        anchorableComments={anchorableComments}
-        onMutated={handleDocViewMutated}
-        onSelectTopic={onSelectTopic}
-      />
+      <div className="flex flex-col h-full overflow-hidden">
+        <CenterModeTabs mode={centerMode} onChange={setCenterMode} />
+        <div className="flex-1 min-h-0">
+          {centerMode === 'panel' ? (
+            <ExpertPanelView topic={topic} onMutated={handleDocViewMutated} />
+          ) : (
+            <DocumentView
+              topic={topic}
+              initialHtml={document.content}
+              chatMessages={chatMessages}
+              anchorableComments={anchorableComments}
+              onMutated={handleDocViewMutated}
+              onSelectTopic={onSelectTopic}
+            />
+          )}
+        </div>
+      </div>
     );
   }
 
@@ -424,6 +438,37 @@ function Conversation({
         }
       />
     </main>
+  );
+}
+
+function CenterModeTabs({
+  mode,
+  onChange,
+}: {
+  mode: 'doc' | 'panel';
+  onChange: (m: 'doc' | 'panel') => void;
+}) {
+  const tab = (key: 'doc' | 'panel', label: string) => (
+    <button
+      type="button"
+      onClick={() => onChange(key)}
+      className={
+        'px-3 py-1 text-xs font-medium rounded-md transition ' +
+        (mode === key
+          ? 'bg-accent text-white'
+          : 'text-ink-muted hover:text-ink')
+      }
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div className="shrink-0 border-b border-border bg-surface px-8 py-2">
+      <div className="max-w-3xl mx-auto flex items-center gap-1">
+        {tab('doc', '📄 文档')}
+        {tab('panel', '🎙 专家组')}
+      </div>
+    </div>
   );
 }
 

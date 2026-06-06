@@ -13,3 +13,8 @@ export * from './panel-exchange.js';
 export * from './panel-round.js';
 export * from './local-maximum.js';
 export * from './expert-panel.js';
+
+// CBR pipeline (PRD §3.16 / §3.18)
+export * from './abstracted-case.js';
+export * from './case-relation.js';
+export * from './adapted-solution.js';

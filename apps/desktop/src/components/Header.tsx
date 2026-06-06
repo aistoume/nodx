@@ -1,4 +1,4 @@
-type View = 'dialog' | 'graph';
+type View = 'dialog' | 'graph' | 'cases';
 
 interface HeaderProps {
   view: View;
@@ -22,6 +22,11 @@ export function Header({ view, onViewChange }: HeaderProps) {
           label="网络图"
           active={view === 'graph'}
           onClick={() => onViewChange('graph')}
+        />
+        <ViewTab
+          label="案例库"
+          active={view === 'cases'}
+          onClick={() => onViewChange('cases')}
         />
       </nav>
       <button

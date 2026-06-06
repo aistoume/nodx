@@ -1,8 +1,11 @@
 import { AnthropicError, callAnthropic } from './anthropic.js';
+import { GeminiError, callGeminiEmbed } from './gemini.js';
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
   CLIENT_TOKEN: string;
+  /** Google AI-Studio key — only needed for /v1/embed (CBR indexing). */
+  GEMINI_API_KEY?: string;
 }
 
 interface CompleteRequestBody {
@@ -12,6 +15,7 @@ interface CompleteRequestBody {
   system?: unknown;
   temperature?: unknown;
   enable_web_search?: unknown;
+  assistant_prefill?: unknown;
 }
 
 const ALLOWED_MODELS = new Set([
@@ -46,6 +50,10 @@ export default {
 
     if (url.pathname === '/v1/complete' && req.method === 'POST') {
       return handleComplete(req, env);
+    }
+
+    if (url.pathname === '/v1/embed' && req.method === 'POST') {
+      return handleEmbed(req, env);
     }
 
     return json({ error: 'not found', path: url.pathname }, 404);
@@ -88,6 +96,7 @@ async function handleComplete(req: Request, env: Env): Promise<Response> {
     system,
     temperature,
     enableWebSearch,
+    assistantPrefill,
   } = validation;
 
   try {
@@ -99,6 +108,7 @@ async function handleComplete(req: Request, env: Env): Promise<Response> {
       system,
       temperature,
       enableWebSearch,
+      assistantPrefill,
     });
     return json(result);
   } catch (err) {
@@ -121,6 +131,68 @@ async function handleComplete(req: Request, env: Env): Promise<Response> {
   }
 }
 
+interface EmbedRequestBody {
+  texts?: unknown;
+  model?: unknown;
+}
+
+const ALLOWED_EMBED_MODELS = new Set(['gemini-embedding-2', 'gemini-embedding-001']);
+const MAX_EMBED_BATCH = 32;
+
+async function handleEmbed(req: Request, env: Env): Promise<Response> {
+  if (!env.CLIENT_TOKEN) {
+    return json({ error: 'gateway not configured — CLIENT_TOKEN must be set' }, 500);
+  }
+  if (!env.GEMINI_API_KEY) {
+    return json(
+      { error: 'embeddings not configured — GEMINI_API_KEY must be set on the worker' },
+      500,
+    );
+  }
+
+  const auth = req.headers.get('authorization') ?? '';
+  if (!constantTimeEquals(auth, `Bearer ${env.CLIENT_TOKEN}`)) {
+    return json({ error: 'unauthorized' }, 401);
+  }
+
+  let body: EmbedRequestBody;
+  try {
+    body = (await req.json()) as EmbedRequestBody;
+  } catch {
+    return json({ error: 'invalid json' }, 400);
+  }
+
+  if (
+    !Array.isArray(body.texts) ||
+    body.texts.length === 0 ||
+    !body.texts.every((t) => typeof t === 'string' && t.length > 0)
+  ) {
+    return json({ error: 'texts must be a non-empty array of non-empty strings' }, 400);
+  }
+  if (body.texts.length > MAX_EMBED_BATCH) {
+    return json({ error: `too many texts (>${MAX_EMBED_BATCH})` }, 400);
+  }
+  if (body.model !== undefined && (typeof body.model !== 'string' || !ALLOWED_EMBED_MODELS.has(body.model))) {
+    return json({ error: `model must be one of: ${[...ALLOWED_EMBED_MODELS].join(', ')}` }, 400);
+  }
+
+  try {
+    const result = await callGeminiEmbed({
+      apiKey: env.GEMINI_API_KEY,
+      texts: body.texts as string[],
+    });
+    return json(result);
+  } catch (err) {
+    if (err instanceof GeminiError) {
+      return json(
+        { error: err.message, upstream: safeParse(err.upstreamBody) },
+        err.status === 429 ? 429 : 502,
+      );
+    }
+    return json({ error: err instanceof Error ? err.message : String(err) }, 500);
+  }
+}
+
 interface ValidatedComplete {
   model: string;
   prompt: string;
@@ -128,6 +200,7 @@ interface ValidatedComplete {
   system: string | undefined;
   temperature: number | undefined;
   enableWebSearch: boolean;
+  assistantPrefill: string | undefined;
 }
 
 function validateCompleteBody(
@@ -165,6 +238,19 @@ function validateCompleteBody(
 
   const enableWebSearch = body.enable_web_search === true;
 
+  let assistantPrefill: string | undefined;
+  if (body.assistant_prefill !== undefined) {
+    if (typeof body.assistant_prefill !== 'string') {
+      return { error: 'assistant_prefill must be a string' };
+    }
+    if (body.assistant_prefill.length > 200_000) {
+      return { error: 'assistant_prefill too long (>200k chars)' };
+    }
+    // Empty prefill means "no continuation" — normalise to undefined.
+    assistantPrefill =
+      body.assistant_prefill.length > 0 ? body.assistant_prefill : undefined;
+  }
+
   return {
     model: body.model,
     prompt: body.prompt,
@@ -172,6 +258,7 @@ function validateCompleteBody(
     system,
     temperature,
     enableWebSearch,
+    assistantPrefill,
   };
 }
 

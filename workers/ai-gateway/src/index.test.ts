@@ -331,6 +331,77 @@ describe('POST /v1/complete', () => {
   });
 });
 
+describe('POST /v1/embed', () => {
+  const EMBED_ENV: Env = { ...ENV, GEMINI_API_KEY: 'gem-test' };
+  const dim = 768;
+  const vec = (n: number) => Array.from({ length: dim }, () => n);
+
+  function postEmbed(
+    body: unknown,
+    headers: Record<string, string> = { authorization: 'Bearer tok' },
+    env: Env = EMBED_ENV,
+  ): Promise<Response> {
+    return call(
+      new Request('http://w/v1/embed', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...headers },
+        body: JSON.stringify(body),
+      }),
+      env,
+    );
+  }
+
+  it('rejects missing bearer with 401', async () => {
+    const res = await postEmbed({ texts: ['hi'] }, {});
+    expect(res.status).toBe(401);
+  });
+
+  it('500 when GEMINI_API_KEY is missing', async () => {
+    const res = await postEmbed({ texts: ['hi'] }, { authorization: 'Bearer tok' }, ENV);
+    expect(res.status).toBe(500);
+  });
+
+  it('400 on empty texts', async () => {
+    const res = await postEmbed({ texts: [] });
+    expect(res.status).toBe(400);
+  });
+
+  it('400 on unknown model', async () => {
+    const res = await postEmbed({ texts: ['hi'], model: 'ada-002' });
+    expect(res.status).toBe(400);
+  });
+
+  it('batches to Gemini and returns embeddings in order', async () => {
+    vi.stubGlobal('fetch', async (input: unknown, init?: RequestInit) => {
+      expect(String(input)).toContain('batchEmbedContents');
+      const reqBody = JSON.parse(String(init!.body)) as {
+        requests: Array<{ outputDimensionality: number }>;
+      };
+      expect(reqBody.requests).toHaveLength(2);
+      expect(reqBody.requests[0]!.outputDimensionality).toBe(768);
+      return new Response(
+        JSON.stringify({ embeddings: [{ values: vec(0.1) }, { values: vec(0.2) }] }),
+      );
+    });
+    const res = await postEmbed({ texts: ['a', 'b'] });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { embeddings: number[][]; model: string };
+    expect(body.embeddings).toHaveLength(2);
+    expect(body.embeddings[0]).toHaveLength(768);
+    expect(body.model).toBe('gemini-embedding-001');
+  });
+
+  it('502 when Gemini returns the wrong dimensionality', async () => {
+    vi.stubGlobal(
+      'fetch',
+      async () =>
+        new Response(JSON.stringify({ embeddings: [{ values: [1, 2, 3] }] })),
+    );
+    const res = await postEmbed({ texts: ['a'] });
+    expect(res.status).toBe(502);
+  });
+});
+
 describe('unknown route', () => {
   it('404s', async () => {
     const res = await call(new Request('http://w/v1/something'));
