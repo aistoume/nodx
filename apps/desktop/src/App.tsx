@@ -6,10 +6,13 @@ import { CenterPanel } from './components/CenterPanel.js';
 import { RightPanel } from './components/RightPanel.js';
 import { ExplainTrigger } from './components/ExplainTrigger.js';
 import { NetworkGraphView } from './components/NetworkGraphView.js';
+import { CaseSearchView } from './components/cbr/CaseSearchView.js';
 import { listArchivedTopics, listTopics } from './db/topics.js';
 import { listComments } from './db/comments.js';
+import { registerPanelDevTrigger } from './ai/panel.js';
+import { registerCbrDevTrigger } from './ai/cbr.js';
 
-type View = 'dialog' | 'graph';
+type View = 'dialog' | 'graph' | 'cases';
 
 export function App() {
   const [view, setView] = useState<View>('dialog');
@@ -73,6 +76,15 @@ export function App() {
     void refreshComments();
   }, [refreshComments]);
 
+  // Expert Panel has no UI yet — expose window.__nodxRunPanel(topicId) in
+  // dev so the debate engine can be driven + inspected from the console.
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      registerPanelDevTrigger();
+      registerCbrDevTrigger();
+    }
+  }, []);
+
   const selectedTopic = useMemo(
     () =>
       selectedTopicId
@@ -99,39 +111,53 @@ export function App() {
           'grid flex-1 min-h-0 ' +
           (view === 'dialog'
             ? 'grid-cols-[240px_1fr_340px]'
-            : 'grid-cols-[240px_1fr]')
+            : view === 'graph'
+              ? 'grid-cols-[240px_1fr]'
+              : 'grid-cols-[1fr]')
         }
       >
-        <LeftPanel
-          topics={topics}
-          archivedTopics={archivedTopics}
-          loading={loading}
-          loadError={loadError}
-          selectedTopicId={selectedTopicId}
-          onSelectTopic={setSelectedTopicId}
-          onMutated={refreshAll}
-        />
-        {view === 'dialog' ? (
-          <>
-            <CenterPanel
-              topic={selectedTopic}
-              comments={comments}
-              onMutated={refreshAll}
-              onSelectTopic={setSelectedTopicId}
-            />
-            <RightPanel
-              topic={selectedTopic}
-              comments={comments}
-              onMutated={refreshAll}
-            />
-          </>
-        ) : (
-          <NetworkGraphView
-            topics={topics}
-            selectedTopicId={selectedTopicId}
-            onSelectTopic={setSelectedTopicId}
-            onSwitchToDialog={() => setView('dialog')}
+        {view === 'cases' ? (
+          <CaseSearchView
+            onOpenTopic={(id) => {
+              setSelectedTopicId(id);
+              setView('dialog');
+              void refreshTopics();
+            }}
           />
+        ) : (
+          <>
+            <LeftPanel
+              topics={topics}
+              archivedTopics={archivedTopics}
+              loading={loading}
+              loadError={loadError}
+              selectedTopicId={selectedTopicId}
+              onSelectTopic={setSelectedTopicId}
+              onMutated={refreshAll}
+            />
+            {view === 'dialog' ? (
+              <>
+                <CenterPanel
+                  topic={selectedTopic}
+                  comments={comments}
+                  onMutated={refreshAll}
+                  onSelectTopic={setSelectedTopicId}
+                />
+                <RightPanel
+                  topic={selectedTopic}
+                  comments={comments}
+                  onMutated={refreshAll}
+                />
+              </>
+            ) : (
+              <NetworkGraphView
+                topics={topics}
+                selectedTopicId={selectedTopicId}
+                onSelectTopic={setSelectedTopicId}
+                onSwitchToDialog={() => setView('dialog')}
+              />
+            )}
+          </>
         )}
       </div>
 

@@ -32,13 +32,21 @@ export const PanelStopSignalSchema = z.enum([
 ]);
 export type PanelStopSignal = z.infer<typeof PanelStopSignalSchema>;
 
-export const PanelRoundNumberSchema = z.union([
-  z.literal(1),
-  z.literal(2),
-  z.literal(3),
-  z.literal(4),
-  z.literal(5),
-]);
+/**
+ * Hard ceiling on any round number. The canonical protocol is 4 (initial +
+ * critique + refined + synthesis); rounds beyond that are extra refinement
+ * passes the user can opt into by raising the cap (PRD §3.14 — "硬上限").
+ * Bumped from the original 5 so deeper debates are possible: up to 10
+ * debate rounds + 1 synthesis = 11. The DB only sanity-checks
+ * `round_number >= 1` and lets this schema own the real cap.
+ */
+export const MAX_PANEL_ROUNDS = 11;
+
+export const PanelRoundNumberSchema = z
+  .number()
+  .int()
+  .min(1)
+  .max(MAX_PANEL_ROUNDS);
 export type PanelRoundNumber = z.infer<typeof PanelRoundNumberSchema>;
 
 /**

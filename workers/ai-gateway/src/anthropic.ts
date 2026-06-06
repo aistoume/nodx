@@ -20,6 +20,15 @@ export interface AnthropicCallParams {
   system?: string;
   temperature?: number;
   /**
+   * Continue a partial assistant turn. When set, it's appended as an
+   * `assistant` message so the model resumes exactly where a previous
+   * (max_tokens-truncated) generation left off instead of starting over.
+   * The client's continuation loop uses this to assemble an over-long
+   * utterance from multiple chunks. Must not end with trailing whitespace
+   * (Anthropic rejects that) — the client trims before sending.
+   */
+  assistantPrefill?: string;
+  /**
    * Enable Anthropic's built-in `web_search` server tool. Costs ~$10/1000
    * searches; capped at 5 uses per call. Anthropic executes the search
    * server-side, so we don't have to run the tool loop ourselves — we just
@@ -55,11 +64,19 @@ export class AnthropicError extends Error {
 export async function callAnthropic(
   params: AnthropicCallParams,
 ): Promise<AnthropicTextResponse> {
+  const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [
+    { role: 'user', content: params.prompt },
+  ];
+  // Resume a truncated turn: the model continues this assistant content.
+  if (params.assistantPrefill) {
+    messages.push({ role: 'assistant', content: params.assistantPrefill });
+  }
+
   const body: Record<string, unknown> = {
     model: params.model,
     max_tokens: params.maxTokens,
     temperature: params.temperature ?? 0.7,
-    messages: [{ role: 'user', content: params.prompt }],
+    messages,
     stream: true,
   };
   if (params.system) body.system = params.system;
@@ -88,12 +105,19 @@ export async function callAnthropic(
     throw new AnthropicError(502, 'anthropic returned no body', '');
   }
 
-  return await consumeStream(upstream.body, params.model);
+  // A continuation chunk may legitimately add nothing (the model decides the
+  // turn is already complete) — don't treat that as an error.
+  return await consumeStream(
+    upstream.body,
+    params.model,
+    !!params.assistantPrefill,
+  );
 }
 
 async function consumeStream(
   stream: ReadableStream<Uint8Array>,
   fallbackModel: string,
+  allowEmptyText = false,
 ): Promise<AnthropicTextResponse> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
@@ -170,7 +194,7 @@ async function consumeStream(
     reader.releaseLock();
   }
 
-  if (!text) {
+  if (!text && !allowEmptyText) {
     throw new AnthropicError(
       502,
       'anthropic stream produced no text',

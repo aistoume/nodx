@@ -213,6 +213,12 @@ export interface CompleteTextOptions {
   system?: string;
   temperature?: number;
   enableWebSearch?: boolean;
+  /**
+   * Continue a partial assistant turn — the model resumes from this text
+   * instead of starting over. Used by `completeTextUntilDone` to stitch an
+   * over-long reply from multiple max_tokens-bounded chunks.
+   */
+  assistantPrefill?: string;
   signal?: AbortSignal;
 }
 
@@ -220,6 +226,8 @@ export interface CompleteTextResult {
   text: string;
   usage: { inputTokens: number; outputTokens: number };
   model: string;
+  /** Why generation stopped — 'end_turn', 'max_tokens', etc. (may be null). */
+  stopReason: string | null;
 }
 
 /**
@@ -256,6 +264,9 @@ async function completeTextOnce(
         ? { temperature: opts.temperature }
         : {}),
       ...(opts.enableWebSearch ? { enable_web_search: true } : {}),
+      ...(opts.assistantPrefill
+        ? { assistant_prefill: opts.assistantPrefill }
+        : {}),
     }),
     signal: opts.signal,
   });
@@ -282,7 +293,175 @@ async function completeTextOnce(
       outputTokens: payload.usage.output_tokens,
     },
     model: payload.model,
+    stopReason: payload.stopReason,
   };
+}
+
+export interface CompleteTextUntilDoneOptions extends CompleteTextOptions {
+  /**
+   * Max *additional* continuation calls after the first when the model keeps
+   * hitting max_tokens. Total calls ≤ maxContinuations + 1. Default 4 → up to
+   * 5 chunks (≈ 5 × maxTokens of output). A safety bound so a runaway reply
+   * can't loop forever.
+   */
+  maxContinuations?: number;
+}
+
+/**
+ * Like `completeText`, but transparently continues a reply the model
+ * truncated at `max_tokens`. Each chunk resumes the assistant turn via
+ * `assistant_prefill`, so the pieces concatenate into one seamless reply.
+ * Stops when the model finishes naturally (`stopReason !== 'max_tokens'`) or
+ * the continuation budget runs out.
+ *
+ * Each chunk is its own gateway call, so for Sonnet they serialise through
+ * the same rate-limit chain as every other call. Use this for free-form
+ * generations whose length is unpredictable (e.g. a panel debate turn that
+ * rebuts several peers); short replies still cost exactly one call.
+ */
+export async function completeTextUntilDone(
+  cfg: GatewayConfig,
+  opts: CompleteTextUntilDoneOptions,
+): Promise<CompleteTextResult> {
+  const maxContinuations = opts.maxContinuations ?? 4;
+  let acc = '';
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let model: string = opts.model;
+  let stopReason: string | null = null;
+
+  for (let attempt = 0; attempt <= maxContinuations; attempt++) {
+    // First call has no prefill. Continuations resume from what we have so
+    // far — trimmed of trailing whitespace, which Anthropic rejects in an
+    // assistant prefill. We keep `acc` itself untrimmed so the original
+    // spacing survives in the stitched result.
+    const prefill = acc ? acc.replace(/\s+$/, '') : undefined;
+    const r = await completeText(cfg, { ...opts, assistantPrefill: prefill });
+
+    acc += r.text;
+    inputTokens += r.usage.inputTokens;
+    outputTokens += r.usage.outputTokens;
+    model = r.model;
+    stopReason = r.stopReason;
+
+    if (r.stopReason !== 'max_tokens') break;
+  }
+
+  return {
+    text: acc,
+    usage: { inputTokens, outputTokens },
+    model,
+    stopReason,
+  };
+}
+
+export interface CompleteUntilDoneOptions<T> extends CompleteOptions<T> {
+  /** Same meaning as in completeTextUntilDone. Default 4. */
+  maxContinuations?: number;
+}
+
+/**
+ * JSON variant of `completeTextUntilDone`: accumulates a possibly-truncated
+ * JSON reply across continuation chunks (assistant-prefill resumes the turn),
+ * then extracts + schema-validates the stitched whole. Use when a *structured*
+ * reply can grow large enough to risk max_tokens — e.g. a rich panel
+ * synthesis with many consensus / divergence / open-question entries.
+ *
+ * Continuation works for JSON because the model resumes the same assistant
+ * turn, so the chunks concatenate into one well-formed object.
+ */
+export async function completeUntilDone<T>(
+  cfg: GatewayConfig,
+  opts: CompleteUntilDoneOptions<T>,
+): Promise<CompleteResult<T>> {
+  const r = await completeTextUntilDone(cfg, {
+    prompt: opts.prompt,
+    model: opts.model,
+    maxTokens: opts.maxTokens,
+    system: opts.system,
+    temperature: opts.temperature,
+    enableWebSearch: opts.enableWebSearch,
+    maxContinuations: opts.maxContinuations,
+    signal: opts.signal,
+  });
+
+  let json: unknown;
+  try {
+    json = extractJsonObject(r.text);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      '[@nodx/ai] JSON extraction failed after continuation.',
+      '\nstopReason:', r.stopReason,
+      '\noutputTokens:', r.usage.outputTokens,
+      '\nfull text:\n', r.text,
+    );
+    if (r.stopReason === 'max_tokens') {
+      throw new Error(
+        'Model output still truncated after continuations — raise maxTokens or maxContinuations for this prompt.\n\n' +
+          (err instanceof Error ? err.message : String(err)),
+      );
+    }
+    throw err;
+  }
+
+  const data = opts.schema.parse(json);
+  return { data, raw: r.text, usage: r.usage, model: r.model };
+}
+
+export interface EmbedOptions {
+  /** Texts to embed; batched into one gateway call, vectors returned in order. */
+  texts: string[];
+  /** Embedding model id; the gateway defaults to its configured one if omitted. */
+  model?: ModelId;
+  signal?: AbortSignal;
+}
+
+export interface EmbedResult {
+  /** One vector per input text, same order. Each is `EMBEDDING_DIM` long. */
+  embeddings: number[][];
+  /** The embedding model the gateway resolved to. */
+  model: string;
+}
+
+/**
+ * Compute embeddings via the gateway's `/v1/embed` endpoint (Gemini Embedding
+ * 2 behind the worker, so the client never holds the Google key). Used by the
+ * CBR indexer to embed a case's problem + solution text (PRD §3.16 step ②).
+ */
+export async function embed(
+  cfg: GatewayConfig,
+  opts: EmbedOptions,
+): Promise<EmbedResult> {
+  const res = await fetch(`${cfg.endpoint}/v1/embed`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${cfg.clientToken}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      texts: opts.texts,
+      ...(opts.model ? { model: opts.model } : {}),
+    }),
+    signal: opts.signal,
+  });
+
+  if (!res.ok) {
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      body = await res.text();
+    }
+    throw new GatewayError(
+      res.status,
+      `gateway returned ${res.status}: ${describeErrorBody(body)}`,
+      body,
+    );
+  }
+
+  const payload = (await res.json()) as { embeddings: number[][]; model: string };
+  return { embeddings: payload.embeddings, model: payload.model };
 }
 
 function describeErrorBody(body: unknown): string {

@@ -189,9 +189,15 @@ nodx/
 ## 9. 当前项目状态
 
 - ✅ M0 原型确认（prototype.html）
-- ✅ PRD v0.5 完成（卖点章节 + 思路复现 + 专家组协议 + Local Maximum + 思考快照索引 + 2026.5 技术选型校准）
+- ✅ PRD v0.8 完成（卖点章节 + 思路复现 + 专家组协议 + Local Max 经济+二阶停止规则 + 思考快照索引 + CBR 流水线 V1 省钱版 + 简化 GraphRAG + 2026.5 技术选型校准）
 - ✅ CLAUDE.md 工作上下文准备就绪
-- ⏳ M1 Week 1 待 Claude Code 接手开工
+- ✅ M1 核心闭环大部分落地（Survey / 第一性原理 / 文档 / 即时解释 / 备注 / 网络图 / 子话题）
+- ✅ **专家组对话思考引擎（核心卖点，V2 提前做）**：引擎 + 持久化 + UI + 动态轮数 + 防截断续写
+  —— 详见 **`docs/expert-panel.md`**（as-built 实现状态 + 已知未做项）
+- ✅ **CBR 检索流水线 V1 — Week 1（数据层 + 抽象/索引写入）**：models + migration v6 +
+  抽象师/关系发现者/索引器 + Gemini 嵌入端点 + 入库钩子 —— 详见 **`docs/cbr.md`**
+  （检索 / UI / Reranker 留 Week 2+；嵌入需配 `GEMINI_API_KEY`）
+- ⏳ M1 收尾项：决策汇报导出、草稿区、卡点/上次回顾、@引用 UI、向上合并
 
 ---
 
