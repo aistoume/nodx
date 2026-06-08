@@ -135,6 +135,14 @@ export {
 } from './prompts/panel/judge.js';
 
 export {
+  PANEL_MERGE_PROMPT_VERSION,
+  PANEL_MERGE_PROMPT_MODEL,
+  buildPanelMergePrompt,
+  type PanelMergeInput,
+  type PanelMergeDivergence,
+} from './prompts/panel/merge.js';
+
+export {
   runPanel,
   DEFAULT_MAX_ROUNDS,
   MAX_DEBATE_ROUNDS,
@@ -173,6 +181,43 @@ export {
   embeddingToBase64,
   base64ToEmbedding,
 } from './cbr/indexer.js';
+
+// ── 决策汇报导出 (PRD §3.10 / §8.7) ───────────────────────────────────────
+
+export {
+  REPORT_PROMPT_VERSION,
+  REPORT_PROMPT_MODEL,
+  ReportActionItemSchema,
+  ReportOutputSchema,
+  buildReportPrompt,
+  reportToMarkdown,
+  type ReportNode,
+  type ReportInput,
+  type ReportActionItem,
+  type ReportOutput,
+} from './prompts/report.js';
+
+// ── 思路复现 / 卖点② 不丢失 (PRD §3.11 / §8.8) ─────────────────────────────
+
+export {
+  RECAP_PROMPT_VERSION,
+  RECAP_PROMPT_MODEL,
+  RecapOutputSchema,
+  buildRecapPrompt,
+  toRecapInput,
+  type RecapInput,
+  type RecapOutput,
+} from './replay/recap-card.js';
+
+export {
+  TRACE_PROMPT_VERSION,
+  TRACE_PROMPT_MODEL,
+  TraceOutputSchema,
+  buildTracePrompt,
+  toTraceInput,
+  type TraceInput,
+  type TraceOutput,
+} from './replay/reasoning-trace.js';
 
 export {
   BRAIN_HUB_PROMPT_VERSION,

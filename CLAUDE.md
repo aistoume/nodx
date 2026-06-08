@@ -193,11 +193,36 @@ nodx/
 - ✅ CLAUDE.md 工作上下文准备就绪
 - ✅ M1 核心闭环大部分落地（Survey / 第一性原理 / 文档 / 即时解释 / 备注 / 网络图 / 子话题）
 - ✅ **专家组对话思考引擎（核心卖点，V2 提前做）**：引擎 + 持久化 + UI + 动态轮数 + 防截断续写
-  —— 详见 **`docs/expert-panel.md`**（as-built 实现状态 + 已知未做项）
-- ✅ **CBR 检索流水线 V1 — Week 1（数据层 + 抽象/索引写入）**：models + migration v6 +
-  抽象师/关系发现者/索引器 + Gemini 嵌入端点 + 入库钩子 —— 详见 **`docs/cbr.md`**
-  （检索 / UI / Reranker 留 Week 2+；嵌入需配 `GEMINI_API_KEY`）
-- ⏳ M1 收尾项：决策汇报导出、草稿区、卡点/上次回顾、@引用 UI、向上合并
+  + 判官容错 + JSON 引号加固 + **「归纳进文档」**（Local Max → Sonnet 收尾整理者 →
+  可编辑预览 → 追加到思考文档末尾并切回文档视图：`prompts/panel/merge.ts` +
+  `ai/panel.ts:generatePanelMerge` + `db/documents.ts:appendToDocument` +
+  `components/panel/MergePreviewModal.tsx`）—— 详见 **`docs/expert-panel.md`**
+- ✅ **CBR 检索复用流水线 V1 — Week 1–3 全部完成**（真实 app 端到端验证）：
+  - W1 数据层 + 抽象/索引写入（models + migration v6 + 抽象师/关系发现者/索引器 + Gemini 嵌入端点 + 入库钩子）
+  - W2 检索读路径（Brain Hub + 双路召回 + Heuristic 排序 + Sonnet Fusion）
+  - W3 适配执行师（AdaptedSolution）+ 案例库 UI（含浏览预览）
+  - 扩展「**专家组只跑差异**」（migration v7：复用适配 → 只辩论差异点的精简专家组）
+  —— 详见 **`docs/cbr.md`**（嵌入需配 worker `GEMINI_API_KEY`；Reranker / 反哺评分留后续）
+- ✅ **卖点②「不丢失」全套**（思路复现 / 卡点 / 思考会话）：models + migration v8+v9 +
+  recap/trace AI + 会话惰性关闭 + ReplayCard 横幅 + 卡点(选区标记/右栏红卡/Header 全局角标)
+  —— 详见 **`docs/replay.md`**（真实 app 验证通过）
+- ✅ **决策汇报导出**（PRD §3.10/§8.7）：BFS 子树 → 收尾整理者(Sonnet) → 摘要/行动清单/未解问题
+  → 文档头「📄 产出决策汇报」按钮 → 弹窗 + 复制 Markdown（真实子树 live 验证）
+- ✅ **`.nodx` 数据包导出/导入**（整棵话题子树「原封不动」搬到其他电脑）：
+  `apps/desktop/src/db/bundle.ts`（BFS 子树 → 13 张表 `SELECT *` → 版本化 JSON 信封
+  `{format:'nodx-bundle', version:1, ...}`；导入时全表主键重映射新 UUID + 外键改写
+  + mentions_json 话题 id 重映射 + draft_items（含 source_message_id）重映射
+  + 导入后修正 messages 触发器对 message_count/last_activity 的副作用）；
+  文件 I/O 走**原生对话框** `apps/desktop/src/lib/bundle-file.ts`（`@tauri-apps/plugin-dialog`
+  的 save/open「另存为/打开」+ `@tauri-apps/plugin-fs` 读写；Rust 端注册插件 + capabilities
+  授权 `$HOME/**`、`/Volumes/**`、`/tmp/**`）；导出按钮在文档页头，导入按钮在左栏「新建」下方。
+  **与决策汇报区分**：汇报是 AI 摘要，数据包是原始数据搬运。
+- ✅ **专家组「归纳进文档」**（辩论结论沉淀回思考文档，PRD §8.7）：converged 态「📄 归纳进文档」
+  → Sonnet 收尾整理者把 Local Max 揉成一节 Markdown → 可编辑预览 → 追加到文档末尾并自动切回文档视图
+  （`prompts/panel/merge.ts` + `ai/panel.ts:generatePanelMerge` + `db/documents.ts:appendToDocument`
+  + `components/panel/MergePreviewModal.tsx`）—— 详见 **`docs/expert-panel.md` §9b**
+- ✅ 杂项：对话列表父话题**可折叠**；案例库**预览浏览**
+- ⏳ M1 收尾项：草稿区、@引用 UI（卡点/上次回顾/决策汇报/数据包导出/专家组归纳进文档已完成）
 
 ---
 

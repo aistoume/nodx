@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MODELS, type ModelId } from '../models.js';
+import { JSON_QUOTE_RULE } from '../prompts/json-safety.js';
 
 export const FUSION_PROMPT_VERSION = '2026-06-04.v1';
 export const FUSION_PROMPT_MODEL: ModelId = MODELS.sonnet;
@@ -87,5 +88,5 @@ ${formatCandidates(input.candidates)}
   "contrastCases": [ { "caseRef": "<id>", "insight": "..." } ],
   "crossPatterns": ["..."],
   "contextWarnings": ["..."]
-}`;
+}${JSON_QUOTE_RULE}`;
 }

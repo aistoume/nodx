@@ -7,6 +7,8 @@ import {
   deleteTopic,
   unarchiveTopic,
 } from '../db/topics.js';
+import { importTopicBundle } from '../db/bundle.js';
+import { openBundleFile } from '../lib/bundle-file.js';
 
 interface LeftPanelProps {
   topics: Topic[];
@@ -33,6 +35,26 @@ export function LeftPanel({
   const [formError, setFormError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+
+  const handleImport = async () => {
+    setImportMsg(null);
+    const file = await openBundleFile();
+    if (!file) return;
+    setImporting(true);
+    try {
+      const res = await importTopicBundle(file.text);
+      setImportMsg(`已导入 ${res.topicCount} 个话题节点`);
+      onSelectTopic(res.rootTopicId);
+      onMutated();
+      window.setTimeout(() => setImportMsg(null), 3000);
+    } catch (err) {
+      setImportMsg(`导入失败：${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +140,17 @@ export function LeftPanel({
         </div>
         {formError && <p className="text-xs text-red-600">{formError}</p>}
       </form>
+
+      <button
+        type="button"
+        onClick={handleImport}
+        disabled={importing}
+        title="加载一个 .nodx 数据包文件（来自本机或其他电脑），作为新话题导入"
+        className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-ink-muted hover:border-accent hover:text-accent disabled:opacity-50 transition"
+      >
+        {importing ? '导入中…' : '⬆ 导入 .nodx 数据包'}
+      </button>
+      {importMsg && <p className="text-xs text-accent">{importMsg}</p>}
 
       {actionError && (
         <pre className="text-xs text-red-600 bg-red-50 p-2 rounded whitespace-pre-wrap">

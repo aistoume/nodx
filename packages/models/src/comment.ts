@@ -6,6 +6,8 @@ export const CommentTypeSchema = z.enum([
   'explanation',
   'atomic',
   'reference',
+  // 卡点 / stuck point (PRD §3.12) — a structured "I'm stuck here" marker.
+  'open_question',
 ]);
 export type CommentType = z.infer<typeof CommentTypeSchema>;
 
@@ -18,6 +20,17 @@ export const AtomicDataSchema = z.object({
 });
 export type AtomicData = z.infer<typeof AtomicDataSchema>;
 
+/** Structured payload for a 卡点 (PRD §3.12). */
+export const OpenQuestionDataSchema = z.object({
+  /** The unresolved question. */
+  question: z.string().min(1),
+  /** Why it's stuck (缺数据 / 缺判断 / 缺共识 …). */
+  blockedReason: z.string().optional(),
+  /** When resolved (absent = still open). */
+  resolvedAt: TimestampSchema.optional(),
+});
+export type OpenQuestionData = z.infer<typeof OpenQuestionDataSchema>;
+
 export const CommentSchema = z
   .object({
     id: IdSchema,
@@ -26,6 +39,7 @@ export const CommentSchema = z
     type: CommentTypeSchema,
     content: z.string(),
     atomicData: AtomicDataSchema.optional(),
+    openQuestionData: OpenQuestionDataSchema.optional(),
     createdAt: TimestampSchema,
   })
   .superRefine((value, ctx) => {
@@ -41,6 +55,20 @@ export const CommentSchema = z
         code: z.ZodIssueCode.custom,
         message: 'atomicData is only allowed when type is "atomic"',
         path: ['atomicData'],
+      });
+    }
+    if (value.type === 'open_question' && !value.openQuestionData) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'openQuestionData is required when type is "open_question"',
+        path: ['openQuestionData'],
+      });
+    }
+    if (value.type !== 'open_question' && value.openQuestionData) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'openQuestionData is only allowed when type is "open_question"',
+        path: ['openQuestionData'],
       });
     }
   });

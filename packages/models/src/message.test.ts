@@ -4,6 +4,7 @@ import { MessageSchema, type Message } from './message.js';
 const baseMessage: Message = {
   id: 'msg_1',
   topicId: 'topic_1',
+  sessionId: 'session_1',
   role: 'user',
   type: 'text',
   content: 'AI 浪潮下要不要重押？',
@@ -42,5 +43,16 @@ describe('MessageSchema', () => {
     expect(
       MessageSchema.parse({ ...baseMessage, type: 'survey', content: '' }),
     ).toMatchObject({ content: '' });
+  });
+
+  it('requires sessionId', () => {
+    const { sessionId: _drop, ...rest } = baseMessage;
+    expect(() => MessageSchema.parse(rest)).toThrow();
+  });
+
+  it('accepts the replay_card type', () => {
+    expect(
+      MessageSchema.parse({ ...baseMessage, type: 'replay_card' }),
+    ).toMatchObject({ type: 'replay_card' });
   });
 });

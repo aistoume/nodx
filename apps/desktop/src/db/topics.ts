@@ -19,10 +19,12 @@ interface TopicRow {
   child_count: number;
   last_activity: number;
   ai_summary: string | null;
+  reasoning_trace: string | null;
+  has_open_questions: number;
 }
 
 const SELECT_COLUMNS =
-  'id, parent_id, title, status, is_pinned, is_archived, created_at, updated_at, message_count, child_count, last_activity, ai_summary';
+  'id, parent_id, title, status, is_pinned, is_archived, created_at, updated_at, message_count, child_count, last_activity, ai_summary, reasoning_trace, has_open_questions';
 
 function rowToTopic(r: TopicRow): Topic {
   return TopicSchema.parse({
@@ -40,6 +42,8 @@ function rowToTopic(r: TopicRow): Topic {
       lastActivity: r.last_activity,
     },
     ...(r.ai_summary != null ? { aiSummary: r.ai_summary } : {}),
+    ...(r.reasoning_trace != null ? { reasoningTrace: r.reasoning_trace } : {}),
+    hasOpenQuestions: r.has_open_questions === 1,
   });
 }
 
@@ -120,6 +124,42 @@ export async function createTopic(input: CreateTopicInput): Promise<Topic> {
   }
 
   return topic;
+}
+
+/** Persist the AI-maintained reasoning path (思路复现 core, PRD §8.8). */
+export async function setReasoningTrace(
+  id: string,
+  trace: string,
+): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    'UPDATE topics SET reasoning_trace = $1, updated_at = $2 WHERE id = $3',
+    [trace, Date.now(), id],
+  );
+}
+
+/**
+ * Recompute `has_open_questions` from the comments table: 1 iff the topic has
+ * at least one unresolved open_question (卡点). Call after a 卡点 is created or
+ * resolved.
+ */
+export async function recomputeHasOpenQuestions(
+  topicId: string,
+): Promise<boolean> {
+  const db = await getDb();
+  const rows = await db.select<Array<{ n: number }>>(
+    `SELECT count(*) AS n FROM comments
+     WHERE topic_id = $1 AND type = 'open_question'
+       AND (open_question_data_json IS NULL
+            OR json_extract(open_question_data_json, '$.resolvedAt') IS NULL)`,
+    [topicId],
+  );
+  const has = (rows[0]?.n ?? 0) > 0;
+  await db.execute('UPDATE topics SET has_open_questions = $1 WHERE id = $2', [
+    has ? 1 : 0,
+    topicId,
+  ]);
+  return has;
 }
 
 export async function archiveTopic(id: string): Promise<void> {

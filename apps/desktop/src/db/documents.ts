@@ -52,6 +52,22 @@ export async function upsertDocument(
   );
 }
 
+/**
+ * Append an HTML block to the end of a topic's document (creating it if it
+ * doesn't exist yet). Used to fold an expert-panel conclusion into the
+ * thinking doc. Returns the resulting full HTML so the caller can refresh.
+ */
+export async function appendToDocument(
+  topicId: string,
+  htmlBlock: string,
+): Promise<string> {
+  const existing = await getDocument(topicId);
+  const prev = existing?.content ?? '';
+  const combined = prev ? `${prev}\n${htmlBlock}` : htmlBlock;
+  await upsertDocument(topicId, combined);
+  return combined;
+}
+
 export async function deleteDocument(topicId: string): Promise<void> {
   const db = await getDb();
   await db.execute('DELETE FROM topic_documents WHERE topic_id = $1', [

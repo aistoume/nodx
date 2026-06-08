@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { DivergenceItemSchema } from '@nodx/models';
 import { MODELS, type ModelId } from '../../models.js';
+import { JSON_QUOTE_RULE } from '../json-safety.js';
 
 export const SYNTHESIS_PROMPT_VERSION = '2026-06-02.v1';
 export const SYNTHESIS_PROMPT_MODEL: ModelId = MODELS.sonnet;
@@ -80,5 +81,5 @@ ${formatTranscript(input.transcript)}
   "openQuestions": ["<开放问题>"],
   "bestAnswer": "<最佳行动建议>",
   "confidence": 0.0
-}`;
+}${JSON_QUOTE_RULE}`;
 }

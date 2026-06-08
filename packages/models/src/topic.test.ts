@@ -16,6 +16,7 @@ const validTopic: Topic = {
   createdAt: 1_700_000_000_000,
   updatedAt: 1_700_000_001_000,
   meta: { messageCount: 3, childCount: 1, lastActivity: 1_700_000_001_000 },
+  hasOpenQuestions: false,
 };
 
 describe('TopicStatusSchema', () => {
@@ -78,5 +79,20 @@ describe('TopicSchema', () => {
     expect(
       TopicSchema.parse({ ...validTopic, isArchived: true }),
     ).toMatchObject({ isArchived: true });
+  });
+
+  it('defaults hasOpenQuestions to false when omitted (old rows)', () => {
+    const { hasOpenQuestions: _drop, ...rest } = validTopic;
+    expect(TopicSchema.parse(rest).hasOpenQuestions).toBe(false);
+  });
+
+  it('accepts reasoningTrace + hasOpenQuestions', () => {
+    const t = TopicSchema.parse({
+      ...validTopic,
+      reasoningTrace: '从「该不该做」出发 → 拆成现金流/团队两维',
+      hasOpenQuestions: true,
+    });
+    expect(t.reasoningTrace).toContain('现金流');
+    expect(t.hasOpenQuestions).toBe(true);
   });
 });

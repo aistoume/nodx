@@ -15,9 +15,15 @@ import { explainSelection } from '../ai/explain.js';
 import { isAiConfigured } from '../ai/gateway.js';
 import {
   createComment,
+  createOpenQuestion,
   formatQuotedContent,
   parseQuotedContent,
 } from '../db/comments.js';
+import type { RecapOutput } from '../ai/replay.js';
+import { ReplayCard } from './replay/ReplayCard.js';
+import { ReportModal } from './report/ReportModal.js';
+import { exportTopicBundle } from '../db/bundle.js';
+import { saveBundleFile, safeFileName } from '../lib/bundle-file.js';
 import { upsertDocument } from '../db/documents.js';
 import {
   createAiMessage,
@@ -39,6 +45,10 @@ interface DocumentViewProps {
   onMutated: () => void;
   /** Switch the active topic — used after spawn-child / deep-dive. */
   onSelectTopic: (id: string) => void;
+  /** "上次回顾" card (PRD §3.11), shown at the top when reopened after a gap. */
+  replayCard?: RecapOutput | null;
+  /** Hide the replay card for this view. */
+  onDismissReplay?: () => void;
 }
 
 interface PendingSelection {
@@ -56,7 +66,7 @@ interface ActiveProposal {
   markdown: string;
 }
 
-type ActivePanel = 'menu' | 'note' | 'refine' | null;
+type ActivePanel = 'menu' | 'note' | 'refine' | 'stuck' | null;
 
 const SAVE_DEBOUNCE_MS = 700;
 
@@ -67,7 +77,34 @@ export function DocumentView({
   anchorableComments,
   onMutated,
   onSelectTopic,
+  replayCard,
+  onDismissReplay,
 }: DocumentViewProps) {
+  // Composer seed for "重新推理" (replay card → draft 卡点).
+  const [composerSeed, setComposerSeed] = useState('');
+  const [seedNonce, setSeedNonce] = useState(0);
+  // Decision-report overlay (PRD §3.10).
+  const [showReport, setShowReport] = useState(false);
+  // .nodx bundle export status.
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
+
+  const handleExportBundle = async () => {
+    setExporting(true);
+    setExportMsg(null);
+    try {
+      const json = await exportTopicBundle(topic.id);
+      const path = await saveBundleFile(`${safeFileName(topic.title)}.nodx`, json);
+      if (!path) return; // user cancelled the save dialog
+      const count = JSON.parse(json).tables.topics.length as number;
+      setExportMsg(`已导出 ${count} 个话题节点 → ${path}`);
+      window.setTimeout(() => setExportMsg(null), 6000);
+    } catch (e) {
+      setExportMsg(`导出失败：${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setExporting(false);
+    }
+  };
   const editor = useEditor(
     {
       extensions: [
@@ -317,6 +354,7 @@ export function DocumentView({
           {
             id: 'pending',
             topicId: topic.id,
+            sessionId: 'pending',
             role: 'user',
             type: 'text',
             content,
@@ -431,6 +469,28 @@ export function DocumentView({
     }
   };
 
+  // 卡点 (PRD §3.12): the selected text is the question; the popover captures
+  // why it's stuck. Writes an open_question comment (red, also feeds the global
+  // 卡点 list + the replay card).
+  const submitStuck = async (blockedReason: string) => {
+    if (!pendingSelection) return;
+    setError(null);
+    try {
+      await createOpenQuestion({
+        topicId: topic.id,
+        anchorId: null,
+        question: pendingSelection.text,
+        blockedReason: blockedReason.trim() || undefined,
+      });
+      window.getSelection()?.removeAllRanges();
+      setPendingSelection(null);
+      setActivePanel(null);
+      onMutated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   const submitRefineQuestion = async (question: string) => {
     if (!editor || !pendingSelection) return;
     const q = question.trim() || '请帮我深化这一段。';
@@ -490,21 +550,66 @@ export function DocumentView({
     <div className="flex flex-col h-full bg-canvas overflow-hidden">
       <header className="border-b border-border px-8 py-4 bg-surface shrink-0">
         <div className="max-w-3xl mx-auto">
-          <p className="text-[11px] uppercase tracking-wider text-ink-muted">
-            思考文档{topic.parentId ? ' · 子' : ''}
-          </p>
-          <h1 className="text-xl font-semibold leading-tight mt-0.5">
-            {topic.title}
-          </h1>
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] uppercase tracking-wider text-ink-muted">
+                思考文档{topic.parentId ? ' · 子' : ''}
+              </p>
+              <h1 className="text-xl font-semibold leading-tight mt-0.5">
+                {topic.title}
+              </h1>
+            </div>
+            <div className="shrink-0 mt-0.5 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportBundle}
+                disabled={exporting}
+                title="把这个话题及其所有子话题的全部数据与关系原封不动导出为 .nodx 文件，可在其他电脑上加载"
+                className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-ink-muted hover:border-accent hover:text-accent transition disabled:opacity-50"
+              >
+                {exporting ? '导出中…' : '⬇ 导出 .nodx'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowReport(true)}
+                title="扫描这个话题及其所有子话题，生成给老板看的决策汇报"
+                className="px-3 py-1.5 text-xs font-medium rounded-md border border-accent text-accent hover:bg-accent hover:text-white transition"
+              >
+                📄 产出决策汇报
+              </button>
+            </div>
+          </div>
+          {exportMsg && (
+            <p className="mt-2 text-xs text-accent">{exportMsg}</p>
+          )}
           <p className="mt-2 text-xs text-ink-muted">
             可直接编辑。选中文字后选择 <em>解释</em> / <em>便签</em> /{' '}
-            <em>深化</em>。
+            <em>深化</em> / <em>📍卡点</em>。
           </p>
         </div>
       </header>
+      {showReport && (
+        <ReportModal topicId={topic.id} onClose={() => setShowReport(false)} />
+      )}
 
       <div ref={scrollAreaRef} className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-8 py-6">
+          {replayCard && (
+            <div className="mb-5">
+              <ReplayCard
+                recap={replayCard}
+                onDismiss={onDismissReplay}
+                onReplay={() => {
+                  const draft =
+                    '我上次卡在：\n' +
+                    replayCard.stuckPoints.map((s) => `- ${s}`).join('\n') +
+                    '\n\n让我们重新展开：';
+                  setComposerSeed(draft);
+                  setSeedNonce((n) => n + 1);
+                }}
+              />
+            </div>
+          )}
           <EditorContent editor={editor} />
           {error && (
             <pre className="mt-4 text-xs text-red-600 bg-red-50 p-2 rounded whitespace-pre-wrap">
@@ -523,6 +628,8 @@ export function DocumentView({
       <ChatComposer
         onSend={handleChatSend}
         disabled={chatThinking}
+        seedDraft={composerSeed}
+        seedNonce={seedNonce}
         topSlot={
           <SpawnChildButton
             parentTopicId={topic.id}
@@ -543,6 +650,7 @@ export function DocumentView({
           onExplain={handleExplain}
           onNote={() => setActivePanel('note')}
           onRefine={() => setActivePanel('refine')}
+          onStuck={() => setActivePanel('stuck')}
         />
       )}
 
@@ -552,6 +660,17 @@ export function DocumentView({
           y={pendingSelection.y}
           selection={pendingSelection.text}
           onSubmit={submitNote}
+          onCancel={() => setActivePanel('menu')}
+        />
+      )}
+
+      {pendingSelection && activePanel === 'stuck' && (
+        <NotePopover
+          variant="stuck"
+          x={pendingSelection.x}
+          y={pendingSelection.y}
+          selection={pendingSelection.text}
+          onSubmit={submitStuck}
           onCancel={() => setActivePanel('menu')}
         />
       )}
@@ -593,6 +712,7 @@ function SelectionMenu({
   onExplain,
   onNote,
   onRefine,
+  onStuck,
 }: {
   x: number;
   y: number;
@@ -600,8 +720,9 @@ function SelectionMenu({
   onExplain: () => void;
   onNote: () => void;
   onRefine: () => void;
+  onStuck: () => void;
 }) {
-  const left = clamp(x, 8, window.innerWidth - 280);
+  const left = clamp(x, 8, window.innerWidth - 340);
   const top = clamp(y, 8, window.innerHeight - 60);
   return (
     <div
@@ -631,6 +752,13 @@ function SelectionMenu({
         hint="AI 改写"
         accent="accent"
       />
+      <span className="w-px bg-border" />
+      <MenuButton
+        onClick={onStuck}
+        idleLabel="📍 卡点"
+        hint="我卡在这里了"
+        accent="red"
+      />
     </div>
   );
 }
@@ -648,14 +776,16 @@ function MenuButton({
   loadingLabel?: string;
   idleLabel: string;
   hint: string;
-  accent: 'blue' | 'yellow' | 'accent';
+  accent: 'blue' | 'yellow' | 'accent' | 'red';
 }) {
   const accentClass =
     accent === 'blue'
       ? 'hover:bg-note-blue text-blue-700'
       : accent === 'yellow'
         ? 'hover:bg-note-yellow text-yellow-700'
-        : 'hover:bg-accent-tint text-accent';
+        : accent === 'red'
+          ? 'hover:bg-red-50 text-red-600'
+          : 'hover:bg-accent-tint text-accent';
   return (
     <button
       type="button"
@@ -674,24 +804,55 @@ function MenuButton({
   );
 }
 
+const POPOVER_THEME = {
+  note: {
+    card: 'bg-note-yellow border-note-yellow-edge/60',
+    label: '便签',
+    labelText: 'text-yellow-800',
+    quote: 'text-yellow-900/70 border-yellow-700/30',
+    field: 'border-yellow-700/30 focus:border-yellow-700/60',
+    cancel: 'text-yellow-900/70 hover:text-yellow-900',
+    submit: 'bg-yellow-700',
+    submitLabel: '保存便签  ⌘↵',
+    placeholder: '记下你对这段的想法…',
+    allowEmpty: false,
+  },
+  stuck: {
+    card: 'bg-red-50 border-red-300',
+    label: '📍 卡点',
+    labelText: 'text-red-700',
+    quote: 'text-red-900/70 border-red-300',
+    field: 'border-red-300 focus:border-red-400',
+    cancel: 'text-red-900/70 hover:text-red-900',
+    submit: 'bg-red-600',
+    submitLabel: '标记卡点  ⌘↵',
+    placeholder: '卡在什么？（缺数据 / 缺判断 / 缺共识…，可留空）',
+    allowEmpty: true,
+  },
+} as const;
+
 function NotePopover({
   x,
   y,
   selection,
   onSubmit,
   onCancel,
+  variant = 'note',
 }: {
   x: number;
   y: number;
   selection: string;
   onSubmit: (note: string) => Promise<void> | void;
   onCancel: () => void;
+  variant?: 'note' | 'stuck';
 }) {
+  const t = POPOVER_THEME[variant];
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const canSubmit = (t.allowEmpty || !!text.trim()) && !saving;
   const submit = async () => {
-    if (!text.trim() || saving) return;
+    if (!canSubmit) return;
     setSaving(true);
     try {
       await onSubmit(text);
@@ -706,12 +867,16 @@ function NotePopover({
     <div
       style={{ position: 'fixed', left, top, zIndex: 60, width: 360 }}
       onMouseDown={(e) => e.stopPropagation()}
-      className="bg-note-yellow border border-note-yellow-edge/60 rounded-lg shadow-xl p-3 flex flex-col gap-2"
+      className={`border rounded-lg shadow-xl p-3 flex flex-col gap-2 ${t.card}`}
     >
-      <div className="text-[11px] uppercase tracking-wider text-yellow-800 font-semibold">
-        便签
+      <div
+        className={`text-[11px] uppercase tracking-wider font-semibold ${t.labelText}`}
+      >
+        {t.label}
       </div>
-      <blockquote className="text-xs text-yellow-900/70 italic border-l-2 border-yellow-700/30 pl-2 max-h-20 overflow-y-auto">
+      <blockquote
+        className={`text-xs italic border-l-2 pl-2 max-h-20 overflow-y-auto ${t.quote}`}
+      >
         {selection}
       </blockquote>
       <textarea
@@ -727,27 +892,27 @@ function NotePopover({
             onCancel();
           }
         }}
-        placeholder="记下你对这段的想法…"
+        placeholder={t.placeholder}
         rows={3}
         disabled={saving}
-        className="resize-none px-2 py-1.5 text-sm border border-yellow-700/30 rounded-md bg-white/80 focus:outline-none focus:border-yellow-700/60 transition font-sans"
+        className={`resize-none px-2 py-1.5 text-sm border rounded-md bg-white/80 focus:outline-none transition font-sans ${t.field}`}
       />
       <div className="flex justify-end gap-2">
         <button
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="px-3 py-1 text-xs text-yellow-900/70 hover:text-yellow-900"
+          className={`px-3 py-1 text-xs ${t.cancel}`}
         >
           返回
         </button>
         <button
           type="button"
           onClick={() => void submit()}
-          disabled={saving || !text.trim()}
-          className="px-3 py-1 text-xs font-medium rounded-md bg-yellow-700 text-white hover:opacity-90 disabled:opacity-50 transition"
+          disabled={!canSubmit}
+          className={`px-3 py-1 text-xs font-medium rounded-md text-white hover:opacity-90 disabled:opacity-50 transition ${t.submit}`}
         >
-          {saving ? '保存中…' : '保存便签  ⌘↵'}
+          {saving ? '保存中…' : t.submitLabel}
         </button>
       </div>
     </div>

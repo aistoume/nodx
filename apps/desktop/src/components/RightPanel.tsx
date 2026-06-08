@@ -244,6 +244,7 @@ function Legend() {
       <LegendRow color="bg-note-blue border-note-blue-edge" label="解释 — AI 名词解释" />
       <LegendRow color="bg-note-green border-note-green-edge" label="原子动作 — 谁/做什么/何时/产出" />
       <LegendRow color="bg-note-purple border-note-purple-edge" label="引用 — @ 跨对话" />
+      <LegendRow color="bg-red-50 border-red-400" label="卡点 — 我卡在这里了" />
     </ul>
   );
 }
@@ -280,6 +281,11 @@ const TYPE_PALETTE = {
     chip: 'bg-note-purple-edge/20 text-purple-800',
     dot: 'bg-note-purple-edge',
   },
+  open_question: {
+    container: 'bg-red-50 border-red-300',
+    chip: 'bg-red-100 text-red-700',
+    dot: 'bg-red-500',
+  },
 } as const satisfies Record<
   Comment['type'],
   { container: string; chip: string; dot: string }
@@ -290,4 +296,5 @@ const TYPE_LABEL: Record<Comment['type'], string> = {
   explanation: '解释',
   atomic: '原子动作',
   reference: '引用',
+  open_question: '卡点',
 };

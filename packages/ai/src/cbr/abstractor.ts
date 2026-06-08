@@ -5,6 +5,7 @@ import {
   SolutionPatternSchema,
 } from '@nodx/models';
 import { MODELS, type ModelId } from '../models.js';
+import { JSON_QUOTE_RULE } from '../prompts/json-safety.js';
 
 export const ABSTRACTOR_PROMPT_VERSION = '2026-06-04.v1';
 export const ABSTRACTOR_PROMPT_MODEL: ModelId = MODELS.sonnet;
@@ -98,5 +99,5 @@ decisionType 只能取：'go_no_go'（做不做）| 'allocation'（资源分配�
   "reasoningPath": { "frameworks": ["..."], "keyQuestions": ["..."], "pivotalDecisions": ["..."] },
   "solutionPattern": { "structure": "<方案结构一句话>", "keyLevers": ["..."], "riskMitigations": ["..."] },
   "qualityScore": 0.0
-}`;
+}${JSON_QUOTE_RULE}`;
 }
