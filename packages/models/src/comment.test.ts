@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AtomicDataSchema,
   CommentSchema,
+  OpenQuestionDataSchema,
   type Comment,
 } from './comment.js';
 
@@ -73,5 +74,42 @@ describe('CommentSchema', () => {
         atomicData: validAtomic,
       }),
     ).toThrow(/only allowed when type is/);
+  });
+
+  it('accepts an open_question (卡点) with openQuestionData', () => {
+    const stuck: Comment = {
+      ...baseNote,
+      id: 'cmt_q',
+      type: 'open_question',
+      openQuestionData: { question: '6 个月窗口是否合理', blockedReason: '缺数据' },
+    };
+    expect(CommentSchema.parse(stuck)).toEqual(stuck);
+  });
+
+  it('rejects open_question without openQuestionData', () => {
+    expect(() =>
+      CommentSchema.parse({ ...baseNote, type: 'open_question' }),
+    ).toThrow(/openQuestionData is required/);
+  });
+
+  it('rejects non-open_question carrying openQuestionData', () => {
+    expect(() =>
+      CommentSchema.parse({
+        ...baseNote,
+        type: 'note',
+        openQuestionData: { question: 'x' },
+      }),
+    ).toThrow(/only allowed when type is/);
+  });
+});
+
+describe('OpenQuestionDataSchema', () => {
+  it('accepts minimal (question only)', () => {
+    expect(OpenQuestionDataSchema.parse({ question: '卡在哪' })).toEqual({
+      question: '卡在哪',
+    });
+  });
+  it('rejects empty question', () => {
+    expect(() => OpenQuestionDataSchema.parse({ question: '' })).toThrow();
   });
 });

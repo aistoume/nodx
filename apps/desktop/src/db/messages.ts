@@ -4,6 +4,10 @@ import type {
   SurveyFactor,
 } from '@nodx/ai';
 import { getDb } from './client.js';
+import { bumpSession, ensureActiveSession } from './sessions.js';
+
+/** Sentinel session for pre-session (migration <v8) messages. */
+const LEGACY_SESSION_ID = 'legacy';
 
 /**
  * Payload stored in Message.content for type='survey'.
@@ -34,6 +38,7 @@ export function parseFactorListContent(raw: string): FactorListMessageContent {
 interface MessageRow {
   id: string;
   topic_id: string;
+  session_id: string | null;
   role: string;
   type: string;
   content: string;
@@ -43,7 +48,7 @@ interface MessageRow {
 }
 
 const SELECT_COLUMNS =
-  'id, topic_id, role, type, content, anchors_json, mentions_json, created_at';
+  'id, topic_id, session_id, role, type, content, anchors_json, mentions_json, created_at';
 
 function rowToMessage(r: MessageRow): Message {
   const anchors = JSON.parse(r.anchors_json) as string[];
@@ -51,6 +56,7 @@ function rowToMessage(r: MessageRow): Message {
   return MessageSchema.parse({
     id: r.id,
     topicId: r.topic_id,
+    sessionId: r.session_id ?? LEGACY_SESSION_ID,
     role: r.role,
     type: r.type,
     content: r.content,
@@ -131,17 +137,58 @@ export async function updateMessageContent(
   ]);
 }
 
+/**
+ * Insert the "上次回顾" replay card (PRD §3.11). Content is the structured
+ * recap JSON; rendered as a banner, not in the chat thread.
+ */
+export async function createReplayCardMessage(
+  topicId: string,
+  contentJson: string,
+): Promise<Message> {
+  return insertMessage(topicId, 'ai', 'replay_card', contentJson);
+}
+
+/** Most recent replay_card for a topic (for the "≤1 per 24h" de-dup). */
+export async function getLatestReplayCard(
+  topicId: string,
+): Promise<Message | null> {
+  const db = await getDb();
+  const rows = await db.select<MessageRow[]>(
+    `SELECT ${SELECT_COLUMNS} FROM messages
+     WHERE topic_id = $1 AND type = 'replay_card'
+     ORDER BY created_at DESC LIMIT 1`,
+    [topicId],
+  );
+  const r = rows[0];
+  return r ? rowToMessage(r) : null;
+}
+
+/** A closing session's messages — fed to the reasoning-trace updater. */
+export async function listMessagesBySession(
+  sessionId: string,
+): Promise<Message[]> {
+  const db = await getDb();
+  const rows = await db.select<MessageRow[]>(
+    `SELECT ${SELECT_COLUMNS} FROM messages WHERE session_id = $1 ORDER BY created_at ASC`,
+    [sessionId],
+  );
+  return rows.map(rowToMessage);
+}
+
 async function insertMessage(
   topicId: string,
   role: 'user' | 'ai',
-  type: 'text' | 'survey' | 'factor_list' | 'explanation',
+  type: 'text' | 'survey' | 'factor_list' | 'explanation' | 'replay_card',
   content: string,
 ): Promise<Message> {
   const trimmed = content.trim();
   if (!trimmed) throw new Error('message content is empty');
+  // Auto-manage the ThinkingSession so callers don't have to (PRD §3.13).
+  const sessionId = await ensureActiveSession(topicId);
   const message: Message = MessageSchema.parse({
     id: crypto.randomUUID(),
     topicId,
+    sessionId,
     role,
     type,
     content: trimmed,
@@ -150,11 +197,12 @@ async function insertMessage(
 
   const db = await getDb();
   await db.execute(
-    `INSERT INTO messages (id, topic_id, role, type, content, anchors_json, mentions_json, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    `INSERT INTO messages (id, topic_id, session_id, role, type, content, anchors_json, mentions_json, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [
       message.id,
       message.topicId,
+      message.sessionId,
       message.role,
       message.type,
       message.content,
@@ -163,6 +211,7 @@ async function insertMessage(
       message.createdAt,
     ],
   );
+  await bumpSession(sessionId, message.createdAt);
 
   return message;
 }

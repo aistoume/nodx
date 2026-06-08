@@ -27,5 +27,17 @@ export const TopicSchema = z.object({
   updatedAt: TimestampSchema,
   meta: TopicMetaSchema,
   aiSummary: z.string().optional(),
+  /**
+   * AI-maintained condensed "reasoning path" — the core of 思路复现 (PRD
+   * §3.11). Haiku appends/revises it at the end of each ThinkingSession;
+   * the "上次回顾" replay card reads it instead of re-reading all history.
+   */
+  reasoningTrace: z.string().optional(),
+  /**
+   * Whether the Topic has any unresolved open_question (卡点). Drives the red
+   * marker on the network graph (PRD §3.12). Defaults false; the DB column
+   * carries DEFAULT 0 and the desktop recomputes it on卡点 create/resolve.
+   */
+  hasOpenQuestions: z.boolean().default(false),
 });
 export type Topic = z.infer<typeof TopicSchema>;

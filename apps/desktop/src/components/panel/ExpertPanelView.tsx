@@ -6,12 +6,19 @@ import {
   runDebate,
   acceptLocalMaximum,
   getPanelByTopic,
+  generatePanelMerge,
   type PanelProgress,
 } from '../../ai/panel.js';
+import { appendToDocument } from '../../db/documents.js';
+import { markdownToHtml } from '../../lib/markdown.js';
+import { MergePreviewModal } from './MergePreviewModal.js';
 import {
   clearPanelRounds,
   deletePanel,
+  deletePanelSeed,
+  getPanelSeed,
   updatePanelStatus,
+  type PanelSeed,
 } from '../../db/panels.js';
 import { ingestAcceptedPanel } from '../../ai/cbr.js';
 import { listTopics } from '../../db/topics.js';
@@ -24,6 +31,9 @@ interface ExpertPanelViewProps {
   topic: Topic;
   /** Bumped after accept (Topic.aiSummary changes) so the rest of the app refreshes. */
   onMutated: () => void;
+  /** Called after the panel conclusion is folded into the document — the
+   *  parent switches the center view back to 文档 and reloads it. */
+  onMergedToDoc?: () => void;
 }
 
 /** Direction topics thread the parent's summary in as debate context. */
@@ -34,8 +44,14 @@ async function resolveParentContext(topic: Topic): Promise<string> {
   return parent?.aiSummary ?? parent?.title ?? '';
 }
 
-export function ExpertPanelView({ topic, onMutated }: ExpertPanelViewProps) {
+export function ExpertPanelView({
+  topic,
+  onMutated,
+  onMergedToDoc,
+}: ExpertPanelViewProps) {
   const [panel, setPanel] = useState<ExpertPanel | null>(null);
+  // Diff-scoped seed from a CBR adaptation handoff (PRD §3.16 ④), if any.
+  const [seed, setSeed] = useState<PanelSeed | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState('');
@@ -54,7 +70,12 @@ export function ExpertPanelView({ topic, onMutated }: ExpertPanelViewProps) {
     setLoading(true);
     setError(null);
     try {
-      setPanel(await getPanelByTopic(topic.id));
+      const [p, s] = await Promise.all([
+        getPanelByTopic(topic.id),
+        getPanelSeed(topic.id),
+      ]);
+      setPanel(p);
+      setSeed(s);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -127,14 +148,20 @@ export function ExpertPanelView({ topic, onMutated }: ExpertPanelViewProps) {
       setPanel(formed);
     });
 
-  const startDebate = async (existing: ExpertPanel) => {
+  const startDebate = async (
+    existing: ExpertPanel,
+    framing?: { question: string; context: string },
+  ) => {
     setRunning(true);
     setLiveRounds([]);
     setActiveRoundId(null);
     try {
-      const ctx = await resolveParentContext(topic);
+      const f = framing ?? {
+        question: topic.title,
+        context: await resolveParentContext(topic),
+      };
       const hydrated = await runDebate(
-        { panel: existing, question: topic.title, context: ctx },
+        { panel: existing, question: f.question, context: f.context },
         { maxRounds, progress },
       );
       setPanel(hydrated);
@@ -143,6 +170,19 @@ export function ExpertPanelView({ topic, onMutated }: ExpertPanelViewProps) {
       setActiveRoundId(null);
     }
   };
+
+  // CBR diff-scoped handoff (PRD §3.16 ④): form the panel and immediately run a
+  // debate framed to ONLY the differing points — the inherited structure is
+  // given as a settled premise, so the panel runs the diff, not the whole thing.
+  const handleScopedForm = () =>
+    runAction('组建专家组并就差异点辩论…', async () => {
+      if (!seed) return;
+      const { panel: formed } = await formPanel(topic);
+      setPanel(formed);
+      await startDebate(formed, buildScopedFraming(seed, topic.title));
+      await deletePanelSeed(topic.id);
+      setSeed(null);
+    });
 
   const handleStartDebate = () =>
     runAction('辩论进行中（每轮多位专家并行，约数分钟）…', async () => {
@@ -178,6 +218,32 @@ export function ExpertPanelView({ topic, onMutated }: ExpertPanelViewProps) {
       setPanel(await getPanelByTopic(topic.id));
     });
 
+  // 归纳进文档 (PRD §8.7): Sonnet 收尾整理 → editable preview → append to doc.
+  const [merging, setMerging] = useState(false);
+  const [mergeMarkdown, setMergeMarkdown] = useState<string | null>(null);
+
+  const handleStartMerge = async () => {
+    if (!panel) return;
+    setError(null);
+    setMerging(true);
+    try {
+      const md = await generatePanelMerge(topic, panel);
+      setMergeMarkdown(md);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setMerging(false);
+    }
+  };
+
+  const handleConfirmMerge = (markdown: string) =>
+    runAction('插入文档…', async () => {
+      await appendToDocument(topic.id, markdownToHtml(markdown));
+      setMergeMarkdown(null);
+      onMutated();
+      onMergedToDoc?.();
+    });
+
   const displayRounds = running ? liveRounds : (panel?.rounds ?? []);
 
   return (
@@ -202,10 +268,19 @@ export function ExpertPanelView({ topic, onMutated }: ExpertPanelViewProps) {
             <p className="text-sm text-ink-muted italic">加载专家组…</p>
           ) : (
             <>
-              {/* No panel yet → formation CTA */}
-              {!panel && !running && (
-                <EmptyState busy={busy} phase={phase} onForm={handleForm} />
-              )}
+              {/* No panel yet → formation CTA (scoped if a CBR seed exists) */}
+              {!panel &&
+                !running &&
+                (seed ? (
+                  <ScopedFormCTA
+                    seed={seed}
+                    busy={busy}
+                    phase={phase}
+                    onForm={handleScopedForm}
+                  />
+                ) : (
+                  <EmptyState busy={busy} phase={phase} onForm={handleForm} />
+                ))}
 
               {/* Members roster (forming / debating / converged / rejected) */}
               {panel && (
@@ -263,14 +338,29 @@ export function ExpertPanelView({ topic, onMutated }: ExpertPanelViewProps) {
                 </p>
               )}
 
-              {/* Converged → Local Max + accept/reject */}
+              {/* Converged → Local Max + accept/reject + 归纳进文档 */}
               {!running && panel?.status === 'converged' && panel.localMaximum && (
-                <LocalMaxCard
-                  result={panel.localMaximum}
-                  busy={busy}
-                  onAccept={handleAccept}
-                  onReject={handleReject}
-                />
+                <>
+                  <LocalMaxCard
+                    result={panel.localMaximum}
+                    busy={busy}
+                    onAccept={handleAccept}
+                    onReject={handleReject}
+                  />
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={handleStartMerge}
+                      disabled={busy || merging}
+                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
+                    >
+                      {merging ? '收尾整理中…（Sonnet，约 30s）' : '📄 归纳进文档'}
+                    </button>
+                    <span className="text-[11px] text-ink-muted">
+                      把专家组结论整理成一节，并入左侧思考文档
+                    </span>
+                  </div>
+                </>
               )}
 
               {/* Interrupted (debating, never converged) or rejected → rerun */}
@@ -305,6 +395,15 @@ export function ExpertPanelView({ topic, onMutated }: ExpertPanelViewProps) {
           )}
         </div>
       </div>
+
+      {mergeMarkdown !== null && (
+        <MergePreviewModal
+          initialMarkdown={mergeMarkdown}
+          busy={busy}
+          onConfirm={handleConfirmMerge}
+          onClose={() => setMergeMarkdown(null)}
+        />
+      )}
     </div>
   );
 }
@@ -348,6 +447,78 @@ function SectionHeader({ title, note }: { title: string; note?: string }) {
         {title}
       </h2>
       {note && <span className="text-[11px] text-ink-muted">{note}</span>}
+    </div>
+  );
+}
+
+/** Frame a debate to focus on only the differing points (PRD §3.16 ④). */
+function buildScopedFraming(
+  seed: PanelSeed,
+  originalQuestion: string,
+): { question: string; context: string } {
+  const diffs = seed.rediscussDirections.map((d) => `- ${d}`).join('\n');
+  const levers = seed.levers.map((l) => `- ${l}`).join('\n');
+  return {
+    question:
+      '这是一次"复用适配"后的聚焦辩论：已有一个可复用的方案骨架（见背景，视为基本确定）。' +
+      '请**只就以下因新语境产生的差异点**做判断与决策，不要重新论证已确定的骨架：\n' +
+      diffs,
+    context:
+      `原始问题：${originalQuestion}\n\n` +
+      `【已确定的方案骨架（来自历史案例复用，作为前提，不要推翻）】\n${seed.inheritedStructure}\n\n` +
+      `【已适配到新语境的关键杠杆】\n${levers || '（无）'}`,
+  };
+}
+
+function ScopedFormCTA({
+  seed,
+  busy,
+  phase,
+  onForm,
+}: {
+  seed: PanelSeed;
+  busy: boolean;
+  phase: string;
+  onForm: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-accent/30 bg-accent-soft p-5 flex flex-col gap-3">
+      <div>
+        <p className="text-sm font-medium text-ink">
+          来自复用适配 · 专家组只就差异点辩论
+        </p>
+        <p className="text-xs text-ink-muted mt-1 leading-relaxed">
+          已有一个可复用的方案骨架被视为前提，专家组**不会从头辩论**，只聚焦下面这些因新语境产生的差异点：
+        </p>
+      </div>
+      <div className="rounded-md border border-border bg-surface p-3">
+        <p className="text-[11px] font-semibold text-ink-muted mb-1">
+          已确定的方案骨架
+        </p>
+        <p className="text-xs text-ink leading-relaxed">
+          {seed.inheritedStructure}
+        </p>
+      </div>
+      <div>
+        <p className="text-[11px] font-semibold text-ink-muted mb-1">
+          只辩论这些差异点
+        </p>
+        <ul className="list-disc pl-5 flex flex-col gap-0.5">
+          {seed.rediscussDirections.map((d, i) => (
+            <li key={i} className="text-xs text-ink leading-relaxed">
+              {d}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <button
+        type="button"
+        onClick={onForm}
+        disabled={busy}
+        className="self-start px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
+      >
+        {busy ? phase || '进行中…' : '组建专家组并就差异辩论'}
+      </button>
     </div>
   );
 }

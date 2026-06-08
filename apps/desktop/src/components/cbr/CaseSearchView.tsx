@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AdaptedSolution } from '@nodx/models';
 import type { FusionReport } from '@nodx/ai';
 import {
@@ -10,7 +10,10 @@ import {
 } from '../../ai/cbr.js';
 import { isAiConfigured } from '../../ai/gateway.js';
 import { createTopic } from '../../db/topics.js';
-import { markdownToInlineHtml } from '../../lib/markdown.js';
+import { upsertDocument } from '../../db/documents.js';
+import { insertPanelSeed } from '../../db/panels.js';
+import { listCasesBrief, type CaseBrief } from '../../db/cases.js';
+import { markdownToHtml, markdownToInlineHtml } from '../../lib/markdown.js';
 
 interface CaseSearchViewProps {
   /** Open a (newly created) topic in dialog view — used by the panel handoff. */
@@ -34,6 +37,12 @@ export function CaseSearchView({ onOpenTopic }: CaseSearchViewProps) {
   );
   const [busy, setBusy] = useState<string | null>(null); // phase label or null
   const [error, setError] = useState<string | null>(null);
+  // Library preview (browse what's available before typing a query).
+  const [briefs, setBriefs] = useState<CaseBrief[]>([]);
+
+  useEffect(() => {
+    void listCasesBrief().then(setBriefs).catch(() => setBriefs([]));
+  }, []);
 
   const run = async (label: string, fn: () => Promise<void>) => {
     setBusy(label);
@@ -47,15 +56,18 @@ export function CaseSearchView({ onOpenTopic }: CaseSearchViewProps) {
     }
   };
 
-  const handleSearch = () => {
-    const q = query.trim();
-    if (!q) return;
+  const runSearch = (raw: string) => {
+    const q = raw.trim();
+    if (!q || busy) return;
+    setQuery(q);
     setReport(null);
     setAdaptations({});
     void run('检索中…', async () => {
       setRetrieval(await retrieveCases(q));
     });
   };
+
+  const handleSearch = () => runSearch(query);
 
   const handleFuse = () =>
     run('生成参考报告中（Sonnet，约 1 分钟）…', async () => {
@@ -72,10 +84,21 @@ export function CaseSearchView({ onOpenTopic }: CaseSearchViewProps) {
 
   const handlePanelHandoff = async (sol: AdaptedSolution) => {
     if (!retrieval) return;
-    await run('新建话题…', async () => {
+    await run('新建话题（带差异点种子）…', async () => {
       const topic = await createTopic({
         title: retrieval.query,
         status: 'exploring',
+      });
+      // Pre-fill the doc so the new topic skips auto-Survey and carries the
+      // adapted solution as readable content.
+      await upsertDocument(topic.id, markdownToHtml(adaptationToMarkdown(sol)));
+      // Seed the panel so its surface offers a *scoped* debate on the diffs.
+      await insertPanelSeed({
+        topicId: topic.id,
+        sourceCaseId: sol.sourceCaseId,
+        inheritedStructure: sol.inheritedStructure,
+        levers: sol.contextualizedLevers,
+        rediscussDirections: sol.rediscussDirections,
       });
       onOpenTopic(topic.id);
     });
@@ -126,6 +149,11 @@ export function CaseSearchView({ onOpenTopic }: CaseSearchViewProps) {
                 {error}
               </pre>
             </div>
+          )}
+
+          {/* Library preview — browse what's available before searching. */}
+          {!retrieval && !busy && (
+            <LibraryPreview briefs={briefs} onPick={runSearch} />
           )}
 
           {retrieval && !busy && retrieval.results.length === 0 && (
@@ -184,6 +212,87 @@ export function CaseSearchView({ onOpenTopic }: CaseSearchViewProps) {
       </div>
     </main>
   );
+}
+
+const DECISION_TYPE_LABEL: Record<string, string> = {
+  go_no_go: '做/不做',
+  allocation: '资源分配',
+  sequencing: '先后顺序',
+  tradeoff: '多选权衡',
+};
+
+function LibraryPreview({
+  briefs,
+  onPick,
+}: {
+  briefs: CaseBrief[];
+  onPick: (query: string) => void;
+}) {
+  if (briefs.length === 0) {
+    return (
+      <div className="rounded-lg border border-border bg-surface p-4 text-sm text-ink-muted leading-relaxed">
+        案例库还是空的。先去 <span className="text-accent">🎙 专家组</span>{' '}
+        达成一个结论并「采纳」，它会自动抽象、入库，之后就能在这里检索复用了。
+      </div>
+    );
+  }
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex items-baseline gap-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-accent">
+          案例库（{briefs.length}）
+        </h2>
+        <span className="text-[11px] text-ink-muted">
+          点任意一个看看能检索到什么，或在上方输入你自己的新问题
+        </span>
+      </div>
+      <ul className="flex flex-col gap-2">
+        {briefs.map((c) => (
+          <li key={c.id}>
+            <button
+              type="button"
+              onClick={() => onPick(c.domain)}
+              className="w-full text-left rounded-lg border border-border bg-surface p-3 hover:border-accent hover:bg-accent-soft/40 transition flex flex-col gap-1"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-ink">{c.domain}</span>
+                <span className="text-[10px] text-ink-muted">
+                  {DECISION_TYPE_LABEL[c.decisionType] ?? c.decisionType}
+                </span>
+                <span className="ml-auto text-[11px] px-1.5 py-0.5 rounded-full bg-accent-soft border border-accent/30 text-accent">
+                  质量 {c.qualityScore.toFixed(2)}
+                </span>
+              </div>
+              <p className="text-xs text-ink-muted leading-relaxed line-clamp-2">
+                {c.signatureText}
+              </p>
+              <span className="text-[11px] text-accent">↳ 用它试搜相似案例</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Render an AdaptedSolution as the new topic's starting document. */
+function adaptationToMarkdown(sol: AdaptedSolution): string {
+  const bullets = (items: string[]) =>
+    items.length ? items.map((s) => `- ${s}`).join('\n') : '（无）';
+  return [
+    '## 复用适配方案',
+    '',
+    `**可迁移骨架**：${sol.inheritedStructure}`,
+    '',
+    '**新语境下的关键杠杆**',
+    bullets(sol.contextualizedLevers),
+    '',
+    '**新增风险缓解**',
+    bullets(sol.newRiskMitigations),
+    ...(sol.requiresExpertPanel
+      ? ['', '**待专家组就以下差异点辩论**', bullets(sol.rediscussDirections)]
+      : []),
+  ].join('\n');
 }
 
 function CaseResultCard({

@@ -181,6 +181,44 @@ export async function listCaseSummaries(
   });
 }
 
+export interface CaseBrief {
+  id: string;
+  domain: string;
+  decisionType: string;
+  signatureText: string;
+  qualityScore: number;
+  createdAt: number;
+}
+
+/**
+ * Lightweight list of all cases for browsing/preview (no embedding decode).
+ * Lets the 案例库 surface show what's available before the user types a query.
+ */
+export async function listCasesBrief(limit = 50): Promise<CaseBrief[]> {
+  const db = await getDb();
+  const rows = await db.select<
+    Array<{
+      id: string;
+      domain: string;
+      decision_type: string;
+      signature_text: string;
+      quality_score: number;
+      created_at: number;
+    }>
+  >(
+    `SELECT id, domain, decision_type, signature_text, quality_score, created_at
+     FROM abstracted_cases ORDER BY created_at DESC LIMIT ${limit}`,
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    domain: r.domain,
+    decisionType: r.decision_type,
+    signatureText: r.signature_text,
+    qualityScore: r.quality_score,
+    createdAt: r.created_at,
+  }));
+}
+
 export async function countCases(): Promise<number> {
   const db = await getDb();
   const rows = await db.select<Array<{ n: number }>>(

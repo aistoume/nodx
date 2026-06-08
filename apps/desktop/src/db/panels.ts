@@ -273,6 +273,71 @@ export async function acceptLocalMaximum(panelId: string): Promise<void> {
   );
 }
 
+// ── Diff-scoped panel seed (PRD §3.16 ④ handoff, migration v7) ─────────────
+
+/**
+ * The adaptation carried from a CBR "采用" into a new Topic's panel: the
+ * inherited (settled) structure + the differing points the panel should
+ * debate. The scoped debate frames its question/context from this.
+ */
+export interface PanelSeed {
+  topicId: string;
+  sourceCaseId: string;
+  inheritedStructure: string;
+  levers: string[];
+  rediscussDirections: string[];
+}
+
+export async function insertPanelSeed(seed: PanelSeed): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `INSERT OR REPLACE INTO topic_panel_seeds
+       (topic_id, source_case_id, inherited_structure, levers_json, rediscuss_json, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [
+      seed.topicId,
+      seed.sourceCaseId,
+      seed.inheritedStructure,
+      JSON.stringify(seed.levers),
+      JSON.stringify(seed.rediscussDirections),
+      Date.now(),
+    ],
+  );
+}
+
+export async function getPanelSeed(topicId: string): Promise<PanelSeed | null> {
+  const db = await getDb();
+  const rows = await db.select<
+    Array<{
+      topic_id: string;
+      source_case_id: string;
+      inherited_structure: string;
+      levers_json: string;
+      rediscuss_json: string;
+    }>
+  >(
+    `SELECT topic_id, source_case_id, inherited_structure, levers_json, rediscuss_json
+     FROM topic_panel_seeds WHERE topic_id = $1`,
+    [topicId],
+  );
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    topicId: r.topic_id,
+    sourceCaseId: r.source_case_id,
+    inheritedStructure: r.inherited_structure,
+    levers: JSON.parse(r.levers_json) as string[],
+    rediscussDirections: JSON.parse(r.rediscuss_json) as string[],
+  };
+}
+
+export async function deletePanelSeed(topicId: string): Promise<void> {
+  const db = await getDb();
+  await db.execute('DELETE FROM topic_panel_seeds WHERE topic_id = $1', [
+    topicId,
+  ]);
+}
+
 /**
  * Drop a panel entirely (members + rounds + exchanges cascade via FK).
  * Used by "重新组建" — the user wants a fresh persona stack.

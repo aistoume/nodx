@@ -9,12 +9,21 @@ export const MessageTypeSchema = z.enum([
   'survey',
   'factor_list',
   'explanation',
+  // "上次回顾"卡片（PRD §3.11）— a special message pinned to the top of the
+  // conversation; content holds the structured replay JSON.
+  'replay_card',
 ]);
 export type MessageType = z.infer<typeof MessageTypeSchema>;
 
 export const MessageSchema = z.object({
   id: IdSchema,
   topicId: IdSchema,
+  /**
+   * The ThinkingSession this message belongs to (PRD §3.13 / 思路复现).
+   * Old rows pre-date sessions; the desktop coalesces a NULL column to a
+   * `'legacy'` sentinel on read so this stays a non-empty string.
+   */
+  sessionId: IdSchema,
   role: MessageRoleSchema,
   type: MessageTypeSchema,
   content: z.string(),

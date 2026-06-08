@@ -98,15 +98,26 @@ interface ChatComposerProps {
   disabled: boolean;
   /** Rendered above the textarea row — used for the spawn-child button. */
   topSlot?: React.ReactNode;
+  /** External draft to seed (e.g. "重新推理" pre-fills the 卡点). */
+  seedDraft?: string;
+  /** Bump to re-apply seedDraft even if its text is unchanged. */
+  seedNonce?: number;
 }
 
 export function ChatComposer({
   onSend,
   disabled,
   topSlot,
+  seedDraft,
+  seedNonce,
 }: ChatComposerProps) {
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Seed the composer from outside (replay card "重新推理").
+  useEffect(() => {
+    if (seedNonce && seedDraft) setDraft(seedDraft);
+  }, [seedNonce, seedDraft]);
 
   const send = async () => {
     if (!draft.trim() || submitting || disabled) return;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SurveyFactor } from '@nodx/ai';
 import type { Message, Topic, TopicDocument } from '@nodx/models';
 import { askCoach } from '../ai/chat.js';
@@ -23,6 +23,7 @@ import { markdownToHtml } from '../lib/markdown.js';
 import { ChatComposer, ChatThread } from './ChatThread.js';
 import { DocumentView } from './DocumentView.js';
 import { ExpertPanelView } from './panel/ExpertPanelView.js';
+import { onTopicOpened, type RecapOutput } from '../ai/replay.js';
 import { SpawnChildButton } from './SpawnChildButton.js';
 import { SurveyCard } from './SurveyCard.js';
 
@@ -88,6 +89,11 @@ function Conversation({
   // Per-session guard so we don't double-fire auto-survey across rerenders.
   const autoSurveyFiredFor = useRef<Set<string>>(new Set());
 
+  // 思路复现 (PRD §3.11): hide the replay card once dismissed; guard so the
+  // open-hook (close stale sessions + maybe make a replay card) fires once.
+  const [replayDismissed, setReplayDismissed] = useState(false);
+  const replayFiredFor = useRef<Set<string>>(new Set());
+
   // Bumping retryNonce re-runs the auto-fire effect from scratch, after
   // clearing the once-per-topic guard. Used by the "重试" button when
   // the auto Survey / focused-doc call fails (rate limit, network, etc.).
@@ -123,6 +129,19 @@ function Conversation({
       setLoading(false);
     }
   }, [topic.id]);
+
+  // 思路复现 hook (PRD §3.11 / §8.8): on opening a topic, close idle sessions
+  // (Haiku → recap + trace) and, if it was reopened after a >24h gap, generate
+  // the "上次回顾" card. Best-effort + background; refresh to show the card.
+  useEffect(() => {
+    setReplayDismissed(false);
+    if (replayFiredFor.current.has(topic.id)) return;
+    replayFiredFor.current.add(topic.id);
+    const t = topic;
+    void onTopicOpened(t).then((recap) => {
+      if (recap) void refreshAll();
+    });
+  }, [topic, refreshAll]);
 
   // On topic enter: load and, if the conversation is empty, auto-fire the
   // appropriate AI flow.
@@ -301,6 +320,21 @@ function Conversation({
     onMutated();
   };
 
+  // The most recent "上次回顾" card (replay_card message), parsed for display.
+  const replayCard = useMemo<RecapOutput | null>(() => {
+    if (replayDismissed) return null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i]!.type === 'replay_card') {
+        try {
+          return JSON.parse(messages[i]!.content) as RecapOutput;
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  }, [messages, replayDismissed]);
+
   // Prefer doc view whenever a doc exists — and offer the expert-panel
   // surface alongside it via the mode toggle.
   if (document) {
@@ -313,7 +347,15 @@ function Conversation({
         <CenterModeTabs mode={centerMode} onChange={setCenterMode} />
         <div className="flex-1 min-h-0">
           {centerMode === 'panel' ? (
-            <ExpertPanelView topic={topic} onMutated={handleDocViewMutated} />
+            <ExpertPanelView
+              topic={topic}
+              onMutated={handleDocViewMutated}
+              onMergedToDoc={() => {
+                setCenterMode('doc');
+                void refreshAll();
+                onMutated();
+              }}
+            />
           ) : (
             <DocumentView
               topic={topic}
@@ -322,6 +364,8 @@ function Conversation({
               anchorableComments={anchorableComments}
               onMutated={handleDocViewMutated}
               onSelectTopic={onSelectTopic}
+              replayCard={replayCard}
+              onDismissReplay={() => setReplayDismissed(true)}
             />
           )}
         </div>

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MODELS, type ModelId } from '../models.js';
+import { JSON_QUOTE_RULE } from '../prompts/json-safety.js';
 
 export const ADAPTER_PROMPT_VERSION = '2026-06-04.v1';
 export const ADAPTER_PROMPT_MODEL: ModelId = MODELS.sonnet;
@@ -81,5 +82,5 @@ ${input.query}
   "newRiskMitigations": ["..."],
   "requiresExpertPanel": true,
   "rediscussDirections": ["..."]
-}`;
+}${JSON_QUOTE_RULE}`;
 }

@@ -8,16 +8,20 @@ import {
   PanelJudgeOutputSchema,
   SYNTHESIS_PROMPT_MODEL,
   SynthesisOutputSchema,
+  PANEL_MERGE_PROMPT_MODEL,
   buildDomainDetectPrompt,
   buildRecommendPanelPrompt,
   buildPanelJudgePrompt,
   buildSynthesisPrompt,
+  buildPanelMergePrompt,
   runPanel,
   type PanelCallbacks,
   type PanelSteps,
 } from '@nodx/ai';
 import type { ExpertAgent, ExpertPanel, Topic } from '@nodx/models';
 import { ai } from './gateway.js';
+import { getDocument } from '../db/documents.js';
+import { stripHtml } from './document.js';
 import {
   acceptLocalMaximum,
   createPanel,
@@ -63,15 +67,28 @@ const steps: PanelSteps = {
     return r.text.trim();
   },
   async judgeMarginal(input, signal) {
-    const r = await ai.complete({
-      prompt: buildPanelJudgePrompt(input),
-      model: PANEL_JUDGE_PROMPT_MODEL,
-      maxTokens: 500,
-      schema: PanelJudgeOutputSchema,
-      temperature: 0.2,
-      signal,
-    });
-    return r.data.marginalScore;
+    // The convergence judge is a heuristic — it must NEVER crash the debate.
+    // On any failure (e.g. the model emits invalid JSON), fall back to "still
+    // improving" so we don't fire a spurious marginal_decay stop; the round
+    // cap + canonical flow still bound the debate.
+    try {
+      const r = await ai.complete({
+        prompt: buildPanelJudgePrompt(input),
+        model: PANEL_JUDGE_PROMPT_MODEL,
+        maxTokens: 800,
+        schema: PanelJudgeOutputSchema,
+        temperature: 0.2,
+        signal,
+      });
+      return r.data.marginalScore;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[panel] marginal judge failed; treating as "still improving":',
+        err,
+      );
+      return 1;
+    }
   },
   async synthesize(input, signal) {
     // The Local Max JSON (consensus / divergence / openQuestions / bestAnswer)
@@ -243,6 +260,43 @@ export async function runPanelForTopic(
 }
 
 export { acceptLocalMaximum, getPanelByTopic };
+
+/**
+ * 归纳进文档 (PRD §8.7) — run the 收尾整理者 (Sonnet) to fold a converged
+ * panel's Local Maximum into a Markdown section that fits the topic's current
+ * thinking document. Returns the raw Markdown for an editable preview; the
+ * caller appends it to the document only after the user confirms.
+ *
+ * Throws if the panel hasn't converged (no localMaximum).
+ */
+export async function generatePanelMerge(
+  topic: Topic,
+  panel: ExpertPanel,
+): Promise<string> {
+  const lm = panel.localMaximum;
+  if (!lm) throw new Error('专家组尚未收敛，无法归纳进文档');
+
+  const doc = await getDocument(topic.id);
+  const documentText = doc ? stripHtml(doc.content) : '';
+
+  const r = await ai.completeTextUntilDone({
+    prompt: buildPanelMergePrompt({
+      question: topic.title,
+      domain: panel.domain,
+      bestAnswer: lm.bestAnswer,
+      consensus: lm.consensus,
+      divergence: lm.divergence,
+      openQuestions: lm.openQuestions,
+      confidence: lm.confidence,
+      documentText,
+    }),
+    model: PANEL_MERGE_PROMPT_MODEL,
+    maxTokens: 4000,
+    maxContinuations: 2,
+    temperature: 0.5,
+  });
+  return r.text.trim();
+}
 
 /**
  * Dev-only entry point — no UI exists for the panel yet, so this exposes

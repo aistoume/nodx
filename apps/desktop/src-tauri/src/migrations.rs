@@ -319,6 +319,118 @@ CREATE INDEX idx_case_relations_src ON case_relations(source_case_id, target_cas
 CREATE INDEX idx_case_relations_tgt ON case_relations(target_case_id);
 "#;
 
+/// Schema v7 — diff-scoped panel seed (PRD §3.16 ④ → §3.14 handoff).
+///
+/// When the CBR adapter says a reused case "requires an expert panel", the
+/// handoff creates a Topic and stashes the adaptation here. The panel surface
+/// reads this seed and runs a debate scoped to ONLY the differing points
+/// (`rediscuss_json`), treating the inherited structure as settled — so the
+/// panel runs the diff, not the whole thing. The row is deleted once the
+/// scoped debate starts (one-shot). 1:1 with a Topic.
+const V7_SQL: &str = r#"
+CREATE TABLE topic_panel_seeds (
+    topic_id            TEXT PRIMARY KEY REFERENCES topics(id) ON DELETE CASCADE,
+    source_case_id      TEXT NOT NULL,
+    inherited_structure TEXT NOT NULL,
+    levers_json         TEXT NOT NULL DEFAULT '[]',
+    rediscuss_json      TEXT NOT NULL DEFAULT '[]',
+    created_at          INTEGER NOT NULL
+);
+"#;
+
+/// Schema v8 — 卖点②「不丢失」: 思路复现 / 卡点 / 思考会话（PRD §3.11–3.13）.
+///
+///   topics            +reasoning_trace, +has_open_questions
+///   messages          +session_id (NULL for pre-session rows)
+///   comments          +open_question_data_json; type CHECK relaxed to allow
+///                     'open_question' (SQLite can't ALTER a CHECK → rebuild;
+///                     no table FK-references comments, so the rebuild is simple)
+///   thinking_sessions new table (1 topic : N sessions)
+const V8_SQL: &str = r#"
+ALTER TABLE topics ADD COLUMN reasoning_trace TEXT;
+ALTER TABLE topics ADD COLUMN has_open_questions INTEGER NOT NULL DEFAULT 0
+    CHECK (has_open_questions IN (0, 1));
+
+ALTER TABLE messages ADD COLUMN session_id TEXT;
+
+-- Rebuild comments to relax the type CHECK + add the 卡点 payload column.
+CREATE TABLE _comments_v8 (
+    id                      TEXT PRIMARY KEY,
+    topic_id                TEXT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    anchor_id               TEXT,
+    type                    TEXT NOT NULL CHECK (type IN
+        ('note','explanation','atomic','reference','open_question')),
+    content                 TEXT NOT NULL,
+    atomic_data_json        TEXT,
+    open_question_data_json TEXT,
+    created_at              INTEGER NOT NULL,
+    CHECK (
+        (type = 'atomic' AND atomic_data_json IS NOT NULL)
+        OR (type != 'atomic' AND atomic_data_json IS NULL)
+    ),
+    CHECK (
+        (type = 'open_question' AND open_question_data_json IS NOT NULL)
+        OR (type != 'open_question' AND open_question_data_json IS NULL)
+    )
+);
+INSERT INTO _comments_v8
+    (id, topic_id, anchor_id, type, content, atomic_data_json, open_question_data_json, created_at)
+    SELECT id, topic_id, anchor_id, type, content, atomic_data_json, NULL, created_at
+    FROM comments;
+DROP TABLE comments;
+ALTER TABLE _comments_v8 RENAME TO comments;
+CREATE INDEX idx_comments_topic ON comments(topic_id);
+CREATE INDEX idx_comments_anchor ON comments(anchor_id) WHERE anchor_id IS NOT NULL;
+
+CREATE TABLE thinking_sessions (
+    id            TEXT PRIMARY KEY,
+    topic_id      TEXT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    started_at    INTEGER NOT NULL,
+    ended_at      INTEGER NOT NULL,
+    message_count INTEGER NOT NULL DEFAULT 0 CHECK (message_count >= 0),
+    ai_recap      TEXT
+);
+CREATE INDEX idx_sessions_topic ON thinking_sessions(topic_id, started_at DESC);
+"#;
+
+/// Schema v9 — fix: allow `messages.type = 'replay_card'` (PRD §3.11).
+///
+/// v8 added the replay_card message type in the models but missed relaxing the
+/// messages.type CHECK (from v1), so inserting a "上次回顾" card failed. SQLite
+/// can't ALTER a CHECK → rebuild the table. `draft_items` FK-references
+/// messages (ON DELETE SET NULL) but is empty, so the drop is safe; the
+/// AFTER INSERT trigger + index are recreated.
+const V9_SQL: &str = r#"
+CREATE TABLE _messages_v9 (
+    id            TEXT PRIMARY KEY,
+    topic_id      TEXT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    session_id    TEXT,
+    role          TEXT NOT NULL CHECK (role IN ('user','ai')),
+    type          TEXT NOT NULL CHECK (type IN
+        ('text','survey','factor_list','explanation','replay_card')),
+    content       TEXT NOT NULL,
+    anchors_json  TEXT NOT NULL DEFAULT '[]',
+    mentions_json TEXT NOT NULL DEFAULT '[]',
+    created_at    INTEGER NOT NULL
+);
+INSERT INTO _messages_v9
+    (id, topic_id, session_id, role, type, content, anchors_json, mentions_json, created_at)
+    SELECT id, topic_id, session_id, role, type, content, anchors_json, mentions_json, created_at
+    FROM messages;
+DROP TABLE messages;
+ALTER TABLE _messages_v9 RENAME TO messages;
+CREATE INDEX idx_messages_topic_created ON messages(topic_id, created_at);
+CREATE TRIGGER trg_messages_after_insert
+AFTER INSERT ON messages
+BEGIN
+    UPDATE topics
+    SET message_count = message_count + 1,
+        last_activity = NEW.created_at,
+        updated_at = NEW.created_at
+    WHERE id = NEW.topic_id;
+END;
+"#;
+
 pub fn all() -> Vec<Migration> {
     vec![
         Migration {
@@ -355,6 +467,24 @@ pub fn all() -> Vec<Migration> {
             version: 6,
             description: "cbr_abstracted_cases_and_relations",
             sql: V6_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 7,
+            description: "topic_panel_seeds",
+            sql: V7_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 8,
+            description: "replay_sessions_and_open_questions",
+            sql: V8_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 9,
+            description: "allow_replay_card_message_type",
+            sql: V9_SQL,
             kind: MigrationKind::Up,
         },
     ]

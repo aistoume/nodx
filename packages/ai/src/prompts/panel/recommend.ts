@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { PersonaRoleSchema } from '@nodx/models';
 import { MODELS, type ModelId } from '../../models.js';
+import { JSON_QUOTE_RULE } from '../json-safety.js';
 
 export const RECOMMEND_PANEL_PROMPT_VERSION = '2026-06-02.v1';
 export const RECOMMEND_PANEL_PROMPT_MODEL: ModelId = MODELS.sonnet;
@@ -83,5 +84,5 @@ export function buildRecommendPanelPrompt(input: RecommendPanelInput): string {
       "systemPrompt": "<该专家的人格设定，第二人称>"
     }
   ]
-}`;
+}${JSON_QUOTE_RULE}`;
 }

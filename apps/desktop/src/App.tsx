@@ -8,9 +8,10 @@ import { ExplainTrigger } from './components/ExplainTrigger.js';
 import { NetworkGraphView } from './components/NetworkGraphView.js';
 import { CaseSearchView } from './components/cbr/CaseSearchView.js';
 import { listArchivedTopics, listTopics } from './db/topics.js';
-import { listComments } from './db/comments.js';
+import { listComments, listAllOpenQuestions } from './db/comments.js';
 import { registerPanelDevTrigger } from './ai/panel.js';
 import { registerCbrDevTrigger } from './ai/cbr.js';
+import { registerReplayDevTrigger } from './ai/replay.js';
 
 type View = 'dialog' | 'graph' | 'cases';
 
@@ -22,6 +23,25 @@ export function App() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [openQuestions, setOpenQuestions] = useState<
+    Array<{ id: string; topicId: string; topicTitle: string; question: string }>
+  >([]);
+
+  const refreshOpenQuestions = useCallback(async () => {
+    try {
+      const list = await listAllOpenQuestions();
+      setOpenQuestions(
+        list.map((o) => ({
+          id: o.comment.id,
+          topicId: o.comment.topicId,
+          topicTitle: o.topicTitle,
+          question: o.comment.openQuestionData?.question ?? o.comment.content,
+        })),
+      );
+    } catch {
+      // Non-critical — the badge just stays stale.
+    }
+  }, []);
 
   const refreshTopics = useCallback(async () => {
     setLoading(true);
@@ -76,12 +96,17 @@ export function App() {
     void refreshComments();
   }, [refreshComments]);
 
+  useEffect(() => {
+    void refreshOpenQuestions();
+  }, [refreshOpenQuestions]);
+
   // Expert Panel has no UI yet — expose window.__nodxRunPanel(topicId) in
   // dev so the debate engine can be driven + inspected from the console.
   useEffect(() => {
     if (import.meta.env.DEV) {
       registerPanelDevTrigger();
       registerCbrDevTrigger();
+      registerReplayDevTrigger();
     }
   }, []);
 
@@ -96,11 +121,21 @@ export function App() {
   const refreshAll = () => {
     void refreshTopics();
     void refreshComments();
+    void refreshOpenQuestions();
   };
 
   return (
     <div className="flex flex-col h-full">
-      <Header view={view} onViewChange={setView} />
+      <Header
+        view={view}
+        onViewChange={setView}
+        openQuestions={openQuestions}
+        onJumpToTopic={(id) => {
+          setSelectedTopicId(id);
+          setView('dialog');
+        }}
+      />
+
 
       {/* LeftPanel persists across views — clicking a topic from graph
           mode swaps the canvas's root subtree without forcing the user

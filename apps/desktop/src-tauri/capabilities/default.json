@@ -20,6 +20,24 @@
     {
       "identifier": "sql:allow-close",
       "allow": [{ "name": "sqlite:nodx.db" }]
+    },
+    "dialog:allow-save",
+    "dialog:allow-open",
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [
+        { "path": "$HOME/**" },
+        { "path": "/Volumes/**" },
+        { "path": "/tmp/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [
+        { "path": "$HOME/**" },
+        { "path": "/Volumes/**" },
+        { "path": "/tmp/**" }
+      ]
     }
   ]
 }

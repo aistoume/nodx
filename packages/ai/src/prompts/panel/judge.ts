@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MODELS, type ModelId } from '../../models.js';
+import { JSON_QUOTE_RULE } from '../json-safety.js';
 
 export const PANEL_JUDGE_PROMPT_VERSION = '2026-06-02.v1';
 export const PANEL_JUDGE_PROMPT_MODEL: ModelId = MODELS.haiku;
@@ -52,9 +53,9 @@ marginalScore 含义：
 - 接近 1：立场仍在大幅移动，辩论远未收敛
 - 接近 0：基本只是重复上一轮，已无实质新增（收益递减）
 
-只输出 JSON：
+只输出 JSON（rationale 一句话，≤40 字）：
 {
   "marginalScore": 0.0,
-  "rationale": "<一句话说明你为什么给这个分>"
-}`;
+  "rationale": "<简短理由>"
+}${JSON_QUOTE_RULE}`;
 }
