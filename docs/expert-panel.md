@@ -195,6 +195,13 @@ pnpm --filter desktop typecheck
 
 可在 `采纳` 前后任意时刻归纳；与决策汇报/数据包导出互不影响。
 
+**「📋 直接替换文档」**（归纳按钮旁）：不走 AI 改写，把 Local Max 原始结构
+（首句标题 / 把握度 / 共识点 / 分歧与权衡 / 待解问题 / 结论详述）经
+`components/panel/local-max-markdown.ts:localMaxToMarkdown`（纯函数，带单测）
+渲染成 Markdown → `upsertDocument` **覆盖**整份文档（区别于归纳的 append）。
+瞬时完成、无 Sonnet 调用；破坏性操作用两步点击确认（沿用 LeftPanel DeleteAction
+模式——`window.confirm` 在 Tauri 2 macOS webview 上不可靠，见该文件注释）。
+
 ---
 
 ## 10. 涉及文件速查

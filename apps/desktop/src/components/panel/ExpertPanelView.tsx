@@ -9,9 +9,10 @@ import {
   generatePanelMerge,
   type PanelProgress,
 } from '../../ai/panel.js';
-import { appendToDocument } from '../../db/documents.js';
+import { appendToDocument, upsertDocument } from '../../db/documents.js';
 import { markdownToHtml } from '../../lib/markdown.js';
 import { MergePreviewModal } from './MergePreviewModal.js';
+import { localMaxToMarkdown } from './local-max-markdown.js';
 import {
   clearPanelRounds,
   deletePanel,
@@ -244,6 +245,17 @@ export function ExpertPanelView({
       onMergedToDoc?.();
     });
 
+  // 直接替换文档: no AI rewrite — render the Local Max fields verbatim as
+  // Markdown and OVERWRITE the whole document (upsert, not append). Instant.
+  const handleReplaceDoc = () =>
+    runAction('替换文档…', async () => {
+      if (!panel?.localMaximum) return;
+      const md = localMaxToMarkdown(panel.localMaximum);
+      await upsertDocument(topic.id, markdownToHtml(md));
+      onMutated();
+      onMergedToDoc?.();
+    });
+
   const displayRounds = running ? liveRounds : (panel?.rounds ?? []);
 
   return (
@@ -352,13 +364,29 @@ export function ExpertPanelView({
                       type="button"
                       onClick={handleStartMerge}
                       disabled={busy || merging}
-                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
+                      className={
+                        'px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition' +
+                        (merging ? ' animate-pulse' : '')
+                      }
                     >
-                      {merging ? '收尾整理中…（Sonnet，约 30s）' : '📄 归纳进文档'}
+                      {merging
+                        ? '📄 归纳进文档（Sonnet 整理中，约 30 秒，请等待预览…）'
+                        : '📄 归纳进文档'}
                     </button>
-                    <span className="text-[11px] text-ink-muted">
-                      把专家组结论整理成一节，并入左侧思考文档
-                    </span>
+                    <ReplaceDocButton
+                      busy={busy || merging}
+                      onConfirm={handleReplaceDoc}
+                    />
+                    {!merging && (
+                      <span className="text-[11px] text-ink-muted">
+                        归纳 = Sonnet 整理成一节追加；替换 = 原文直接覆盖全文
+                      </span>
+                    )}
+                    {merging && (
+                      <span className="text-[11px] text-ink-muted">
+                        整理完成后会弹出可编辑预览，请勿离开本页
+                      </span>
+                    )}
                   </div>
                 </>
               )}
@@ -405,6 +433,61 @@ export function ExpertPanelView({
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Two-step confirm for the destructive "replace whole document" action:
+ * first click stages, second click within 3s commits. Mirrors LeftPanel's
+ * DeleteAction — window.confirm() is documented there as unreliable in the
+ * Tauri 2 macOS webview, so we don't use it.
+ */
+function ReplaceDocButton({
+  busy,
+  onConfirm,
+}: {
+  busy: boolean;
+  onConfirm: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current != null) window.clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const handleClick = () => {
+    if (pending) {
+      if (timerRef.current != null) window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+      setPending(false);
+      onConfirm();
+    } else {
+      setPending(true);
+      timerRef.current = window.setTimeout(() => {
+        setPending(false);
+        timerRef.current = null;
+      }, 3000);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={busy}
+      title="不走 AI 改写，把 Local Max 原文直接覆盖文档"
+      className={
+        'px-3 py-1.5 text-xs font-medium rounded-md border transition disabled:opacity-40 ' +
+        (pending
+          ? 'bg-red-600 text-white border-red-600 hover:bg-red-700'
+          : 'border-border text-ink-muted hover:border-accent hover:text-accent')
+      }
+    >
+      {pending ? '⚠️ 会清掉当前文档内容，再点确认' : '📋 直接替换文档'}
+    </button>
   );
 }
 
