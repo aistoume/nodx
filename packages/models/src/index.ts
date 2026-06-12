@@ -19,3 +19,9 @@ export * from './expert-panel.js';
 export * from './abstracted-case.js';
 export * from './case-relation.js';
 export * from './adapted-solution.js';
+
+// Auto-Recursion Engine (PRD §3.19)
+export * from './feasibility-breakdown.js';
+export * from './child-candidate.js';
+export * from './next-move-plan.js';
+export * from './auto-recursion-run.js';

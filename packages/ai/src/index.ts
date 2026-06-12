@@ -259,3 +259,33 @@ export {
   type AdapterInput,
   type AdapterOutput,
 } from './cbr/adapter.js';
+
+export {
+  PM_PROMPT_VERSION,
+  PM_PROMPT_MODEL,
+  PmOutputSchema,
+  PmChildCandidateSchema,
+  buildPmPrompt,
+  type PmInput,
+  type PmOutput,
+  type PmChildCandidate,
+} from './prompts/auto-recursion/pm.js';
+
+export {
+  FEASIBILITY_JUDGE_PROMPT_VERSION,
+  FEASIBILITY_JUDGE_PROMPT_MODEL,
+  buildFeasibilityJudgePrompt,
+  type FeasibilityJudgeInput,
+} from './prompts/auto-recursion/feasibility-judge.js';
+
+export {
+  computeFeasibilityScore,
+  scoreFeasibility,
+  type FeasibilityJudgeCall,
+} from './auto-recursion/feasibility-judge.js';
+
+export {
+  generateNextMovePlan,
+  type AutoRecursionSteps,
+  type PmParentContext,
+} from './auto-recursion/project-manager.js';

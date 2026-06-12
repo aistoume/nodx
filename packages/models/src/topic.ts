@@ -39,5 +39,13 @@ export const TopicSchema = z.object({
    * carries DEFAULT 0 and the desktop recomputes it on卡点 create/resolve.
    */
   hasOpenQuestions: z.boolean().default(false),
+  /**
+   * 自动递进引擎 (PRD §3.19) lineage — set only on Topics spawned by a run:
+   * which AutoRecursionRun created this Topic (for rollback / path tree),
+   * how deep it sits within that run, and which NextMovePlan picked it.
+   */
+  generatedByAutoRecursionRunId: IdSchema.optional(),
+  autoRecursionDepth: z.number().int().nonnegative().optional(),
+  parentNextMovePlanId: IdSchema.optional(),
 });
 export type Topic = z.infer<typeof TopicSchema>;
