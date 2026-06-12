@@ -95,4 +95,38 @@ describe('TopicSchema', () => {
     expect(t.reasoningTrace).toContain('现金流');
     expect(t.hasOpenQuestions).toBe(true);
   });
+
+  it('accepts the auto-recursion lineage fields (PRD §3.19)', () => {
+    const t = TopicSchema.parse({
+      ...validTopic,
+      generatedByAutoRecursionRunId: 'run_1',
+      autoRecursionDepth: 2,
+      parentNextMovePlanId: 'nmp_1',
+    });
+    expect(t.generatedByAutoRecursionRunId).toBe('run_1');
+    expect(t.autoRecursionDepth).toBe(2);
+    expect(t.parentNextMovePlanId).toBe('nmp_1');
+  });
+
+  it('treats all three auto-recursion fields as optional (old rows)', () => {
+    const t = TopicSchema.parse(validTopic);
+    expect(t.generatedByAutoRecursionRunId).toBeUndefined();
+    expect(t.autoRecursionDepth).toBeUndefined();
+    expect(t.parentNextMovePlanId).toBeUndefined();
+  });
+
+  it('rejects wrong-typed auto-recursion fields', () => {
+    expect(() =>
+      TopicSchema.parse({ ...validTopic, generatedByAutoRecursionRunId: 7 }),
+    ).toThrow();
+    expect(() =>
+      TopicSchema.parse({ ...validTopic, autoRecursionDepth: -1 }),
+    ).toThrow();
+    expect(() =>
+      TopicSchema.parse({ ...validTopic, autoRecursionDepth: 1.5 }),
+    ).toThrow();
+    expect(() =>
+      TopicSchema.parse({ ...validTopic, parentNextMovePlanId: '' }),
+    ).toThrow();
+  });
 });

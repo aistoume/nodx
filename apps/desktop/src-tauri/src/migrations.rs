@@ -431,6 +431,56 @@ BEGIN
 END;
 "#;
 
+/// Schema v10 — 自动递进引擎 data layer (PRD §3.19, Sprint A).
+///
+///   topics              +generated_by_auto_recursion_run_id /
+///                       +auto_recursion_depth / +parent_next_move_plan_id
+///                       (lineage of run-spawned topics; NULL on all others)
+///   next_move_plans     PM triage output per evaluated Topic — candidates /
+///                       breakdowns stored as JSON TEXT like the panel tables
+///   auto_recursion_runs one row per run: mode + hard caps (budget $5 /
+///                       depth 4 defaults) + spend & spawned-topic accounting
+///
+/// No FK from topics' new columns to the new tables: runs/plans may be
+/// pruned independently of the topics they spawned (mirrors edges/seeds).
+const V10_SQL: &str = r#"
+ALTER TABLE topics ADD COLUMN generated_by_auto_recursion_run_id TEXT NULL;
+ALTER TABLE topics ADD COLUMN auto_recursion_depth INTEGER NULL;
+ALTER TABLE topics ADD COLUMN parent_next_move_plan_id TEXT NULL;
+
+CREATE TABLE next_move_plans (
+    id                    TEXT PRIMARY KEY,
+    topic_id              TEXT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    status                TEXT NOT NULL CHECK (status IN
+        ('atomic_complete','needs_deepening','needs_real_world_data','multi_path_choice')),
+    atomicity_score       REAL NOT NULL,
+    whats_missing_json    TEXT NOT NULL DEFAULT '[]',
+    child_candidates_json TEXT NOT NULL DEFAULT '[]',
+    top_pick              TEXT NULL,
+    top_pick_reasoning    TEXT NULL,
+    created_at            INTEGER NOT NULL
+);
+CREATE INDEX idx_nmp_topic ON next_move_plans(topic_id, created_at DESC);
+
+CREATE TABLE auto_recursion_runs (
+    id                     TEXT PRIMARY KEY,
+    root_topic_id          TEXT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    mode                   TEXT NOT NULL CHECK (mode IN ('pilot','auto_step','auto_run')),
+    budget_usd             REAL NOT NULL DEFAULT 5.0,
+    depth_limit            INTEGER NOT NULL DEFAULT 4,
+    started_at             INTEGER NOT NULL,
+    ended_at               INTEGER NULL,
+    status                 TEXT NOT NULL CHECK (status IN
+        ('running','paused_by_user','completed',
+         'budget_exhausted','depth_exhausted','hit_real_world_block')),
+    total_spent_usd        REAL NOT NULL DEFAULT 0.0,
+    max_depth_reached      INTEGER NOT NULL DEFAULT 0,
+    spawned_topic_ids_json TEXT NOT NULL DEFAULT '[]',
+    interruptions_json     TEXT NOT NULL DEFAULT '[]'
+);
+CREATE INDEX idx_arr_root ON auto_recursion_runs(root_topic_id, started_at DESC);
+"#;
+
 pub fn all() -> Vec<Migration> {
     vec![
         Migration {
@@ -485,6 +535,12 @@ pub fn all() -> Vec<Migration> {
             version: 9,
             description: "allow_replay_card_message_type",
             sql: V9_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 10,
+            description: "auto_recursion_engine",
+            sql: V10_SQL,
             kind: MigrationKind::Up,
         },
     ]

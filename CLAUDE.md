@@ -189,14 +189,17 @@ nodx/
 ## 9. 当前项目状态
 
 - ✅ M0 原型确认（prototype.html）
-- ✅ PRD v0.8 完成（卖点章节 + 思路复现 + 专家组协议 + Local Max 经济+二阶停止规则 + 思考快照索引 + CBR 流水线 V1 省钱版 + 简化 GraphRAG + 2026.5 技术选型校准）
+- ✅ PRD v0.9 完成（卖点章节 + 思路复现 + 专家组协议 + Local Max 经济+二阶停止规则 + 思考快照索引 + CBR 流水线 V1 省钱版 + 简化 GraphRAG + 自动递进引擎 PM + 2026.5 技术选型校准）
 - ✅ CLAUDE.md 工作上下文准备就绪
 - ✅ M1 核心闭环大部分落地（Survey / 第一性原理 / 文档 / 即时解释 / 备注 / 网络图 / 子话题）
 - ✅ **专家组对话思考引擎（核心卖点，V2 提前做）**：引擎 + 持久化 + UI + 动态轮数 + 防截断续写
   + 判官容错 + JSON 引号加固 + **「归纳进文档」**（Local Max → Sonnet 收尾整理者 →
   可编辑预览 → 追加到思考文档末尾并切回文档视图：`prompts/panel/merge.ts` +
   `ai/panel.ts:generatePanelMerge` + `db/documents.ts:appendToDocument` +
-  `components/panel/MergePreviewModal.tsx`）—— 详见 **`docs/expert-panel.md`**
+  `components/panel/MergePreviewModal.tsx`）+ **「直接替换文档」**（不走 AI：
+  `components/panel/local-max-markdown.ts:localMaxToMarkdown` 纯函数渲染 Local Max →
+  `upsertDocument` 覆盖全文，两步点击确认，瞬时完成；归纳=append，替换=overwrite）
+  —— 详见 **`docs/expert-panel.md`** §9b（真实 app 验证通过，commit b8fe808 含归纳路径完整诊断）
 - ✅ **CBR 检索复用流水线 V1 — Week 1–3 全部完成**（真实 app 端到端验证）：
   - W1 数据层 + 抽象/索引写入（models + migration v6 + 抽象师/关系发现者/索引器 + Gemini 嵌入端点 + 入库钩子）
   - W2 检索读路径（Brain Hub + 双路召回 + Heuristic 排序 + Sonnet Fusion）
@@ -222,6 +225,13 @@ nodx/
   （`prompts/panel/merge.ts` + `ai/panel.ts:generatePanelMerge` + `db/documents.ts:appendToDocument`
   + `components/panel/MergePreviewModal.tsx`）—— 详见 **`docs/expert-panel.md` §9b**
 - ✅ 杂项：对话列表父话题**可折叠**；案例库**预览浏览**
+- ✅ **自动递进引擎 Sprint A**（PRD §3.19 数据层 + PM/可行性评分员，2026-06-08）：
+  models 4 新 schema + topic 3 个 lineage 字段 + **migration v10**（next_move_plans /
+  auto_recursion_runs，已应用真实 DB）+ `packages/ai` PM(Sonnet)/评分员(Haiku) prompts
+  + `generateNextMovePlan` 编排（DI steps 范式，不写库）。**真模型冒烟通过**（3 条真实
+  Local Max + 1 次 Haiku 评分，~$0.02/次；抓到 null 可选字段 bug 已修）
+  —— 详见 **`docs/auto-recursion.md`**（含 Sprint B/C 待办 + real_world 分流偏向观察）
+- ⏳ 自动递进 Sprint B：编排状态机 + DB 读写 + 「采纳并推进」/路径预览 UI（见 docs/auto-recursion.md §4）
 - ⏳ M1 收尾项：草稿区、@引用 UI（卡点/上次回顾/决策汇报/数据包导出/专家组归纳进文档已完成）
 
 ---
