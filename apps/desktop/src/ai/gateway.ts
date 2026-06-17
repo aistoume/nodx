@@ -35,6 +35,41 @@ export function isAiConfigured(): boolean {
 }
 
 /**
+ * Usage tap — every completion through `ai.*` reports (modelId, token usage)
+ * to registered listeners. The auto-recursion budget meter (PRD §3.19)
+ * subscribes for the duration of a run to accumulate real spend. Attribution
+ * assumes other AI surfaces stay quiet while a run is active (V1-acceptable:
+ * the run modal blocks the surface that drives it).
+ */
+export type AiUsageListener = (
+  model: string,
+  usage: { inputTokens: number; outputTokens: number },
+) => void;
+
+const usageListeners = new Set<AiUsageListener>();
+
+/** Subscribe to all gateway token usage. Returns an unsubscribe function. */
+export function onAiUsage(listener: AiUsageListener): () => void {
+  usageListeners.add(listener);
+  return () => {
+    usageListeners.delete(listener);
+  };
+}
+
+function emitUsage(
+  model: string,
+  usage: { inputTokens: number; outputTokens: number },
+): void {
+  for (const l of usageListeners) {
+    try {
+      l(model, usage);
+    } catch {
+      // a broken listener must never break the AI call path
+    }
+  }
+}
+
+/**
  * Bound versions that pull config from env so call sites don't repeat themselves.
  * Re-exports keep the type imports flowing through this single file.
  */
@@ -42,25 +77,33 @@ export const ai = {
   async complete<T>(
     opts: Omit<Parameters<typeof complete<T>>[1], never>,
   ): ReturnType<typeof complete<T>> {
-    return complete(getGatewayConfig(), opts);
+    const r = await complete(getGatewayConfig(), opts);
+    emitUsage(opts.model, r.usage);
+    return r;
   },
 
   async completeUntilDone<T>(
     opts: Parameters<typeof completeUntilDone<T>>[1],
   ): ReturnType<typeof completeUntilDone<T>> {
-    return completeUntilDone(getGatewayConfig(), opts);
+    const r = await completeUntilDone(getGatewayConfig(), opts);
+    emitUsage(opts.model, r.usage);
+    return r;
   },
 
   async completeText(
     opts: Parameters<typeof completeText>[1],
   ): ReturnType<typeof completeText> {
-    return completeText(getGatewayConfig(), opts);
+    const r = await completeText(getGatewayConfig(), opts);
+    emitUsage(opts.model, r.usage);
+    return r;
   },
 
   async completeTextUntilDone(
     opts: Parameters<typeof completeTextUntilDone>[1],
   ): ReturnType<typeof completeTextUntilDone> {
-    return completeTextUntilDone(getGatewayConfig(), opts);
+    const r = await completeTextUntilDone(getGatewayConfig(), opts);
+    emitUsage(opts.model, r.usage);
+    return r;
   },
 
   async embed(

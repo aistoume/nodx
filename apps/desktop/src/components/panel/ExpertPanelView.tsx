@@ -27,6 +27,7 @@ import { isAiConfigured } from '../../ai/gateway.js';
 import { PanelMembers } from './PanelMembers.js';
 import { PanelTranscript } from './PanelTranscript.js';
 import { LocalMaxCard } from './LocalMaxCard.js';
+import { AutoRecursionModal } from '../auto-recursion/AutoRecursionModal.js';
 
 interface ExpertPanelViewProps {
   topic: Topic;
@@ -197,19 +198,30 @@ export function ExpertPanelView({
       await startDebate({ ...panel, status: 'forming', rounds: [] });
     });
 
-  const handleAccept = () =>
+  /** Shared accept core: persist + refresh + fire the CBR ingest hook. */
+  const doAccept = async () => {
+    if (!panel) return;
+    if (panel.localMaximum?.acceptedByUser) return; // already accepted
+    await acceptLocalMaximum(panel.id);
+    const accepted = panel;
+    setPanel(await getPanelByTopic(topic.id));
+    onMutated();
+    // CBR hook (PRD §3.16): a converged+accepted Topic reaches localMaximum →
+    // abstract it into a reusable case. Fire-and-forget: slow + needs the
+    // Gemini key, and must not block / break the accept UX.
+    void resolveParentContext(topic).then((ctx) =>
+      ingestAcceptedPanel(accepted, topic, ctx),
+    );
+  };
+
+  const handleAccept = () => runAction('采纳中…', doAccept);
+
+  // 采纳并推进 (PRD §3.19): accept, then open the auto-recursion modal.
+  const [recurseOpen, setRecurseOpen] = useState(false);
+  const handleAcceptAndRecurse = () =>
     runAction('采纳中…', async () => {
-      if (!panel) return;
-      await acceptLocalMaximum(panel.id);
-      const accepted = panel;
-      setPanel(await getPanelByTopic(topic.id));
-      onMutated();
-      // CBR hook (PRD §3.16): a converged+accepted Topic reaches localMaximum →
-      // abstract it into a reusable case. Fire-and-forget: slow + needs the
-      // Gemini key, and must not block / break the accept UX.
-      void resolveParentContext(topic).then((ctx) =>
-        ingestAcceptedPanel(accepted, topic, ctx),
-      );
+      await doAccept();
+      setRecurseOpen(true);
     });
 
   const handleReject = () =>
@@ -358,6 +370,7 @@ export function ExpertPanelView({
                     busy={busy}
                     onAccept={handleAccept}
                     onReject={handleReject}
+                    onAcceptAndRecurse={handleAcceptAndRecurse}
                   />
                   <div className="flex items-center gap-3 flex-wrap">
                     <button
@@ -430,6 +443,15 @@ export function ExpertPanelView({
           busy={busy}
           onConfirm={handleConfirmMerge}
           onClose={() => setMergeMarkdown(null)}
+        />
+      )}
+
+      {recurseOpen && panel?.localMaximum && (
+        <AutoRecursionModal
+          topic={topic}
+          localMax={panel.localMaximum}
+          onClose={() => setRecurseOpen(false)}
+          onMutated={onMutated}
         />
       )}
     </div>

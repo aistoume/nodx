@@ -6,7 +6,7 @@ import {
 import { MODELS, type ModelId } from '../../models.js';
 import { JSON_QUOTE_RULE } from '../json-safety.js';
 
-export const PM_PROMPT_VERSION = '2026-06-08.v1';
+export const PM_PROMPT_VERSION = '2026-06-08.v2';
 export const PM_PROMPT_MODEL: ModelId = MODELS.sonnet;
 
 export interface PmInput {
@@ -20,6 +20,12 @@ export interface PmInput {
   confidence: number;
   /** Recursion lineage, when the PM runs below the root (depth ≥ 1). */
   parentContext?: { depth: number; ancestorTopicTitles: string[] };
+  /**
+   * 研究员 web-search findings from a prior needs_real_world_data verdict —
+   * when present the PM re-triages WITH this data, and must not re-flag
+   * gaps the findings already answer.
+   */
+  researchFindings?: string;
 }
 
 /**
@@ -88,8 +94,16 @@ export function buildPmPrompt(input: PmInput): string {
         .join('\n')
     : '（无）';
 
+  const researchBlock =
+    input.researchFindings && input.researchFindings.trim()
+      ? `
+【已通过网络搜索补充的现实数据】（研究员刚核实过——这些缺口**已有数据**，重新分流时不要再把它们标成 needs_real_world_data；把数据当作已知事实使用）
+${input.researchFindings.trim().slice(0, 5000)}
+`
+      : '';
+
   return `你是项目经理（PM）。一个专家组刚就下面的方向收敛出结论，用户已采纳。你的任务：判断这个结论**够不够"原子"**——能不能直接拿去执行——并决定下一步怎么推进。
-${lineage}
+${lineage}${researchBlock}
 【方向（核心问题）】
 ${input.topicTitle}
 
@@ -113,6 +127,7 @@ ${formatList(input.openQuestions)}
    - "needs_deepening"：还需深挖——卡点或模糊处可以靠继续思考解决
    - "needs_real_world_data"：缺的是真实世界数据（市场实测 / 用户访谈 / 报价单 / 法务意见），**再想也想不出来**。这不是逃避，是诚实标记"这个不是想出来的"——标了就停，别让 AI 编造调研结果
    - "multi_path_choice"：存在多个并列方案，必须先择一才能继续
+   **分流边界（容易判错）**：缺口如果是**用户自己一句话就能回答的前提问题**（如"资金性质是什么""要不要商业化""预算上限多少"），那是待择一的分叉 → 归 "multi_path_choice"（或可继续推演的 "needs_deepening"），**不算 needs_real_world_data**。"needs_real_world_data" 只留给必须由外部世界产生的事实：实测数据、第三方报价、法律意见、访谈结果。
 3. **whatsMissing**：还缺什么才算原子（短句列表；atomic_complete 时为空数组）。
 4. **childCandidates**：**仅当 status 为 "needs_deepening" 或 "multi_path_choice" 时填**（其余 status 一律给空数组）。最多 5 个，每个：
    - title：子话题标题（一个聚焦的可辩论问题）

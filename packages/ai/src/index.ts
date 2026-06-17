@@ -289,3 +289,16 @@ export {
   type AutoRecursionSteps,
   type PmParentContext,
 } from './auto-recursion/project-manager.js';
+
+export {
+  RESEARCHER_PROMPT_VERSION,
+  RESEARCHER_PROMPT_MODEL,
+  RESEARCH_VERDICT_PROMPT_VERSION,
+  RESEARCH_VERDICT_PROMPT_MODEL,
+  ResearchVerdictSchema,
+  buildResearcherPrompt,
+  buildResearchVerdictPrompt,
+  type ResearcherInput,
+  type ResearchVerdictInput,
+  type ResearchVerdict,
+} from './prompts/auto-recursion/researcher.js';

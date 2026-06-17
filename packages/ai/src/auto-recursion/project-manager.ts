@@ -33,6 +33,16 @@ export interface PmParentContext {
   ancestorTopicTitles: string[];
 }
 
+export interface GeneratePlanOptions {
+  parentContext?: PmParentContext;
+  /**
+   * 研究员 findings to re-triage with after a needs_real_world_data verdict
+   * (PRD §3.19 改进: search the web before honouring a real-world stop).
+   */
+  researchFindings?: string;
+  signal?: AbortSignal;
+}
+
 /**
  * 项目经理 PM evaluation of one accepted Local Maximum (PRD §3.19, Sprint A):
  *
@@ -53,9 +63,9 @@ export async function generateNextMovePlan(
   topic: Topic,
   localMax: LocalMaximumResult,
   steps: AutoRecursionSteps,
-  parentContext?: PmParentContext,
-  signal?: AbortSignal,
+  opts: GeneratePlanOptions = {},
 ): Promise<NextMovePlan> {
+  const { parentContext, researchFindings, signal } = opts;
   const pmRaw = await steps.runPm(
     buildPmPrompt({
       topicTitle: topic.title,
@@ -65,6 +75,7 @@ export async function generateNextMovePlan(
       openQuestions: localMax.openQuestions,
       confidence: localMax.confidence,
       ...(parentContext ? { parentContext } : {}),
+      ...(researchFindings ? { researchFindings } : {}),
     }),
     signal,
   );

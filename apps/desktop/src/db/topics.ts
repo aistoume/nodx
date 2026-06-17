@@ -21,10 +21,13 @@ interface TopicRow {
   ai_summary: string | null;
   reasoning_trace: string | null;
   has_open_questions: number;
+  generated_by_auto_recursion_run_id: string | null;
+  auto_recursion_depth: number | null;
+  parent_next_move_plan_id: string | null;
 }
 
 const SELECT_COLUMNS =
-  'id, parent_id, title, status, is_pinned, is_archived, created_at, updated_at, message_count, child_count, last_activity, ai_summary, reasoning_trace, has_open_questions';
+  'id, parent_id, title, status, is_pinned, is_archived, created_at, updated_at, message_count, child_count, last_activity, ai_summary, reasoning_trace, has_open_questions, generated_by_auto_recursion_run_id, auto_recursion_depth, parent_next_move_plan_id';
 
 function rowToTopic(r: TopicRow): Topic {
   return TopicSchema.parse({
@@ -44,6 +47,15 @@ function rowToTopic(r: TopicRow): Topic {
     ...(r.ai_summary != null ? { aiSummary: r.ai_summary } : {}),
     ...(r.reasoning_trace != null ? { reasoningTrace: r.reasoning_trace } : {}),
     hasOpenQuestions: r.has_open_questions === 1,
+    ...(r.generated_by_auto_recursion_run_id != null
+      ? { generatedByAutoRecursionRunId: r.generated_by_auto_recursion_run_id }
+      : {}),
+    ...(r.auto_recursion_depth != null
+      ? { autoRecursionDepth: r.auto_recursion_depth }
+      : {}),
+    ...(r.parent_next_move_plan_id != null
+      ? { parentNextMovePlanId: r.parent_next_move_plan_id }
+      : {}),
   });
 }
 
@@ -135,6 +147,28 @@ export async function setReasoningTrace(
   await db.execute(
     'UPDATE topics SET reasoning_trace = $1, updated_at = $2 WHERE id = $3',
     [trace, Date.now(), id],
+  );
+}
+
+/**
+ * Append one line to the reasoning trace without clobbering what the 思路复现
+ * maintainer has written. Used by 自动递进 to leave a per-layer PM record on
+ * the node (PRD §3.19 改进: 卡点前的推理不丢失).
+ */
+export async function appendReasoningTrace(
+  id: string,
+  line: string,
+): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `UPDATE topics
+     SET reasoning_trace = CASE
+           WHEN reasoning_trace IS NULL OR reasoning_trace = '' THEN $1
+           ELSE reasoning_trace || char(10) || $1
+         END,
+         updated_at = $2
+     WHERE id = $3`,
+    [line, Date.now(), id],
   );
 }
 
