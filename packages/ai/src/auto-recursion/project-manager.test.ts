@@ -182,11 +182,28 @@ describe('generateNextMovePlan', () => {
       {},
     );
     await generateNextMovePlan(topic, localMax, steps, {
-      depth: 2,
-      ancestorTopicTitles: ['根问题', '一层子题'],
+      parentContext: { depth: 2, ancestorTopicTitles: ['根问题', '一层子题'] },
     });
     expect(steps.pmPrompts[0]).toContain('第 2 层');
     expect(steps.pmPrompts[0]).toContain('根问题 → 一层子题');
+  });
+
+  it('threads researchFindings into the PM prompt for re-triage', async () => {
+    const steps = makeSteps(
+      {
+        status: 'needs_deepening',
+        atomicityScore: 0.6,
+        whatsMissing: [],
+        childCandidates: [],
+      },
+      {},
+    );
+    await generateNextMovePlan(topic, localMax, steps, {
+      researchFindings: '### 缺口 1\nSEC 官网显示 BD 注册平均 180 天',
+    });
+    expect(steps.pmPrompts[0]).toContain('已通过网络搜索补充的现实数据');
+    expect(steps.pmPrompts[0]).toContain('BD 注册平均 180 天');
+    expect(steps.pmPrompts[0]).toContain('不要再把它们标成 needs_real_world_data');
   });
 
   it('tolerates explicit nulls on optional PM fields (live-observed Sonnet behaviour)', async () => {

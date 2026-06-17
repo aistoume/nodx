@@ -7,6 +7,8 @@ interface LocalMaxCardProps {
   busy?: boolean;
   onAccept: () => void;
   onReject: () => void;
+  /** 采纳并推进 (PRD §3.19): accept, then open the auto-recursion modal. */
+  onAcceptAndRecurse?: () => void;
 }
 
 /**
@@ -23,6 +25,7 @@ export function LocalMaxCard({
   busy,
   onAccept,
   onReject,
+  onAcceptAndRecurse,
 }: LocalMaxCardProps) {
   const accepted = result.acceptedByUser;
   const confidencePct = Math.round(result.confidence * 100);
@@ -90,7 +93,7 @@ export function LocalMaxCard({
       )}
 
       {!accepted && (
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex items-center gap-2 pt-1 flex-wrap">
           <button
             type="button"
             onClick={onAccept}
@@ -99,6 +102,17 @@ export function LocalMaxCard({
           >
             采纳为方向结论
           </button>
+          {onAcceptAndRecurse && (
+            <button
+              type="button"
+              onClick={onAcceptAndRecurse}
+              disabled={busy}
+              title="采纳后由项目经理 PM 评估是否够原子，按可行性自动推进下一层（每层等你确认）"
+              className="px-3 py-1.5 text-xs font-medium rounded-md border border-accent text-accent hover:bg-accent hover:text-white disabled:opacity-40 transition"
+            >
+              🚀 采纳并推进
+            </button>
+          )}
           <button
             type="button"
             onClick={onReject}
@@ -106,6 +120,20 @@ export function LocalMaxCard({
             className="px-2.5 py-1 text-xs font-medium rounded border border-border text-ink-muted hover:text-ink hover:border-ink-muted disabled:opacity-40 transition"
           >
             拒绝
+          </button>
+        </div>
+      )}
+
+      {accepted && onAcceptAndRecurse && (
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={onAcceptAndRecurse}
+            disabled={busy}
+            title="由项目经理 PM 评估是否够原子，按可行性自动推进下一层（每层等你确认）"
+            className="px-3 py-1.5 text-xs font-medium rounded-md border border-accent text-accent hover:bg-accent hover:text-white disabled:opacity-40 transition"
+          >
+            🚀 自动推进
           </button>
         </div>
       )}

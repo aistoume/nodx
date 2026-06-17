@@ -225,13 +225,27 @@ nodx/
   （`prompts/panel/merge.ts` + `ai/panel.ts:generatePanelMerge` + `db/documents.ts:appendToDocument`
   + `components/panel/MergePreviewModal.tsx`）—— 详见 **`docs/expert-panel.md` §9b**
 - ✅ 杂项：对话列表父话题**可折叠**；案例库**预览浏览**
-- ✅ **自动递进引擎 Sprint A**（PRD §3.19 数据层 + PM/可行性评分员，2026-06-08）：
-  models 4 新 schema + topic 3 个 lineage 字段 + **migration v10**（next_move_plans /
-  auto_recursion_runs，已应用真实 DB）+ `packages/ai` PM(Sonnet)/评分员(Haiku) prompts
-  + `generateNextMovePlan` 编排（DI steps 范式，不写库）。**真模型冒烟通过**（3 条真实
-  Local Max + 1 次 Haiku 评分，~$0.02/次；抓到 null 可选字段 bug 已修）
-  —— 详见 **`docs/auto-recursion.md`**（含 Sprint B/C 待办 + real_world 分流偏向观察）
-- ⏳ 自动递进 Sprint B：编排状态机 + DB 读写 + 「采纳并推进」/路径预览 UI（见 docs/auto-recursion.md §4）
+- ✅ **自动递进引擎 Sprint A+B**（PRD §3.19，2026-06-08～12）：
+  - A 数据层：models 4 新 schema + topic 3 个 lineage 字段 + **migration v10**
+    （next_move_plans / auto_recursion_runs，已应用真实 DB）+ PM(Sonnet)/评分员(Haiku)
+    prompts + `generateNextMovePlan` 编排（DI steps 范式）。真模型冒烟通过（抓到 null
+    可选字段 bug 已修）
+  - **PM prompt v2 分流校准**：「用户一句话能回答的前提问题 → multi_path_choice，
+    不算 real_world」——曾误判的真实输入重跑转正，5 候选并行评分管线真模型全验
+  - B 编排+UI：`db/auto-recursion.ts`（plans/runs 读写 + lineage）+ `ai/gateway.ts`
+    **usage tap** + `ai/pricing.ts` 实时计费 + `ai/auto-recursion.ts` run loop
+    （PM评估→路径预览等确认→spawn+辩论→auto-accept→递归；停止条件纯函数带单测）
+    + LocalMaxCard「🚀 采纳并推进」+ AutoRecursionModal（配置/运行/路径预览/终局报告；
+    Auto-Step 默认、Pilot 多选）
+  - **卡点不丢推理 + real_world 先搜后停**（2026-06-12）：每层 PM 评估落到节点
+    （reasoningTrace 追加 + 文档「PM 评估」节 + 停止节点必建档）；real_world 停止前
+    先跑研究员（Sonnet+web search）→ Haiku 裁决 → 补齐则 PM 重评继续，仍缺才停且
+    缺口写成卡点红卡；**非正常终止时弹 StopConfirm 让用户手动选择是否保存记录**
+    （不保存则节点不动，plan 仍在表里）（详见 docs/auto-recursion.md §4b）
+  - **Auto-Run 全自动**（2026-06-12，docs §4d）：沿 topPick 递归到底，二次确认 +
+    每层 3s 倒计时预览 + 「打回上一层」（帧栈：archive 子话题 + 父层排除该候选重选）
+  —— 详见 **`docs/auto-recursion.md`**（含真机手验路径）
+- ⏳ 自动递进 Sprint C：CBR 复用接入 + 清僵尸 run + PM eval 集（见 docs/auto-recursion.md §5）
 - ⏳ M1 收尾项：草稿区、@引用 UI（卡点/上次回顾/决策汇报/数据包导出/专家组归纳进文档已完成）
 
 ---
