@@ -1,0 +1,67 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "nodx Lens",
+  "version": "0.0.1",
+  "identifier": "com.nodx.lens",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "nodx Lens",
+        "width": 420,
+        "height": 360,
+        "minWidth": 360,
+        "minHeight": 280,
+        "decorations": true,
+        "transparent": false,
+        "shadow": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": true,
+        "visible": false,
+        "focus": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "trayIcon": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": false
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "app"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns"
+    ],
+    "category": "Productivity",
+    "shortDescription": "Select-and-explain anywhere on macOS.",
+    "longDescription": "Hit ⌥+E after copying any text in any macOS app — get an instant AI explanation in a floating panel. Bring your own Anthropic / OpenAI / Google key.",
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "12.0",
+      "signingIdentity": null,
+      "dmg": {
+        "background": "dmg-bg.png",
+        "windowPosition": { "x": 400, "y": 200 },
+        "windowSize": { "width": 660, "height": 400 },
+        "appPosition": { "x": 180, "y": 195 },
+        "applicationFolderPosition": { "x": 480, "y": 195 }
+      }
+    },
+    "createUpdaterArtifacts": false
+  }
+}

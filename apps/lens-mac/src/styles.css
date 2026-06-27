@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+html, body { background: #fafaf9; margin: 0; padding: 0; }
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif;
+  font-size: 14px;
+  color: #1a1a1a;
+}
+
+.panel {
+  background: #fafaf9;
+  padding: 14px 18px;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.panel-title { font-size: 12px; font-weight: 600; color: #888; }
+.panel-close { cursor: pointer; color: #888; font-size: 14px; padding: 0 4px; }
+.panel-close:hover { color: #000; }
+.panel-body { white-space: pre-wrap; line-height: 1.55; }
+.panel-body .cursor {
+  display: inline-block; width: 6px; background: #2C5282; opacity: 0.6;
+  animation: blink 1s steps(2, start) infinite; margin-left: 1px;
+}
+@keyframes blink { to { opacity: 0; } }
+.loading { color: #aaa; font-style: italic; }
+.error { color: #c53030; }

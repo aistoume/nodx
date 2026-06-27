@@ -1,0 +1,31 @@
+[package]
+name = "nodx-lens"
+version = "0.0.1"
+description = "nodx Lens for macOS — system-wide select-and-explain"
+edition = "2021"
+rust-version = "1.77"
+
+[[bin]]
+name = "nodx-lens"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-store = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics = "0.24"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

@@ -1,0 +1,21 @@
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif; }
+body { background: #fafaf9; color: #1a1a1a; line-height: 1.6; }
+.container { max-width: 580px; margin: 40px auto; padding: 24px; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); }
+h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.subtitle { font-size: 12px; color: #6b6b6b; margin-bottom: 20px; }
+section { padding: 14px 0; border-bottom: 1px solid #eee; }
+section:last-of-type { border-bottom: 0; }
+label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.radios { display: flex; gap: 16px; }
+.radios label { font-weight: 400; text-transform: none; letter-spacing: 0; color: #1a1a1a; cursor: pointer; }
+input[type=text], input[type=password], input[type=number], select {
+  width: 100%; padding: 8px 12px; font-size: 14px;
+  border: 1px solid #ddd; border-radius: 6px; background: #fff;
+}
+input[type=number] { width: 70px; }
+select { width: auto; min-width: 200px; }
+.hint { font-size: 11px; color: #888; margin-top: 6px; }
+.checkbox { display:flex; gap:6px; align-items:center; font-weight: 400; text-transform: none; }
+.hbox { display: flex; gap: 6px; align-items: center; margin-top: 10px; font-size: 13px; }
+.saved { font-size: 12px; color: #10B981; margin-top: 16px; }
+.loading { padding: 40px; text-align: center; color: #888; }

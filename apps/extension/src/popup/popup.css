@@ -1,0 +1,16 @@
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif; }
+body { width: 360px; background: #fafaf9; color: #1a1a1a; font-size: 13px; }
+.popup { padding: 12px; }
+.head { display:flex; justify-content:space-between; align-items:center; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+.link { background: transparent; border: 0; color: #2C5282; cursor: pointer; font-size: 12px; }
+.link:hover { text-decoration: underline; }
+.empty { text-align:center; padding: 30px 10px; color: #888; }
+.empty p { margin: 4px 0; }
+.hint { font-size: 11px; color: #aaa; }
+.list { max-height: 420px; overflow-y: auto; }
+.rec { padding: 10px 0; border-bottom: 1px solid #eee; }
+.rec:last-child { border-bottom: 0; }
+.src { font-size: 10px; color: #aaa; margin-bottom: 4px; }
+.sel { font-style: italic; color: #555; font-size: 12px; margin-bottom: 4px; }
+.exp { color: #1a1a1a; font-size: 12px; }
+.foot { padding-top: 8px; border-top: 1px solid #eee; text-align: right; }
