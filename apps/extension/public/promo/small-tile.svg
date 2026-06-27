@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 280" width="440" height="280">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3D6BA0"/>
+      <stop offset="100%" stop-color="#1F3F66"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="iconShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.30"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="440" height="280" fill="url(#bg)"/>
+  <rect width="440" height="140" fill="url(#shine)"/>
+
+  <!-- Decorative dots / sparkles (subtle) -->
+  <g fill="#FFFFFF" opacity="0.08">
+    <circle cx="380" cy="40" r="2"/>
+    <circle cx="410" cy="70" r="1.5"/>
+    <circle cx="395" cy="100" r="1"/>
+    <circle cx="20" cy="230" r="2"/>
+    <circle cx="60" cy="260" r="1.5"/>
+  </g>
+
+  <!-- Icon (left, large, with shadow) -->
+  <g transform="translate(30 60)" filter="url(#iconShadow)">
+    <!-- Rounded square background of icon (lighter color so it pops on the navy bg) -->
+    <rect x="0" y="0" width="120" height="120" rx="26" ry="26" fill="#2C5282"/>
+    <rect x="0" y="0" width="120" height="56" rx="26" ry="26" fill="url(#shine)"/>
+
+    <!-- Magnifying glass -->
+    <g stroke="#FFFFFF" stroke-linecap="round" fill="none">
+      <circle cx="46" cy="46" r="24" stroke-width="9"/>
+      <line x1="64" y1="64" x2="86" y2="86" stroke-width="11"/>
+    </g>
+
+    <!-- AI sparkle inside lens -->
+    <path d="M46 28 L48.5 43.5 L64 46 L48.5 48.5 L46 64 L43.5 48.5 L28 46 L43.5 43.5 Z"
+          fill="#FFFFFF" opacity="0.92"/>
+    <path d="M80 34 L81.5 38.5 L86 40 L81.5 41.5 L80 46 L78.5 41.5 L74 40 L78.5 38.5 Z"
+          fill="#FFFFFF" opacity="0.55"/>
+  </g>
+
+  <!-- Text block (right) -->
+  <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif" fill="#FFFFFF">
+    <text x="180" y="80" font-size="28" font-weight="800" letter-spacing="-0.5">nodx Lens</text>
+
+    <!-- Hero phrase -->
+    <text x="180" y="124" font-size="16" font-weight="600" opacity="0.96">Inline AI explanations</text>
+    <text x="180" y="146" font-size="16" font-weight="600" opacity="0.96">on any webpage</text>
+
+    <!-- Supporting -->
+    <text x="180" y="186" font-size="11.5" opacity="0.72">Highlight · Click · Get context</text>
+    <text x="180" y="204" font-size="11.5" opacity="0.72">Annotations stay · Bring your own key</text>
+  </g>
+</svg>
