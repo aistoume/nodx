@@ -37,12 +37,38 @@ header {
 }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 700; font-size: 17px; }
 .brand:hover { text-decoration: none; }
+.brand-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--brand-2), var(--brand-dark));
+  color: #fff; font-weight: 800; font-size: 18px; letter-spacing: -0.5px;
+}
 header nav { display: flex; gap: 28px; align-items: center; }
 header nav a { color: var(--muted); font-size: 14px; }
 header nav a:hover { color: var(--text); text-decoration: none; }
 .x-link { font-weight: 700; font-size: 18px; }
 
-/* Hero */
+/* Breadcrumb */
+.breadcrumb {
+  padding: 0 24px; margin-top: -6px; margin-bottom: 12px;
+  font-size: 13px; color: var(--muted);
+}
+.breadcrumb a { color: var(--muted); }
+.breadcrumb a:hover { color: var(--text); text-decoration: none; }
+.breadcrumb span { margin: 0 6px; opacity: 0.5; }
+.breadcrumb strong { color: var(--text); font-weight: 600; }
+
+/* Company hero (centered, restrained — it's a studio, not a product) */
+.company-hero { padding: 72px 24px 48px; text-align: center; }
+.company-hero h1 {
+  font-size: 48px; line-height: 1.05; font-weight: 800; letter-spacing: -1.5px;
+  margin-bottom: 18px;
+}
+.company-hero h1 .accent { color: var(--brand); }
+.company-hero .lead { font-size: 17px; color: var(--muted); margin: 0 auto; max-width: 580px; }
+.company-hero .cta { justify-content: center; margin-top: 24px; }
+
+/* Product hero (two-column) */
 .hero {
   display: grid; grid-template-columns: 1fr 1.1fr; gap: 56px; align-items: center;
   padding: 56px 24px 80px;
@@ -52,7 +78,10 @@ header nav a:hover { color: var(--text); text-decoration: none; }
   margin-bottom: 18px;
 }
 .hero h1 .accent { color: var(--brand); }
-.hero .lead { font-size: 17px; color: var(--muted); margin-bottom: 28px; max-width: 540px; }
+.hero .lead-large { font-size: 19px; color: var(--text); margin-bottom: 14px; max-width: 580px; font-weight: 500; }
+.hero .lead { font-size: 16px; color: var(--muted); margin-bottom: 28px; max-width: 580px; }
+.nodx-hero { grid-template-columns: 1fr; max-width: 760px; }
+
 .cta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
 .btn {
   display: inline-flex; flex-direction: column; align-items: flex-start;
@@ -79,12 +108,16 @@ header nav a:hover { color: var(--text); text-decoration: none; }
   box-shadow: 0 18px 60px rgba(0,0,0,0.10), 0 0 0 1px var(--border);
 }
 
-/* Features */
-.features { padding: 64px 24px; }
-.features h2, .how h2, .install h2 {
+/* Section common */
+.features, .how, .install, .products, .company-projects, .philosophy {
+  padding: 64px 24px;
+}
+h2 {
   font-size: 32px; font-weight: 800; letter-spacing: -0.5px;
   margin-bottom: 38px; text-align: center;
 }
+
+/* Generic 3-col grid */
 .grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
 }
@@ -98,8 +131,8 @@ header nav a:hover { color: var(--text); text-decoration: none; }
   background: #f0f0ee; padding: 1px 6px; border-radius: 4px; font-size: 12px;
 }
 
-/* How */
-.how { padding: 64px 24px; background: var(--surface); border-radius: 18px; margin: 0 24px; max-width: calc(1120px - 48px); }
+/* How (steps) */
+.how { background: var(--surface); border-radius: 18px; margin: 0 24px; max-width: calc(1120px - 48px); }
 .steps {
   max-width: 720px; margin: 0 auto; padding-left: 28px;
 }
@@ -108,11 +141,10 @@ header nav a:hover { color: var(--text); text-decoration: none; }
 }
 .steps li strong { color: var(--text); }
 
-/* Install */
-.install { padding: 80px 24px 56px; }
+/* Install / Products grid (2-col cards) */
 .install-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .install-card {
-  display: block;
+  display: block; position: relative;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 14px; padding: 28px; color: var(--text);
   transition: transform 0.08s ease, box-shadow 0.16s ease;
@@ -131,6 +163,103 @@ header nav a:hover { color: var(--text); text-decoration: none; }
 .install-card.coming h3, .install-card.coming p, .install-card.coming .install-cta { color: #fff; }
 .install-card.coming p { opacity: 0.85; }
 
+.status {
+  position: absolute; top: 16px; right: 16px;
+  padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  background: #f0f0ee; color: var(--muted); letter-spacing: 0.3px;
+}
+.status.live { background: #DCFCE7; color: #14532D; }
+.status.beta { background: #FEF3C7; color: #78350F; }
+.install-card.coming .status { background: rgba(255,255,255,0.18); color: #fff; }
+
+/* Company about section */
+.about-section { padding: 56px 24px; }
+.about-grid {
+  display: grid; grid-template-columns: 1.25fr 1fr; gap: 48px;
+  align-items: start;
+}
+.about-text h2 { text-align: left; margin-bottom: 18px; }
+.about-text p { color: var(--muted); font-size: 15.5px; margin-bottom: 14px; max-width: 560px; }
+.about-text em { color: var(--text); font-style: normal; font-weight: 600; }
+.about-pillars { display: flex; flex-direction: column; gap: 18px; }
+.pillar {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px 18px;
+}
+.pillar-num {
+  display: block; font-size: 10px; font-weight: 800; letter-spacing: 1.5px;
+  color: var(--brand); margin-bottom: 4px;
+}
+.pillar h4 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.pillar p { font-size: 13px; color: var(--muted); }
+
+/* Company "Selected work" section (uniform 3-col, no hero card) */
+.work-section { padding: 56px 24px; }
+.work-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+}
+.work-card {
+  display: flex; flex-direction: column; position: relative;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 22px;
+  color: var(--text);
+  min-height: 180px;
+  transition: transform 0.08s ease, box-shadow 0.16s ease;
+}
+.work-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.05);
+  text-decoration: none;
+}
+.work-card h3 {
+  font-size: 19px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.3px;
+}
+.work-card p {
+  color: var(--muted); font-size: 13.5px;
+  flex: 1; margin-bottom: 12px;
+}
+.work-status {
+  display: inline-block; align-self: flex-start;
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  background: #f0f0ee; color: var(--muted);
+  margin-bottom: 12px;
+}
+.work-status.live { background: #DCFCE7; color: #14532D; }
+.work-arrow {
+  color: var(--brand); font-size: 18px; font-weight: 600;
+  align-self: flex-end;
+}
+.work-arrow.muted { color: var(--muted); opacity: 0.5; }
+.work-card.placeholder { background: transparent; border-style: dashed; }
+.work-card.placeholder h3 { color: var(--muted); }
+
+/* Contact section */
+.contact { padding: 56px 24px 32px; text-align: center; }
+.contact-lead {
+  color: var(--muted); font-size: 16px; max-width: 520px; margin: 0 auto 28px;
+}
+.contact-links { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.contact-btn {
+  display: inline-flex; flex-direction: column; align-items: flex-start;
+  padding: 12px 22px; border-radius: 8px;
+  background: var(--brand); color: #fff;
+  font-weight: 600; font-size: 14px;
+  transition: transform 0.08s ease, box-shadow 0.16s ease;
+}
+.contact-btn:hover { transform: translateY(-1px); text-decoration: none; box-shadow: 0 6px 22px rgba(44,82,130,0.30); }
+.contact-btn small { font-weight: 400; font-size: 10px; opacity: 0.75; margin-top: 2px; }
+.contact-btn.ghost {
+  background: transparent; color: var(--text); border: 1px solid var(--border);
+}
+.contact-btn.ghost:hover { background: var(--surface); }
+
+/* Philosophy section */
+.phil-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.phil-card { padding: 22px; }
+.phil-card h3 { font-size: 17px; margin-bottom: 10px; font-weight: 700; }
+.phil-card p { color: var(--muted); font-size: 14px; }
+
 /* Footer */
 footer { padding: 56px 24px 40px; color: var(--muted); font-size: 13px; }
 .footer-row {
@@ -139,17 +268,21 @@ footer { padding: 56px 24px 40px; color: var(--muted); font-size: 13px; }
 }
 .footer-row strong { color: var(--text); font-size: 15px; }
 .footer-row p { max-width: 360px; margin-top: 4px; }
+.footer-links { font-size: 13px; }
 .copyright { margin-top: 12px; font-size: 12px; opacity: 0.7; }
 
 /* Responsive */
 @media (max-width: 880px) {
+  .company-hero h1 { font-size: 36px; }
+  .company-hero { padding: 48px 24px 40px; }
   .hero { grid-template-columns: 1fr; gap: 40px; padding: 32px 24px 56px; }
   .hero h1 { font-size: 38px; }
-  .grid { grid-template-columns: 1fr 1fr; }
-  .install-grid { grid-template-columns: 1fr; }
+  .grid, .phil-grid { grid-template-columns: 1fr 1fr; }
+  .install-grid, .work-grid { grid-template-columns: 1fr; }
+  .about-grid { grid-template-columns: 1fr; gap: 32px; }
 }
 @media (max-width: 560px) {
-  .grid { grid-template-columns: 1fr; }
+  .grid, .phil-grid { grid-template-columns: 1fr; }
   .footer-row { flex-direction: column; align-items: flex-start; }
   header nav { gap: 16px; }
 }

@@ -53,7 +53,7 @@
     "macOS": {
       "frameworks": [],
       "minimumSystemVersion": "12.0",
-      "signingIdentity": null,
+      "signingIdentity": "-",
       "dmg": {
         "background": "dmg-bg.png",
         "windowPosition": { "x": 400, "y": 200 },
