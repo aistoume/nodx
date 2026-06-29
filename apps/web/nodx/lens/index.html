@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>nodx Lens — Inline AI explanations on any webpage</title>
+    <meta name="description" content="Select any text on any webpage to get an instant AI explanation in place. Annotations stay. Bring your own Claude / GPT / Gemini API key. macOS app in beta." />
+    <meta property="og:title" content="nodx Lens — Inline AI explanations on any webpage" />
+    <meta property="og:description" content="Highlight any text → instant AI explanation. No tab-switching. No chat clutter." />
+    <meta property="og:image" content="/promo/small-tile.png" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:creator" content="@LaoMo9394" />
+    <link rel="icon" type="image/png" href="/icons/icon-128.png" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="container">
+      <a class="brand" href="/">
+        <span class="brand-mark">A</span>
+        <span class="brand-text">Aicon Solutions</span>
+      </a>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/nodx/">nodx</a>
+        <a class="x-link" href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏</a>
+      </nav>
+    </header>
+
+    <div class="breadcrumb container">
+      <a href="/">Aicon</a> <span>›</span>
+      <a href="/nodx/">nodx</a> <span>›</span>
+      <strong>Lens</strong>
+    </div>
+
+    <section class="hero container">
+      <div class="hero-text">
+        <h1>Inline AI explanations<br /><span class="accent">on any webpage.</span></h1>
+        <p class="lead">Highlight any text — get an instant, streamed AI explanation right next to what you were reading. No tab-switching. No chat clutter. Your data never leaves your browser.</p>
+        <div class="cta">
+          <a class="btn primary" href="https://chrome.google.com/webstore/" target="_blank" rel="noopener">
+            <span>Add to Chrome</span>
+            <small>Free · BYO API key</small>
+          </a>
+          <a class="btn ghost" href="#install-mac">macOS app (beta) →</a>
+        </div>
+        <p class="caption">v0.2 · works on every webpage · 中文 / English</p>
+      </div>
+      <div class="hero-shot">
+        <img src="/screenshots/1-hero-select-explain.png" alt="nodx Lens floating panel showing an AI explanation next to highlighted text" />
+      </div>
+    </section>
+
+    <section id="features" class="features container">
+      <h2>What makes it different</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>🔍 Select-to-explain</h3>
+          <p>Highlight 2–500 characters → click 🔍 → streamed explanation in place. 50–150 words by default; tap "Deepen" for the long version.</p>
+        </div>
+        <div class="card">
+          <h3>📌 Persistent annotations</h3>
+          <p>Every explanation leaves a blue underline that survives your panel close. Click it later to re-open the same explanation — no extra API call.</p>
+        </div>
+        <div class="card">
+          <h3>🌊 Real streaming</h3>
+          <p>Words appear as the model generates them. Tell within the first sentence whether the answer is on-track — close early if it isn't.</p>
+        </div>
+        <div class="card">
+          <h3>🔐 Privacy by design</h3>
+          <p>No nodx server. Your API key, settings, and history stay in <code>chrome.storage.local</code>. Requests go directly from your browser to your AI provider.</p>
+        </div>
+        <div class="card">
+          <h3>🌐 Bilingual</h3>
+          <p>UI in 中文 or English. The AI itself responds in whatever language you've set — perfect for reading across languages.</p>
+        </div>
+        <div class="card">
+          <h3>🧰 Bring your own key</h3>
+          <p>Anthropic Claude, OpenAI GPT, or Google Gemini — pick your model, pick your speed, pay only for what you use. No subscription lock-in.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="how container">
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li><strong>Install</strong> from the Chrome Web Store (60 seconds).</li>
+        <li><strong>Open Settings</strong> — pick a provider, paste your own API key.</li>
+        <li><strong>Read normally</strong> — Gemini, ChatGPT, Substack, papers, anywhere.</li>
+        <li><strong>Highlight a phrase</strong> — the 🔍 trigger floats above your selection.</li>
+        <li><strong>Click → read</strong> — explanation streams below; underline stays for later.</li>
+      </ol>
+    </section>
+
+    <section id="install" class="install container">
+      <h2>Install</h2>
+      <div class="install-grid">
+        <a class="install-card" href="https://chrome.google.com/webstore/" target="_blank" rel="noopener">
+          <div class="status live">Live</div>
+          <h3>🌐 Chrome / Edge / Brave / Arc</h3>
+          <p>Manifest V3 extension. Works on every Chromium browser.</p>
+          <span class="install-cta">Open Chrome Web Store →</span>
+        </a>
+        <a id="install-mac" class="install-card coming" href="/downloads/nodx-lens-0.0.1-arm64.dmg" download>
+          <div class="status beta">Beta</div>
+          <h3>🍎 macOS native (beta)</h3>
+          <p>System-wide select-and-explain via ⌥+E. Works in VS Code, Notes, Word, PDF — anywhere you read on Mac.</p>
+          <span class="install-cta">Download .dmg (Apple Silicon) →</span>
+          <small style="display:block;margin-top:8px;font-size:11px;opacity:0.75;">Apple Silicon · macOS 12+ · ~5 MB · <a href="/nodx/lens/install-mac.html" style="color:#fff;text-decoration:underline;">Install instructions ↗</a></small>
+        </a>
+      </div>
+    </section>
+
+    <footer class="container">
+      <div class="footer-row">
+        <div>
+          <strong>nodx Lens</strong> · part of the <a href="/nodx/">nodx</a> ecosystem · by <a href="/">Aicon Solutions</a>
+          <p>A small toolkit for thinking with AI as a sparring partner, not a replacement.</p>
+        </div>
+        <div class="footer-links">
+          <a href="/">Aicon</a> ·
+          <a href="/nodx/">nodx</a> ·
+          <a href="/privacy.html">Privacy</a> ·
+          <a href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏 @LaoMo9394</a>
+        </div>
+      </div>
+      <div class="copyright">© 2026 Aicon Solutions · v0.2</div>
+    </footer>
+  </body>
+</html>
