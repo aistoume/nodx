@@ -9,6 +9,8 @@
   },
   "scripts": {
     "start": "concurrently -n gw,app -c blue,green --kill-others --handle-input \"pnpm --filter @nodx/ai-gateway dev\" \"wait-on -t 60000 tcp:8787 && pnpm desktop:dev\"",
+    "start:cli": "concurrently -n cli-gw,app -c magenta,green --kill-others --handle-input \"pnpm --filter @nodx/cli-gateway dev\" \"wait-on -t 60000 tcp:8787 && pnpm desktop:dev\"",
+    "cli-gateway": "pnpm --filter @nodx/cli-gateway dev",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",

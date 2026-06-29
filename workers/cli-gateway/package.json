@@ -1,0 +1,11 @@
+{
+  "name": "@nodx/cli-gateway",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local AI gateway backed by the Claude Code CLI (claude -p). Speaks the same HTTP contract as @nodx/ai-gateway, but instead of an Anthropic API key it shells out to your authenticated Claude Code session (subscription or key). Run this instead of the worker to use nodx on your Claude subscription — no API key in nodx.",
+  "scripts": {
+    "dev": "node src/server.mjs",
+    "start": "node src/server.mjs"
+  }
+}

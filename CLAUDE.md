@@ -45,7 +45,8 @@
 AI: Claude Sonnet 4.6 (主对话/拆解)
     Claude Haiku 4.5 (解释/标签)
     Gemini Embedding 2 (向量)
-AI 网关: Cloudflare Workers (鉴权 + 限流)
+AI 网关: Cloudflare Workers (鉴权 + 限流) —— API-key 模式
+        或 本地 CLI 网关 (claude -p, 走 Claude Code 订阅, 不填 key) —— 见 docs/cli-provider.md
 ```
 
 ---
@@ -245,6 +246,13 @@ nodx/
   - **Auto-Run 全自动**（2026-06-12，docs §4d）：沿 topPick 递归到底，二次确认 +
     每层 3s 倒计时预览 + 「打回上一层」（帧栈：archive 子话题 + 父层排除该候选重选）
   —— 详见 **`docs/auto-recursion.md`**（含真机手验路径）
+- ✅ **CLI provider（用 Claude Code 订阅驱动，不填 API key）**（2026-06-12）：新增
+  `workers/cli-gateway`（零依赖 Node 服务，说与 ai-gateway **同一 HTTP 契约**，后端
+  改为 `claude -p` → 你已登录的 Claude Code 会话）。`pnpm start:cli` 即切换；前端 /
+  `packages/ai` 零改动（同 `:8787`）。工具锁死（空 allowedTools，碰不到文件系统）/
+  web_search 时放开 WebSearch / max_tokens 停因改 end_turn / 嵌入返回 501（CBR 检索
+  在此模式不可用）。**正当性**：外包给本机 `claude` CLI，不取 OAuth token 打 API。
+  —— 详见 **`docs/cli-provider.md`**
 - ⏳ 自动递进 Sprint C：CBR 复用接入 + 清僵尸 run + PM eval 集（见 docs/auto-recursion.md §5）
 - ⏳ M1 收尾项：草稿区、@引用 UI（卡点/上次回顾/决策汇报/数据包导出/专家组归纳进文档已完成）
 
