@@ -1,57 +1,42 @@
-import { useEffect, useMemo, useRef } from 'react';
-import cytoscape, {
-  type Core,
-  type ElementDefinition,
-  type StylesheetCSS,
-} from 'cytoscape';
-// cose-bilkent ships no TS types — declare at the import
-// @ts-expect-error — no @types package
-import coseBilkent from 'cytoscape-cose-bilkent';
-import type { Topic } from '@nodx/models';
-
-let cytoscapeInitialised = false;
-function ensureCytoscapeReady(): void {
-  if (cytoscapeInitialised) return;
-  cytoscape.use(coseBilkent);
-  cytoscapeInitialised = true;
-}
-
-const POSITIONS_STORAGE_KEY = 'nodx:graph-positions:v1';
-
-interface SavedPosition {
-  x: number;
-  y: number;
-}
-
-function loadPositions(): Map<string, SavedPosition> {
-  try {
-    const raw = localStorage.getItem(POSITIONS_STORAGE_KEY);
-    if (!raw) return new Map();
-    const parsed = JSON.parse(raw) as Record<string, SavedPosition>;
-    return new Map(Object.entries(parsed));
-  } catch {
-    return new Map();
-  }
-}
-
-function savePositions(cy: Core): void {
-  try {
-    const obj: Record<string, SavedPosition> = {};
-    cy.nodes().forEach((n) => {
-      const p = n.position();
-      obj[n.id()] = { x: p.x, y: p.y };
-    });
-    localStorage.setItem(POSITIONS_STORAGE_KEY, JSON.stringify(obj));
-  } catch {
-    // localStorage might be unavailable / quota exceeded; non-fatal
-  }
-}
-
 /**
- * Find the topmost ancestor (root) of a given topic by walking parentId
- * up. Stops if a parent is missing from the active set. Returns the id
- * of the root, or null if the input id isn't in the topics list.
+ * Network graph view — ComfyUI-inspired topology of the active topic subtree.
+ *
+ * Switched from Cytoscape + cose-bilkent to **React Flow (@xyflow/react)**:
+ *   - rich React nodes (see TopicNode.tsx) instead of label-only rectangles
+ *   - bezier connections + animated handles + dot grid background
+ *   - built-in MiniMap + Controls (zoom / fit / lock)
+ *   - dagre auto-layout for first paint; drag freely afterwards
+ *   - position persistence per-topic to localStorage
+ *
+ * Public API unchanged: same props, same behaviour when a node is clicked
+ * (single-click selects, double-click goes back to dialog).
  */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactFlow,
+  Background,
+  BackgroundVariant,
+  Controls,
+  MiniMap,
+  ReactFlowProvider,
+  applyNodeChanges,
+  useReactFlow,
+  type Edge,
+  type Node,
+  type NodeChange,
+  type NodeTypes,
+  type NodeMouseHandler,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import dagre from 'dagre';
+import type { Topic } from '@nodx/models';
+import { TopicNode, type TopicNodeData } from './graph/TopicNode.js';
+
+// ============================================================================
+// Subtree helpers (kept from the old Cytoscape implementation)
+// ============================================================================
+
 function findRootId(
   topicId: string,
   byId: Map<string, Topic>,
@@ -66,11 +51,6 @@ function findRootId(
   return curr.id;
 }
 
-/**
- * Collect a root topic plus every descendant in a single subtree.
- * Order: root first, then children depth-first (handy for header copy
- * that wants the root's title).
- */
 function collectSubtree(rootId: string, topics: Topic[]): Topic[] {
   const byId = new Map(topics.map((t) => [t.id, t]));
   const byParent = new Map<string | null, Topic[]>();
@@ -90,40 +70,116 @@ function collectSubtree(rootId: string, topics: Topic[]): Topic[] {
   return out;
 }
 
+// ============================================================================
+// Position persistence
+// ============================================================================
+
+const POSITIONS_STORAGE_KEY = 'nodx:graph-positions:v2';
+
+interface SavedPosition {
+  x: number;
+  y: number;
+}
+
+function loadPositions(): Record<string, SavedPosition> {
+  try {
+    const raw = localStorage.getItem(POSITIONS_STORAGE_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as Record<string, SavedPosition>;
+  } catch {
+    return {};
+  }
+}
+
+function savePositions(nodes: Node[]): void {
+  try {
+    const all = loadPositions();
+    for (const n of nodes) {
+      all[n.id] = { x: n.position.x, y: n.position.y };
+    }
+    localStorage.setItem(POSITIONS_STORAGE_KEY, JSON.stringify(all));
+  } catch {
+    // quota / unavailable — non-fatal
+  }
+}
+
+// ============================================================================
+// Dagre layout
+// ============================================================================
+
+const NODE_WIDTH = 240;
+const NODE_HEIGHT = 130;
+
+function dagreLayout(topics: Topic[]): Map<string, { x: number; y: number }> {
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({
+    rankdir: 'LR',         // left-to-right tree, like ComfyUI workflows
+    nodesep: 30,
+    ranksep: 80,
+    marginx: 40,
+    marginy: 40,
+  });
+
+  const validIds = new Set(topics.map((t) => t.id));
+  for (const t of topics) {
+    g.setNode(t.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+  }
+  for (const t of topics) {
+    if (t.parentId && validIds.has(t.parentId)) {
+      g.setEdge(t.parentId, t.id);
+    }
+  }
+
+  dagre.layout(g);
+
+  const out = new Map<string, { x: number; y: number }>();
+  for (const t of topics) {
+    const n = g.node(t.id);
+    if (n) {
+      // dagre gives the center; react-flow expects top-left → adjust.
+      out.set(t.id, {
+        x: n.x - NODE_WIDTH / 2,
+        y: n.y - NODE_HEIGHT / 2,
+      });
+    }
+  }
+  return out;
+}
+
+// ============================================================================
+// Component
+// ============================================================================
+
 interface NetworkGraphViewProps {
   topics: Topic[];
   selectedTopicId: string | null;
   onSelectTopic: (id: string) => void;
-  /** Called when the user wants to leave the graph view (e.g. clicked node). */
+  /** Called when the user wants to leave the graph view (e.g. double-clicked node). */
   onSwitchToDialog: () => void;
 }
 
-/**
- * Cytoscape-based topology of all active topics. Nodes coloured by status
- * via the four-status palette. Edges = parent-child relationships derived
- * from `Topic.parentId`. Node positions persist to localStorage so the
- * graph doesn't reshuffle every time the user comes back to this tab.
- */
-export function NetworkGraphView({
+const nodeTypes: NodeTypes = { topic: TopicNode };
+
+export function NetworkGraphView(props: NetworkGraphViewProps) {
+  return (
+    <ReactFlowProvider>
+      <NetworkGraphInner {...props} />
+    </ReactFlowProvider>
+  );
+}
+
+function NetworkGraphInner({
   topics,
   selectedTopicId,
   onSelectTopic,
   onSwitchToDialog,
 }: NetworkGraphViewProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const cyRef = useRef<Core | null>(null);
+  const rf = useReactFlow();
 
-  // Stable callback refs so the cy click handler doesn't need re-binding
-  // every render.
-  const callbacksRef = useRef({ onSelectTopic, onSwitchToDialog });
-  useEffect(() => {
-    callbacksRef.current = { onSelectTopic, onSwitchToDialog };
-  });
-
-  // Restrict the canvas to the currently-selected topic's root subtree —
-  // one main topic = one network. Selecting a child still shows the same
-  // canvas (child shares the same root). Selecting a sibling root swaps
-  // the canvas entirely.
+  // Restrict the canvas to the selected topic's root subtree — one main
+  // topic = one network. Selecting a child still shows the same canvas
+  // (child shares the same root). Selecting a sibling root swaps it.
   const subtree = useMemo<Topic[]>(() => {
     if (!selectedTopicId) return [];
     const byId = new Map(topics.map((t) => [t.id, t]));
@@ -133,401 +189,208 @@ export function NetworkGraphView({
   }, [topics, selectedTopicId]);
   const rootTopic = subtree[0] ?? null;
 
-  const elements = useMemo<ElementDefinition[]>(() => {
-    const validIds = new Set(subtree.map((t) => t.id));
-    const nodes: ElementDefinition[] = subtree.map((t) => ({
-      group: 'nodes',
-      data: {
-        id: t.id,
-        label: t.title,
-        status: t.status,
-        // Stash parentId on the node so the position-seeding pass can
-        // place a brand-new child near its already-placed parent
-        // instead of letting Cytoscape default it to (0,0) — which
-        // makes the parent edge a zero-length line and the user sees
-        // "no link".
-        parentId: t.parentId ?? '',
-        messageCount: t.meta.messageCount,
-        childCount: t.meta.childCount,
-      },
-    }));
-    const edges: ElementDefinition[] = subtree
-      .filter((t) => t.parentId && validIds.has(t.parentId))
-      .map((t) => ({
-        group: 'edges',
-        data: {
-          id: `e_${t.parentId}_${t.id}`,
-          source: t.parentId!,
-          target: t.id,
-          type: 'parent',
-        },
-      }));
-    return [...nodes, ...edges];
-  }, [subtree]);
+  // Build nodes once per subtree change. Use saved positions when available;
+  // fall back to fresh dagre layout for any node that lacks one.
+  const [nodes, setNodes] = useState<Node<TopicNodeData>[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
+  const layoutKeyRef = useRef<string>('');
 
-  // Mount once.
   useEffect(() => {
-    if (!containerRef.current) return;
-    ensureCytoscapeReady();
-    const cy = cytoscape({
-      container: containerRef.current,
-      elements: [],
-      style: GRAPH_STYLE,
-      wheelSensitivity: 0.25,
-      minZoom: 0.3,
-      maxZoom: 2.5,
-    });
-    cyRef.current = cy;
-
-    cy.on('tap', 'node', (evt) => {
-      const id = evt.target.id();
-      callbacksRef.current.onSelectTopic(id);
-      callbacksRef.current.onSwitchToDialog();
-    });
-
-    // Persist positions when the user drags a node or after auto-layout.
-    cy.on('dragfree', 'node', () => savePositions(cy));
-    // On layout end: resize against the latest container metrics (in case
-    // the container was 0×0 when cy initialised) and fit so every node
-    // is in view. Then persist positions.
-    cy.on('layoutstop', () => {
-      cy.resize();
-      cy.fit(undefined, 30);
-      savePositions(cy);
-    });
-
-    // Cytoscape caches container dimensions at init. In a flex layout the
-    // container can be 0×0 on first paint, in which case the initial
-    // layout/fit happen against bad dimensions and edges/nodes render at
-    // funky coords. A ResizeObserver makes the cy match reality. The
-    // FIRST time we see a non-zero size, force a fit so the initial
-    // (broken) fit gets superseded.
-    let observer: ResizeObserver | null = null;
-    let firstNonZeroFit = false;
-    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
-      observer = new ResizeObserver((entries) => {
-        if (!cyRef.current) return;
-        cyRef.current.resize();
-        const entry = entries[0];
-        if (!entry) return;
-        const { width, height } = entry.contentRect;
-        if (
-          !firstNonZeroFit &&
-          width > 0 &&
-          height > 0 &&
-          cyRef.current.elements().length > 0
-        ) {
-          firstNonZeroFit = true;
-          cyRef.current.fit(undefined, 30);
-        }
-      });
-      observer.observe(containerRef.current);
-    }
-
-    return () => {
-      observer?.disconnect();
-      cy.destroy();
-      cyRef.current = null;
-    };
-  }, []);
-
-  // Stable content signature for the elements set. We use it to skip
-  // expensive cy.remove/add/layout cycles when the structure is
-  // unchanged (e.g. selectedTopicId moved from root to a child but the
-  // subtree is identical). Re-running the full cycle in that case is
-  // what was making the root visually disappear: cy.elements().remove
-  // wipes everything, cy.add re-inserts it, but in the brief window
-  // between the two cytoscape doesn't always re-render the freshly
-  // restored nodes correctly.
-  const elementsSignature = useMemo(() => {
-    const nodeIds = elements
-      .filter((el) => el.group === 'nodes')
-      .map((el) => el.data.id as string)
-      .sort()
-      .join(',');
-    const edgeKeys = elements
-      .filter((el) => el.group === 'edges')
-      .map((el) => `${el.data.source}>${el.data.target}`)
-      .sort()
-      .join(',');
-    return `${nodeIds}|${edgeKeys}`;
-  }, [elements]);
-
-  const appliedSignatureRef = useRef<string>('');
-
-  // Sync elements + run layout when the *structure* changes. Saved
-  // positions win; only nodes without a saved position trigger a
-  // cose-bilkent pass.
-  useEffect(() => {
-    const cy = cyRef.current;
-    if (!cy) return;
-
-    // Bail if structure unchanged AND cy already has those elements.
-    // The cy-empty check matters: in React 19 StrictMode dev, the
-    // mount-unmount-remount dance destroys cy but useRef state
-    // (appliedSignatureRef) persists. Without this guard the second
-    // mount's freshly-created (empty) cy stays empty forever — the
-    // ref says "already applied" but cy doesn't actually have any
-    // elements. Result: blank canvas until the user picks a different
-    // topic and the signature changes.
-    const cyIsEmpty = cy.elements().length === 0;
-    if (
-      !cyIsEmpty &&
-      elementsSignature === appliedSignatureRef.current
-    ) {
+    const ids = subtree.map((t) => t.id).join(',');
+    if (ids === layoutKeyRef.current) {
+      // Only data changed (status / count / selection) — keep positions, swap data.
+      setNodes((prev) =>
+        prev.map((n) => {
+          const t = subtree.find((x) => x.id === n.id);
+          if (!t) return n;
+          return { ...n, data: topicToNodeData(t, selectedTopicId) };
+        }),
+      );
       return;
     }
-    appliedSignatureRef.current = elementsSignature;
+    layoutKeyRef.current = ids;
 
     const saved = loadPositions();
+    const auto = dagreLayout(subtree);
 
-    // Track sibling counts per parent so we can fan brand-new children
-    // out around the parent instead of stacking at (0,0).
-    const siblingIndex = new Map<string, number>();
-    const positionedElements: ElementDefinition[] = elements.map((el) => {
-      if (el.group !== 'nodes') return el;
-      const id = el.data.id;
-      if (typeof id !== 'string') return el;
-      const pos = saved.get(id);
-      if (pos) return { ...el, position: { x: pos.x, y: pos.y } };
-
-      // No saved position. Seed near the parent if the parent has one
-      // saved, with a fan-out so siblings don't pile up. Without this,
-      // Cytoscape defaults to (0,0) for every new node, the parent edge
-      // becomes a zero-length line, and the relationship visually
-      // disappears.
-      const parentId =
-        typeof el.data.parentId === 'string' && el.data.parentId
-          ? el.data.parentId
-          : null;
-      const parentPos = parentId ? saved.get(parentId) : undefined;
-      if (parentPos) {
-        const idx = siblingIndex.get(parentId!) ?? 0;
-        siblingIndex.set(parentId!, idx + 1);
-        // Spread siblings horizontally below the parent.
-        const offsetX = (idx - 1.5) * 140 + (Math.random() - 0.5) * 30;
-        return {
-          ...el,
-          position: { x: parentPos.x + offsetX, y: parentPos.y + 180 },
-        };
-      }
-      return el;
+    const newNodes: Node<TopicNodeData>[] = subtree.map((t) => {
+      const pos = saved[t.id] ?? auto.get(t.id) ?? { x: 0, y: 0 };
+      return {
+        id: t.id,
+        type: 'topic',
+        position: pos,
+        data: topicToNodeData(t, selectedTopicId),
+        // Disable React Flow's default selection so we drive it through `isSelected` in data
+        selectable: true,
+        draggable: true,
+      };
     });
 
-    cy.elements().remove();
-    cy.add(positionedElements);
+    const validIds = new Set(subtree.map((t) => t.id));
+    const newEdges: Edge[] = subtree
+      .filter((t) => t.parentId && validIds.has(t.parentId))
+      .map((t) => ({
+        id: `e_${t.parentId}_${t.id}`,
+        source: t.parentId!,
+        target: t.id,
+        type: 'smoothstep',
+        animated: false,
+        style: { stroke: '#52525b', strokeWidth: 1.5 },
+      }));
 
-    if (elements.length === 0) return;
+    setNodes(newNodes);
+    setEdges(newEdges);
 
-    const nodeIds = elements
-      .filter((el) => el.group === 'nodes')
-      .map((el) => el.data.id as string);
-    const allSaved = nodeIds.every((id) => saved.has(id));
-
-    const rootId = subtree[0]?.id;
-    const rootSaved = rootId != null && saved.has(rootId);
-
-    const runLayout = () => {
-      // Defensive resize right before layout — picks up the latest
-      // container dimensions in case the grid was still settling
-      // when this effect first fired.
-      cy.resize();
-      if (allSaved) {
-        // No new nodes — keep everyone exactly where they were last time.
-        cy.layout({
-          name: 'preset',
-          fit: true,
-          padding: 30,
-        } as cytoscape.LayoutOptions).run();
-      } else {
-        cy.layout({
-          name: 'cose-bilkent',
-          animate: false,
-          // Root not saved → fresh randomize. Root saved → keep it as
-          // the anchor; pre-seeded children are refined from there.
-          randomize: !rootSaved,
-          nodeRepulsion: 8000,
-          idealEdgeLength: 130,
-          gravity: 0.35,
-          fit: true,
-          padding: 30,
-        } as cytoscape.LayoutOptions).run();
+    // Center on the selected node when the subtree changes.
+    setTimeout(() => {
+      if (selectedTopicId) {
+        const target = newNodes.find((n) => n.id === selectedTopicId);
+        if (target) {
+          rf.setCenter(
+            target.position.x + NODE_WIDTH / 2,
+            target.position.y + NODE_HEIGHT / 2,
+            { zoom: 0.9, duration: 400 },
+          );
+          return;
+        }
       }
-      // Quick post-layout cleanup: resize + fit. No zoom nudges, no
-      // forced restyle — those were breaking interaction (clicks
-      // started panning the canvas instead of hitting nodes).
-      window.setTimeout(() => {
-        if (cyRef.current !== cy) return;
-        cy.resize();
-        cy.fit(undefined, 30);
-      }, 0);
-    };
+      rf.fitView({ padding: 0.2, duration: 400 });
+    }, 50);
+  }, [subtree, selectedTopicId, rf]);
 
-    // If the container hasn't been measured yet (0×0), wait one frame
-    // before laying out. Otherwise we run immediately — synchronously
-    // — so user interaction state (drag, click) is wired up by the
-    // time the user can see the graph.
-    const container = containerRef.current;
-    const containerReady =
-      container != null &&
-      container.clientWidth > 0 &&
-      container.clientHeight > 0;
-    if (containerReady) {
-      runLayout();
-    } else {
-      const rafId = requestAnimationFrame(runLayout);
-      return () => cancelAnimationFrame(rafId);
-    }
-  }, [elementsSignature, elements]);
+  // Handle position drags — persist on drop.
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      setNodes((prev) => {
+        const next = applyNodeChanges(changes, prev) as Node<TopicNodeData>[];
+        if (changes.some((c) => c.type === 'position' && !c.dragging)) {
+          savePositions(next);
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
-  // Highlight the active topic.
-  useEffect(() => {
-    const cy = cyRef.current;
-    if (!cy) return;
-    cy.nodes().unselect();
-    if (selectedTopicId) {
-      const node = cy.getElementById(selectedTopicId);
-      if (node && node.length > 0) node.select();
+  const onNodeClick: NodeMouseHandler = useCallback(
+    (_e, node) => {
+      onSelectTopic(node.id);
+    },
+    [onSelectTopic],
+  );
+
+  const onNodeDoubleClick: NodeMouseHandler = useCallback(
+    (_e, node) => {
+      onSelectTopic(node.id);
+      onSwitchToDialog();
+    },
+    [onSelectTopic, onSwitchToDialog],
+  );
+
+  const handleAutoLayout = useCallback(() => {
+    const auto = dagreLayout(subtree);
+    setNodes((prev) =>
+      prev.map((n) => {
+        const p = auto.get(n.id);
+        return p ? { ...n, position: p } : n;
+      }),
+    );
+    setTimeout(() => rf.fitView({ padding: 0.2, duration: 400 }), 50);
+    // Also wipe the saved positions for this subtree so the auto-layout sticks.
+    try {
+      const all = loadPositions();
+      for (const t of subtree) delete all[t.id];
+      localStorage.setItem(POSITIONS_STORAGE_KEY, JSON.stringify(all));
+    } catch {
+      /* non-fatal */
     }
-  }, [selectedTopicId, elements]);
+  }, [rf, subtree]);
+
+  if (!rootTopic) {
+    return (
+      <div className="h-full flex items-center justify-center text-ink-muted">
+        请先在左侧选一个话题
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col h-full bg-canvas">
-      <header className="border-b border-border px-6 py-3 bg-surface shrink-0 flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-wider text-ink-muted">
-            网络图 · 主话题画布
-          </p>
-          <p className="text-sm text-ink mt-0.5 truncate">
-            {rootTopic ? (
-              <>
-                <span className="font-medium">{rootTopic.title}</span>
-                <span className="text-ink-muted ml-2 text-xs">
-                  · {subtree.length} 个话题
-                </span>
-              </>
-            ) : (
-              <span className="text-ink-muted">未选中主话题</span>
-            )}
-          </p>
-        </div>
-        <div className="flex items-center gap-3 text-[11px] text-ink-muted shrink-0">
-          <Legend />
-          <span className="opacity-60">点击节点 → 进入对话</span>
-        </div>
-      </header>
-      {subtree.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-ink-muted text-sm text-center px-8">
-          {topics.length === 0
-            ? '还没有话题。先在左栏新建一个吧。'
-            : '左栏选中一个话题，即可看它的主话题画布（包含所有子话题）。'}
-        </div>
-      ) : (
-        <div ref={containerRef} className="flex-1 min-h-0" />
-      )}
+    <div className="h-full flex flex-col bg-zinc-950 relative">
+      {/* Header strip — ComfyUI-style toolbar */}
+      <div className="px-4 py-2 border-b border-zinc-800 flex items-center gap-3 text-zinc-300 text-sm">
+        <span className="text-zinc-500">网络图 ·</span>
+        <span className="font-semibold truncate max-w-[400px]">
+          {rootTopic.title}
+        </span>
+        <span className="text-zinc-600 text-xs">
+          {subtree.length} 节点 · {edges.length} 边
+        </span>
+        <button
+          type="button"
+          onClick={handleAutoLayout}
+          className="ml-auto px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-xs"
+          title="按层级重新排版"
+        >
+          ⎌ 自动整理
+        </button>
+        <button
+          type="button"
+          onClick={() => rf.fitView({ padding: 0.2, duration: 400 })}
+          className="px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-xs"
+        >
+          ⊡ 适配窗口
+        </button>
+      </div>
+
+      <div className="flex-1 min-h-0">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onNodeClick={onNodeClick}
+          onNodeDoubleClick={onNodeDoubleClick}
+          fitView
+          fitViewOptions={{ padding: 0.2 }}
+          minZoom={0.2}
+          maxZoom={2}
+          proOptions={{ hideAttribution: true }}
+          colorMode="dark"
+        >
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={18}
+            size={1.2}
+            color="#3f3f46"
+          />
+          <Controls className="!bg-zinc-900 !border-zinc-700 [&_button]:!bg-zinc-900 [&_button]:!border-zinc-700 [&_button]:!text-zinc-300 [&_button:hover]:!bg-zinc-800" />
+          <MiniMap
+            pannable
+            zoomable
+            className="!bg-zinc-900 !border !border-zinc-700 !rounded-md"
+            maskColor="rgba(24,24,27,0.7)"
+            nodeColor={(n) => {
+              const d = n.data as TopicNodeData;
+              return d?.isSelected ? '#3b82f6' : '#71717a';
+            }}
+          />
+        </ReactFlow>
+      </div>
     </div>
   );
 }
 
-function Legend() {
-  return (
-    <div className="flex items-center gap-2">
-      <LegendDot color="#3b82f6" label="探索中" />
-      <LegendDot color="#22c55e" label="已总结" />
-      <LegendDot color="#a855f7" label="原子" />
-      <LegendDot color="#9ca3af" label="幽灵" />
-    </div>
-  );
+function topicToNodeData(t: Topic, selectedId: string | null): TopicNodeData {
+  return {
+    title: t.title,
+    status: t.status,
+    isPinned: t.isPinned,
+    aiSummary: t.aiSummary,
+    messageCount: t.meta.messageCount,
+    childCount: t.meta.childCount,
+    hasOpenQuestions: t.hasOpenQuestions,
+    isSelected: t.id === selectedId,
+    isArchived: t.isArchived,
+    isAutoRecursion: !!t.generatedByAutoRecursionRunId,
+  };
 }
-
-function LegendDot({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1">
-      <span
-        className="inline-block w-2 h-2 rounded-full"
-        style={{ background: color }}
-      />
-      <span>{label}</span>
-    </span>
-  );
-}
-
-// Per-level widths give a subtle visual hierarchy: root topics are widest,
-// each nesting level shrinks slightly. Height auto-fits the (wrapped)
-// label; padding keeps the text from kissing the border.
-const GRAPH_STYLE: StylesheetCSS[] = [
-  {
-    selector: 'node',
-    css: {
-      label: 'data(label)',
-      'text-wrap': 'wrap',
-      // Fixed width + label-driven height: every node ends up the same
-      // width regardless of title length; height grows to fit wrapped
-      // text. Mixing `width: 'label'` with a depth-keyed `min-width`
-      // selector (the earlier approach) wasn't reliable in cytoscape —
-      // a root with a long Chinese title would balloon to several
-      // hundred px wide, then cy.fit() would zoom out far enough that
-      // the title appeared off-screen relative to the smaller siblings.
-      width: '170px',
-      'text-max-width': '150px',
-      height: 'label',
-      'font-size': '12px',
-      'font-family':
-        '-apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif',
-      'line-height': 1.3,
-      color: '#1a1a1a',
-      'text-valign': 'center',
-      'text-halign': 'center',
-      padding: '14px',
-      shape: 'round-rectangle',
-      'border-width': 2,
-      'background-opacity': 0.9,
-    },
-  },
-  {
-    selector: 'node[status = "exploring"]',
-    css: { 'background-color': '#dbeafe', 'border-color': '#3b82f6' },
-  },
-  {
-    selector: 'node[status = "summarized"]',
-    css: { 'background-color': '#d1fae5', 'border-color': '#22c55e' },
-  },
-  {
-    selector: 'node[status = "atomic"]',
-    css: { 'background-color': '#ede9fe', 'border-color': '#a855f7' },
-  },
-  {
-    selector: 'node[status = "ghost"]',
-    css: {
-      'background-color': '#f3f4f6',
-      'border-color': '#9ca3af',
-      'border-style': 'dashed',
-      'background-opacity': 0.6,
-    },
-  },
-  {
-    selector: 'node:selected',
-    css: {
-      'border-width': 4,
-      'border-color': '#2c5282',
-      'background-color': '#eff6fe',
-    },
-  },
-  {
-    selector: 'edge',
-    css: {
-      width: 1.5,
-      'line-color': '#94a3b8',
-      'target-arrow-color': '#94a3b8',
-      'target-arrow-shape': 'triangle',
-      'arrow-scale': 1,
-      // 'straight' is more reliable than 'bezier' on first paint —
-      // bezier needs control points computed and the renderer
-      // sometimes skips that pass on a freshly-instantiated cy,
-      // leaving edges in the data but invisible on canvas until the
-      // user interacts. Straight lines are computed directly from
-      // node positions, no extra pass.
-      'curve-style': 'straight',
-    },
-  },
-];

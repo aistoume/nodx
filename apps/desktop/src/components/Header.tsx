@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-type View = 'dialog' | 'graph' | 'cases';
+type View = 'dialog' | 'graph' | 'cases' | 'attention' | 'settings';
 
 export interface OpenQuestionItem {
   id: string;
@@ -45,6 +45,16 @@ export function Header({
           label="案例库"
           active={view === 'cases'}
           onClick={() => onViewChange('cases')}
+        />
+        <ViewTab
+          label="💡 灵感池"
+          active={view === 'attention'}
+          onClick={() => onViewChange('attention')}
+        />
+        <ViewTab
+          label="⚙ 设置"
+          active={view === 'settings'}
+          onClick={() => onViewChange('settings')}
         />
       </nav>
       <OpenQuestionsBadge

@@ -271,6 +271,98 @@ footer { padding: 56px 24px 40px; color: var(--muted); font-size: 13px; }
 .footer-links { font-size: 13px; }
 .copyright { margin-top: 12px; font-size: 12px; opacity: 0.7; }
 
+/* Highlighted feature card (Save / Persistent) */
+.card.highlight {
+  background: linear-gradient(135deg, #fff8e7 0%, #fff 60%);
+  border: 1.5px solid var(--accent);
+  position: relative;
+}
+.card.highlight::before {
+  content: "NEW";
+  position: absolute;
+  top: -10px; right: 14px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+/* Pipeline section on nodx hub */
+.pipeline {
+  padding: 56px 24px;
+  margin-top: 16px;
+  background: linear-gradient(180deg, transparent, rgba(44,82,130,0.04));
+  border-radius: 16px;
+}
+.pipeline h2.center { text-align: center; margin-bottom: 36px; font-size: 24px; }
+.pipeline-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+.pipeline-step {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 20px;
+  position: relative;
+}
+.pipeline-step .step-num {
+  position: absolute;
+  top: -14px; left: 20px;
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--brand);
+  color: #fff;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 13px;
+}
+.pipeline-step h3 { font-size: 16px; margin: 6px 0 8px 0; font-weight: 700; }
+.pipeline-step p { color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+.pipeline-arrow {
+  align-self: center;
+  font-size: 24px;
+  color: var(--brand);
+  font-weight: 700;
+}
+.pipeline-caption {
+  text-align: center;
+  margin-top: 28px;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 14px;
+}
+
+/* Upsell section at bottom of Lens page */
+.upsell {
+  margin: 48px auto 16px;
+  padding: 40px 32px;
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
+  color: #fff;
+  border-radius: 16px;
+  text-align: center;
+}
+.upsell h2 { color: #fff; font-size: 28px; margin-bottom: 16px; }
+.upsell-lead {
+  color: rgba(255,255,255,0.92);
+  font-size: 15px;
+  max-width: 680px;
+  margin: 0 auto 14px;
+  line-height: 1.7;
+}
+.upsell-lead a { color: #fff; text-decoration: underline; font-weight: 600; }
+.upsell .btn.primary {
+  margin-top: 12px;
+  background: #fff;
+  color: var(--brand);
+}
+.upsell .btn.primary:hover { background: #f0f4f8; }
+
 /* Responsive */
 @media (max-width: 880px) {
   .company-hero h1 { font-size: 36px; }
@@ -280,9 +372,19 @@ footer { padding: 56px 24px 40px; color: var(--muted); font-size: 13px; }
   .grid, .phil-grid { grid-template-columns: 1fr 1fr; }
   .install-grid, .work-grid { grid-template-columns: 1fr; }
   .about-grid { grid-template-columns: 1fr; gap: 32px; }
+  .pipeline-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .pipeline-arrow {
+    transform: rotate(90deg);
+    justify-self: center;
+  }
 }
 @media (max-width: 560px) {
   .grid, .phil-grid { grid-template-columns: 1fr; }
   .footer-row { flex-direction: column; align-items: flex-start; }
   header nav { gap: 16px; }
+  .upsell { padding: 32px 20px; }
+  .upsell h2 { font-size: 22px; }
 }

@@ -35,16 +35,22 @@
 
     <section class="hero container">
       <div class="hero-text">
-        <h1>Inline AI explanations<br /><span class="accent">on any webpage.</span></h1>
-        <p class="lead">Highlight any text — get an instant, streamed AI explanation right next to what you were reading. No tab-switching. No chat clutter. Your data never leaves your browser.</p>
+        <h1>Highlight → explain<br /><span class="accent">→ save as thinking.</span></h1>
+        <p class="lead-large">The entry point to nodx. Not "another AI assistant" — the start of a conversation that compounds.</p>
+        <p class="lead">
+          Select any text on any webpage. Get a streamed AI explanation in place.
+          The underline stays — click later and the same explanation returns without
+          re-paying. One more click saves it as a <strong>thinking card</strong>
+          that nodx desktop will pick up and weave into your decision graph.
+        </p>
         <div class="cta">
           <a class="btn primary" href="https://chrome.google.com/webstore/" target="_blank" rel="noopener">
             <span>Add to Chrome</span>
-            <small>Free · BYO API key</small>
+            <small>Free forever · BYO API key</small>
           </a>
           <a class="btn ghost" href="#install-mac">macOS app (beta) →</a>
         </div>
-        <p class="caption">v0.2 · works on every webpage · 中文 / English</p>
+        <p class="caption">v0.3 · persistent annotations · save to nodx · 中文 / English</p>
       </div>
       <div class="hero-shot">
         <img src="/screenshots/1-hero-select-explain.png" alt="nodx Lens floating panel showing an AI explanation next to highlighted text" />
@@ -52,43 +58,43 @@
     </section>
 
     <section id="features" class="features container">
-      <h2>What makes it different</h2>
+      <h2>Six things other "AI explainers" don't do</h2>
       <div class="grid">
-        <div class="card">
-          <h3>🔍 Select-to-explain</h3>
-          <p>Highlight 2–500 characters → click 🔍 → streamed explanation in place. 50–150 words by default; tap "Deepen" for the long version.</p>
+        <div class="card highlight">
+          <h3>💾 Save as thinking card</h3>
+          <p>One click on any explanation packages it as a <strong>thinking card</strong> (snippet + AI explanation + source) into your local library. nodx desktop picks these up as starting points for structured reasoning — the "attention token" that turns reading into deciding.</p>
+        </div>
+        <div class="card highlight">
+          <h3>📌 Persistent annotations</h3>
+          <p>The blue underline survives panel close. Click it later — same explanation re-opens, no second API call. Like Grammarly's underlines, but for understanding instead of grammar.</p>
         </div>
         <div class="card">
-          <h3>📌 Persistent annotations</h3>
-          <p>Every explanation leaves a blue underline that survives your panel close. Click it later to re-open the same explanation — no extra API call.</p>
+          <h3>🔍 Select-to-explain</h3>
+          <p>Highlight 2–500 characters → click 🔍 → streamed explanation in place. 50–150 words by default; tap "Deepen" for a 200–400 word version with examples.</p>
         </div>
         <div class="card">
           <h3>🌊 Real streaming</h3>
-          <p>Words appear as the model generates them. Tell within the first sentence whether the answer is on-track — close early if it isn't.</p>
+          <p>Words appear as the model generates them. Judge within the first sentence whether the answer is on-track — close early if it isn't.</p>
         </div>
         <div class="card">
-          <h3>🔐 Privacy by design</h3>
-          <p>No nodx server. Your API key, settings, and history stay in <code>chrome.storage.local</code>. Requests go directly from your browser to your AI provider.</p>
+          <h3>🔐 Local-first, zero telemetry</h3>
+          <p>No nodx server. API key, settings, history, snippets all in <code>chrome.storage.local</code>. Requests go directly from your browser to your AI provider.</p>
         </div>
         <div class="card">
-          <h3>🌐 Bilingual</h3>
-          <p>UI in 中文 or English. The AI itself responds in whatever language you've set — perfect for reading across languages.</p>
-        </div>
-        <div class="card">
-          <h3>🧰 Bring your own key</h3>
-          <p>Anthropic Claude, OpenAI GPT, or Google Gemini — pick your model, pick your speed, pay only for what you use. No subscription lock-in.</p>
+          <h3>🧰 Truly free + BYO key</h3>
+          <p>Anthropic Claude, OpenAI GPT, or Google Gemini — pick your model, pay only for what you use. <strong>No subscription, no Pro tier, no usage caps</strong>.</p>
         </div>
       </div>
     </section>
 
     <section id="how" class="how container">
-      <h2>How it works</h2>
+      <h2>From reading to thinking — in 30 seconds</h2>
       <ol class="steps">
         <li><strong>Install</strong> from the Chrome Web Store (60 seconds).</li>
         <li><strong>Open Settings</strong> — pick a provider, paste your own API key.</li>
-        <li><strong>Read normally</strong> — Gemini, ChatGPT, Substack, papers, anywhere.</li>
-        <li><strong>Highlight a phrase</strong> — the 🔍 trigger floats above your selection.</li>
-        <li><strong>Click → read</strong> — explanation streams below; underline stays for later.</li>
+        <li><strong>Highlight</strong> any phrase on any webpage — the 🔍 trigger floats above.</li>
+        <li><strong>Click → read</strong> — explanation streams in; underline persists.</li>
+        <li><strong>Save to nodx</strong> — explanation becomes a thinking card you can revisit, or forward to nodx desktop when it ships.</li>
       </ol>
     </section>
 
@@ -111,11 +117,25 @@
       </div>
     </section>
 
+    <section class="upsell container">
+      <h2>Lens is step 1.</h2>
+      <p class="upsell-lead">
+        Every thinking card you save in Lens becomes raw material for
+        <a href="/nodx/">nodx desktop</a> — where snippets get structured into
+        first-principles decompositions, debated by AI expert panels,
+        compared against your past reasoning, and turned into atomic actions.
+      </p>
+      <p class="upsell-lead">
+        Lens by itself is useful. Lens + nodx desktop is how thinking compounds.
+      </p>
+      <a class="btn primary" href="/nodx/">See where Lens leads →</a>
+    </section>
+
     <footer class="container">
       <div class="footer-row">
         <div>
           <strong>nodx Lens</strong> · part of the <a href="/nodx/">nodx</a> ecosystem · by <a href="/">Aicon Solutions</a>
-          <p>A small toolkit for thinking with AI as a sparring partner, not a replacement.</p>
+          <p>The entry point to a decision-thinking workspace where AI is a sparring partner, not a replacement.</p>
         </div>
         <div class="footer-links">
           <a href="/">Aicon</a> ·
@@ -124,7 +144,7 @@
           <a href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏 @LaoMo9394</a>
         </div>
       </div>
-      <div class="copyright">© 2026 Aicon Solutions · v0.2</div>
+      <div class="copyright">© 2026 Aicon Solutions · v0.3</div>
     </footer>
   </body>
 </html>

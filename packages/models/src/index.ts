@@ -25,3 +25,6 @@ export * from './feasibility-breakdown.js';
 export * from './child-candidate.js';
 export * from './next-move-plan.js';
 export * from './auto-recursion-run.js';
+
+// Attention Inbox (Lens → desktop pipeline)
+export * from './attention.js';

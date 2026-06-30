@@ -28,6 +28,13 @@ export default defineConfig(
           : 'safari13',
       minify: process.env.TAURI_ENV_DEBUG ? false : 'esbuild',
       sourcemap: !!process.env.TAURI_ENV_DEBUG,
+      // Two entry points: the main app shell and the system-capture popover.
+      rollupOptions: {
+        input: {
+          main: 'index.html',
+          popover: 'popover.html',
+        },
+      },
     },
   }),
 );

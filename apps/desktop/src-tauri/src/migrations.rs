@@ -481,6 +481,44 @@ CREATE TABLE auto_recursion_runs (
 CREATE INDEX idx_arr_root ON auto_recursion_runs(root_topic_id, started_at DESC);
 "#;
 
+/// Schema v11 — Attention Inbox (Lens → desktop pipeline).
+///
+/// The Chrome Lens extension and macOS Lens app both fire `nodx://capture?...`
+/// URLs into the desktop app whenever the user clicks 🔍 (with explanation)
+/// or 💾 (bare, no AI). nodx writes one `attentions` row per click, and
+/// surfaces them in the Attention Inbox view where they can be tagged,
+/// browsed, or "promoted" into a full Topic (which kicks off the standard
+/// first-principles flow with the snippet as the seed message).
+///
+/// Design notes:
+///   - `explanation` is nullable: 'quick' captures have no AI gloss.
+///   - `tags_json` is a JSON array of strings; we keep it as TEXT instead of
+///     a separate join table because cardinality is low and we'd rather
+///     query/edit it from JS in one shot.
+///   - `promoted_to_topic_id` is nullable & lazy-cleared: deleting the
+///     promoted topic does NOT delete the attention (the snippet is still
+///     useful as evidence even if the topic was dropped).
+const V11_SQL: &str = r#"
+CREATE TABLE attentions (
+    id                    TEXT PRIMARY KEY,
+    text                  TEXT NOT NULL,
+    explanation           TEXT NULL,
+    source_url            TEXT NOT NULL DEFAULT '',
+    source_title          TEXT NOT NULL DEFAULT '',
+    source_kind           TEXT NOT NULL CHECK (source_kind IN
+        ('lens-chrome','lens-mac','manual')),
+    kind                  TEXT NOT NULL CHECK (kind IN ('explain','quick')),
+    tags_json             TEXT NOT NULL DEFAULT '[]',
+    promoted_to_topic_id  TEXT NULL,
+    captured_at           INTEGER NOT NULL,
+    ingested_at           INTEGER NOT NULL
+);
+CREATE INDEX idx_attentions_ingested ON attentions(ingested_at DESC);
+CREATE INDEX idx_attentions_source   ON attentions(source_kind, ingested_at DESC);
+CREATE INDEX idx_attentions_promoted ON attentions(promoted_to_topic_id)
+    WHERE promoted_to_topic_id IS NOT NULL;
+"#;
+
 pub fn all() -> Vec<Migration> {
     vec![
         Migration {
@@ -541,6 +579,12 @@ pub fn all() -> Vec<Migration> {
             version: 10,
             description: "auto_recursion_engine",
             sql: V10_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 11,
+            description: "attention_inbox",
+            sql: V11_SQL,
             kind: MigrationKind::Up,
         },
     ]

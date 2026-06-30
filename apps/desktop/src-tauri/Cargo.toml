@@ -1,6 +1,6 @@
 [package]
 name = "nodx-desktop"
-version = "0.0.0"
+version = "0.3.0"
 description = "nodx — AI 决策思考工作台 (desktop)"
 authors = ["nodx team"]
 license = ""
@@ -19,8 +19,40 @@ tauri-build = { version = "2.6.0", features = [] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-tauri = { version = "2.11.0", features = [] }
+# tray-icon needed for menu-bar presence (0.3 task: lens-mac merger)
+tauri = { version = "2.11.0", features = ["tray-icon"] }
 tauri-plugin-log = "2"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
+tauri-plugin-deep-link = "2"
+urlencoding = "2.1"
+
+# 0.3 — System-wide select-and-explain (merged from lens-mac).
+# global-shortcut for ⌥+E; clipboard for save/restore around the synthesised
+# ⌘+C; core-graphics (macOS only) for the CGEvent keyboard synthesis.
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-clipboard-manager = "2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics = "0.24"
+
+# In-proc AI gateway (replaces the Cloudflare worker for desktop usage).
+# Lets nodx.app be truly self-contained — no terminal, no worker process.
+# Pinned to feature subsets that don't fight with Tauri's own tokio runtime
+# (no signal handlers, no process reaper conflicts).
+tokio = { version = "1.40", features = ["rt", "net", "io-util", "macros", "time", "process"] }
+axum = { version = "0.7", features = ["macros"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors"] }
+reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }
+futures-util = "0.3"
+bytes = "1.8"
+
+# Secure API key storage in the OS keychain (macOS Keychain / Windows
+# Credential Locker / Linux Secret Service). Keys NEVER touch disk in
+# plain text. apple-native is on by default on macOS targets.
+keyring = { version = "3.6", features = ["apple-native"] }
+
+# Constant-time bearer comparison.
+subtle = "2.6"
