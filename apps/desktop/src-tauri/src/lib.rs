@@ -210,13 +210,20 @@ pub fn run() {
                     if event.state() != ShortcutState::Pressed {
                         return;
                     }
+                    // ⌥+E — system-wide capture trigger.
                     if shortcut.matches(Modifiers::ALT, Code::KeyE) {
                         let handle = app.clone();
-                        // Move work off the hotkey callback thread so we don't
-                        // block the global-shortcut dispatcher.
                         std::thread::spawn(move || {
                             system_capture::on_hotkey(handle);
                         });
+                        return;
+                    }
+                    // ESC / Cmd+W — popover dismiss shortcuts (registered
+                    // only while the popover is visible, see system_capture
+                    // mod). Hide it + clean up the shortcuts.
+                    if system_capture::is_dismiss_shortcut(shortcut) {
+                        system_capture::hide_popover(app);
+                        return;
                     }
                 })
                 .build(),
@@ -323,6 +330,15 @@ pub fn run() {
             // window without quitting; ⌥+E still works; click the tray to
             // bring nodx back.
             build_tray(app.handle())?;
+
+            // ── 0.3: Popover close → hide (not destroy) ─────────────────
+            // The popover window declared in tauri.conf.json defaults to
+            // destroy-on-close. Install our hide-instead handler so the user
+            // can repeatedly fire ⌥+E without us having to rebuild the
+            // window every time.
+            if let Some(popover) = app.get_webview_window("popover") {
+                system_capture::install_popover_handlers(app.handle(), &popover);
+            }
 
             Ok(())
         })

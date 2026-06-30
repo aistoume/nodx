@@ -18,6 +18,7 @@ use std::time::Duration;
 
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
 /// Payload broadcast on a successful capture.
 #[derive(serde::Serialize, Clone, Debug)]
@@ -162,17 +163,161 @@ pub fn on_hotkey(app: AppHandle) {
     }
 }
 
-/// Show (or focus) the popover window. Best-effort.
-fn show_popover(app: &AppHandle) {
-    if let Some(win) = app.get_webview_window("popover") {
-        let _ = win.show();
-        let _ = win.set_focus();
-        // Try to position near the cursor — Tauri 2 doesn't expose a
-        // cross-platform "cursor position" so we center for v1.
-        let _ = win.center();
-    } else {
-        log::warn!("system_capture: popover window not found");
+/// Shortcuts we register **only while** the popover is visible.
+/// macOS `alwaysOnTop` ("floating") windows have `canBecomeKeyWindow=false`
+/// by default, so a plain DOM `keydown` listener never fires inside the
+/// popover webview. Registering ESC + Cmd+W as temporary global shortcuts
+/// bypasses focus entirely.
+fn popover_dismiss_shortcuts() -> [Shortcut; 2] {
+    [
+        Shortcut::new(None, Code::Escape),
+        Shortcut::new(Some(Modifiers::META), Code::KeyW),
+    ]
+}
+
+/// Register the ESC + Cmd+W dismiss shortcuts. Best-effort — if a global
+/// ESC is somehow already taken we still fall back to the in-webview
+/// listener (which works when the user has clicked into the popover).
+pub fn register_dismiss_shortcuts(app: &AppHandle) {
+    for sc in popover_dismiss_shortcuts() {
+        match app.global_shortcut().register(sc) {
+            Ok(()) => log::debug!("registered popover dismiss shortcut"),
+            Err(e) => log::debug!("dismiss shortcut already taken: {}", e),
+        }
     }
+}
+
+/// Unregister the dismiss shortcuts so they don't intercept ESC / Cmd+W
+/// system-wide while the popover is hidden.
+pub fn unregister_dismiss_shortcuts(app: &AppHandle) {
+    for sc in popover_dismiss_shortcuts() {
+        let _ = app.global_shortcut().unregister(sc);
+    }
+}
+
+/// True if the given shortcut is one of our popover dismiss shortcuts.
+/// Called from the global-shortcut handler in lib.rs.
+pub fn is_dismiss_shortcut(sc: &Shortcut) -> bool {
+    popover_dismiss_shortcuts().iter().any(|d| d == sc)
+}
+
+/// Hide the popover and unregister dismiss shortcuts.
+///
+/// **Important**: when called from inside the global-shortcut handler,
+/// unregistering must run on a different thread. The plugin holds an
+/// internal lock during dispatch; calling `unregister()` re-enters that
+/// lock and deadlocks the entire app. So we hide synchronously (cheap),
+/// then defer the unregister to a worker thread.
+pub fn hide_popover(app: &AppHandle) {
+    if let Some(win) = app.get_webview_window("popover") {
+        let _ = win.hide();
+    }
+    let app_handle = app.clone();
+    std::thread::spawn(move || {
+        // Tiny pause to let the global-shortcut handler return first,
+        // releasing the dispatch lock.
+        thread::sleep(Duration::from_millis(50));
+        unregister_dismiss_shortcuts(&app_handle);
+    });
+}
+
+/// Show (or focus) the popover window. Best-effort.
+///
+/// Two failure modes we handle:
+///  1. The popover window was destroyed (e.g. the user clicked the native
+///     red close button before we installed the "hide instead of close"
+///     handler) — we rebuild it from the saved WebviewWindowBuilder config.
+///  2. macOS likes to drop keyboard focus on an `alwaysOnTop` window when
+///     it's shown without explicit activation. We additionally register
+///     ESC + Cmd+W as temporary global shortcuts (see register_dismiss_
+///     shortcuts) so the user can always dismiss regardless of focus.
+fn show_popover(app: &AppHandle) {
+    use tauri::WebviewUrl;
+
+    let win = match app.get_webview_window("popover") {
+        Some(w) => w,
+        None => {
+            // Recreate it. Config mirrors tauri.conf.json closely.
+            // Note: `.transparent()` is behind Tauri's `unstable` cargo
+            // feature and would force a feature flag here; the popover
+            // doesn't need transparency so we just leave the default.
+            match tauri::WebviewWindowBuilder::new(
+                app,
+                "popover",
+                WebviewUrl::App("popover.html".into()),
+            )
+            .title("nodx — explain")
+            .inner_size(460.0, 360.0)
+            .min_inner_size(360.0, 260.0)
+            .decorations(true)
+            .shadow(true)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .resizable(true)
+            .visible(false)
+            .focused(true)
+            .fullscreen(false)
+            .center()
+            .build()
+            {
+                Ok(w) => {
+                    install_popover_handlers(app, &w);
+                    w
+                }
+                Err(e) => {
+                    log::warn!("system_capture: failed to rebuild popover: {}", e);
+                    return;
+                }
+            }
+        }
+    };
+
+    // Show + center + focus. show_focused does set_focus on most platforms
+    // but macOS still occasionally drops focus on alwaysOnTop windows, so we
+    // belt-and-suspenders it.
+    let _ = win.center();
+    let _ = win.show();
+    let _ = win.unminimize();
+    let _ = win.set_focus();
+
+    // On macOS, activate the app so the popover can receive keyboard events.
+    #[cfg(target_os = "macos")]
+    {
+        // NSApp.activate(ignoringOtherApps:true) equivalent via Tauri.
+        // The deprecated API still works in 12+; newer activate() is preferred but
+        // requires more setup. This is the practical compromise.
+        if let Err(e) = app.set_activation_policy(tauri::ActivationPolicy::Regular) {
+            log::debug!("set_activation_policy: {:?}", e);
+        }
+    }
+
+    // Register ESC + Cmd+W as temporary global shortcuts. This is the
+    // reliable dismiss path — webview-level keydown is unreliable on
+    // alwaysOnTop windows (canBecomeKeyWindow=false on macOS).
+    register_dismiss_shortcuts(app);
+}
+
+/// Wire the "hide instead of destroy on close" handler + unregister dismiss
+/// shortcuts when the user manually hides the popover. Called once for the
+/// window declared in tauri.conf.json (via lib.rs setup) AND once for every
+/// runtime rebuild (via the None arm of show_popover above).
+///
+/// Without this:
+/// - the user clicks the native red close button → Tauri destroys the window
+///   → next ⌥+E finds no window and (without the rebuild fallback) silently
+///   does nothing.
+/// - ESC + Cmd+W global shortcuts would stay registered even after the
+///   popover is hidden, swallowing those keys system-wide.
+pub fn install_popover_handlers(app: &AppHandle, win: &tauri::WebviewWindow) {
+    let _label = win.label().to_string();
+    let app_handle = app.clone();
+    win.on_window_event(move |event| {
+        if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+            // Cancel the destroy; just hide.
+            api.prevent_close();
+            hide_popover(&app_handle);
+        }
+    });
 }
 
 /// Local stand-in for chrono so we don't pull a whole crate just for ms.

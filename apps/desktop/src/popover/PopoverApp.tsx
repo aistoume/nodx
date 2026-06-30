@@ -61,15 +61,50 @@ export function PopoverApp() {
   }, []);
 
   // ── Allow ESC to close the popover ───────────────────────────────────
+  //
+  // Use document + capture phase so we catch the key BEFORE any input /
+  // textarea inside the popover swallows it. Also abort any in-flight AI
+  // request so the user can ESC out of a slow streaming response.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.stopPropagation();
+        e.preventDefault();
+        // Cancel any pending AI call so the user actually feels the cancel.
+        inFlight.current?.abort();
+        inFlight.current = null;
         void getCurrentWindow().hide();
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
   }, []);
+
+  // ── Self-focus when the window becomes visible ──────────────────────
+  //
+  // macOS sometimes hands focus back to the previous app even after we
+  // show + set_focus from Rust. Without focus the keydown listener above
+  // never fires. Grab focus on mount and whenever a new capture arrives.
+  useEffect(() => {
+    const grabFocus = () => {
+      try {
+        window.focus();
+        // Body needs an actual focusable target for keydown to dispatch
+        // on some macOS WebKit builds.
+        document.body.setAttribute('tabindex', '-1');
+        document.body.focus();
+      } catch {
+        /* harmless if blocked */
+      }
+    };
+    grabFocus();
+    // Also re-grab whenever the popover regains visibility.
+    const onVis = () => {
+      if (!document.hidden) grabFocus();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [snippet]);
 
   async function runExplain(text: string) {
     inFlight.current?.abort();
@@ -110,17 +145,40 @@ export function PopoverApp() {
     }
   }
 
+  // Cancel + close convenience for the loading state
+  const cancelAndClose = () => {
+    inFlight.current?.abort();
+    inFlight.current = null;
+    void getCurrentWindow().hide();
+  };
+
   return (
-    <div className="h-screen w-screen flex flex-col bg-surface text-ink overflow-hidden">
+    <div
+      className="h-screen w-screen flex flex-col bg-surface text-ink overflow-hidden"
+      onClick={() => {
+        // Click anywhere → ensure we own focus so ESC works next time.
+        try { window.focus(); document.body.focus(); } catch { /* */ }
+      }}
+    >
       {/* Header */}
       <div className="px-3 py-2 border-b border-border flex items-center gap-2 shrink-0">
         <span className="text-[12px] font-semibold tracking-wide text-accent">
           nodx · 划词解释
         </span>
         <span className="text-[10px] text-ink-muted">⌥+E</span>
+        {phase === 'loading' && (
+          <button
+            type="button"
+            onClick={cancelAndClose}
+            className="text-[10px] px-1.5 py-0.5 rounded text-rose-600 hover:bg-rose-50 font-medium"
+            title="取消请求并关闭"
+          >
+            取消
+          </button>
+        )}
         <button
           type="button"
-          onClick={() => void getCurrentWindow().hide()}
+          onClick={cancelAndClose}
           className="ml-auto text-ink-muted hover:text-ink text-[14px] w-5 h-5 flex items-center justify-center rounded hover:bg-canvas"
           title="关闭 (Esc)"
         >
@@ -219,7 +277,7 @@ export function PopoverApp() {
             📋 复制
           </button>
           <span className="ml-auto text-[10px] text-ink-muted italic">
-            Esc 关闭
+            Esc / ⌘W 关闭
           </span>
         </div>
       )}
