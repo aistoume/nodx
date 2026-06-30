@@ -13,6 +13,11 @@ const STRINGS = {
   zh: {
     // Content script
     triggerLabel: '🔍 解释',
+    triggerQuickLabel: '💾 收',
+    triggerExplainTitle: '让 AI 解释这段（消耗 API token）',
+    triggerQuickTitle: '直接收藏到 nodx（不调用 AI · 已熟悉的词）',
+    quickSavedToast: '💾 已收藏到 nodx',
+    quickSavedDetail: '未调用 AI · 之后可在 nodx 里手动补解释',
     panelTitle: 'nodx Lens · 解释',
     connecting: '连接中…',
     loading: '加载中…',
@@ -26,6 +31,14 @@ const STRINGS = {
     extReloadedToast: '🔁 nodx Lens 已更新 · 请刷新本页继续使用',
     saveToNodxNotImpl: '「保存到 nodx」V2 实现',
     annotationTitle: '点击查看解释 · 右键删除',
+    saved: '✓ 已保存',
+    savedDetail: '已存为思考卡片 · Markdown 已复制到剪贴板',
+    savedTryDesktop: '尝试唤起 nodx desktop…（未安装也无妨，卡片已存在本地）',
+    openInNodxDesktop: '在 nodx desktop 中打开',
+    nodxDesktopComing: 'nodx desktop 即将到来 — 关注 X 获得邀请',
+    savedTabTitle: '已保存',
+    savedEmpty: '选中文字时点「保存到 nodx」会把它存为思考卡片，等待 nodx desktop 接管时一键导入。',
+    snippetsCleared: '已清空',
 
     // Service worker
     missingApiKey: '请先在 Settings 配置 API Key',
@@ -61,6 +74,11 @@ const STRINGS = {
   en: {
     // Content script
     triggerLabel: '🔍 Explain',
+    triggerQuickLabel: '💾 Save',
+    triggerExplainTitle: 'Have AI explain this (uses API tokens)',
+    triggerQuickTitle: 'Just save to nodx (no AI call · for things you already understand)',
+    quickSavedToast: '💾 Saved to nodx',
+    quickSavedDetail: 'No AI call — you can ask for an explanation later in nodx',
     panelTitle: 'nodx Lens · Explanation',
     connecting: 'Connecting…',
     loading: 'Loading…',
@@ -74,6 +92,14 @@ const STRINGS = {
     extReloadedToast: '🔁 nodx Lens updated · refresh this page to continue',
     saveToNodxNotImpl: '"Save to nodx" is V2.',
     annotationTitle: 'Click to view · right-click to remove',
+    saved: '✓ Saved',
+    savedDetail: 'Saved as a thinking card · Markdown copied to clipboard',
+    savedTryDesktop: 'Trying to open nodx desktop… (works locally if not installed)',
+    openInNodxDesktop: 'Open in nodx desktop',
+    nodxDesktopComing: 'nodx desktop coming soon — follow on X for early invite',
+    savedTabTitle: 'Saved',
+    savedEmpty: 'Click "Save to nodx" while reading to capture a snippet here. nodx desktop will pick these up when it ships.',
+    snippetsCleared: 'Cleared',
 
     // Service worker
     missingApiKey: 'Please set your API key in Settings first.',

@@ -1,4 +1,16 @@
-# nodx Lens for macOS
+# nodx Lens for macOS · ⚠️ DEPRECATED (merged into nodx desktop 0.3+)
+
+> **As of nodx desktop v0.3.0 (Jun 2026), this standalone app is merged into the main nodx desktop app.**
+>
+> Install [**nodx desktop**](https://aicon.solutions/nodx/) and you get ⌥+E system-wide select-and-explain for free — same UX, but now the explanations land in your 💡 灵感池 with one click, and you don't need to install two apps.
+>
+> If you have both apps installed, please **delete `/Applications/nodx Lens.app`** so the two don't fight over the ⌥+E shortcut.
+>
+> This README is preserved for historical reference. The code in this folder will stop receiving updates after 0.0.2.
+>
+> — *LaoMo, 2026-06-30*
+
+---
 
 System-wide select-and-explain. Hit ⌥+E anywhere on your Mac to get an inline AI explanation of whatever you just copied.
 

@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Default permissions for the nodx desktop window",
-  "windows": ["main"],
+  "windows": ["main", "popover"],
   "permissions": [
     "core:default",
     {
@@ -38,6 +38,11 @@
         { "path": "/Volumes/**" },
         { "path": "/tmp/**" }
       ]
-    }
+    },
+    "deep-link:default",
+    "core:default",
+    "global-shortcut:default",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text"
   ]
 }

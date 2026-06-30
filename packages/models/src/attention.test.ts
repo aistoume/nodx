@@ -1,0 +1,59 @@
+import { describe, expect, it } from 'vitest';
+import { AttentionSchema } from './attention.js';
+
+const BASE = {
+  id: 'att-1',
+  text: 'first-principles thinking',
+  sourceUrl: 'https://example.com/post',
+  sourceTitle: 'Example post',
+  sourceKind: 'lens-chrome' as const,
+  kind: 'explain' as const,
+  tags: [],
+  capturedAt: 1_700_000_000_000,
+  ingestedAt: 1_700_000_001_000,
+};
+
+describe('AttentionSchema', () => {
+  it('accepts a minimal explain-flavoured attention with explanation', () => {
+    const a = { ...BASE, explanation: 'It means reasoning from axioms.' };
+    expect(AttentionSchema.parse(a)).toMatchObject(a);
+  });
+
+  it('accepts a quick-flavoured attention without explanation', () => {
+    const a = { ...BASE, kind: 'quick' as const };
+    const parsed = AttentionSchema.parse(a);
+    expect(parsed.explanation).toBeUndefined();
+    expect(parsed.kind).toBe('quick');
+  });
+
+  it('rejects empty text', () => {
+    expect(() => AttentionSchema.parse({ ...BASE, text: '' })).toThrow();
+  });
+
+  it('rejects unknown sourceKind', () => {
+    expect(() =>
+      AttentionSchema.parse({ ...BASE, sourceKind: 'random-tool' }),
+    ).toThrow();
+  });
+
+  it('accepts an empty-string sourceUrl (for manual pastes without source)', () => {
+    const a = { ...BASE, sourceUrl: '', sourceKind: 'manual' as const };
+    expect(() => AttentionSchema.parse(a)).not.toThrow();
+  });
+
+  it('persists promotedToTopicId when set', () => {
+    const a = {
+      ...BASE,
+      promotedToTopicId: 'topic-99',
+    };
+    expect(AttentionSchema.parse(a).promotedToTopicId).toBe('topic-99');
+  });
+
+  it('allows arbitrary string tags', () => {
+    const a = { ...BASE, tags: ['ai-product', 'competitor-research'] };
+    expect(AttentionSchema.parse(a).tags).toEqual([
+      'ai-product',
+      'competitor-research',
+    ]);
+  });
+});

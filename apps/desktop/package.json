@@ -1,6 +1,6 @@
 {
   "name": "@nodx/desktop",
-  "version": "0.0.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -22,8 +22,10 @@
     "@tiptap/pm": "^2.10.0",
     "@tiptap/react": "^2.10.0",
     "@tiptap/starter-kit": "^2.10.0",
+    "@xyflow/react": "^12.4.0",
     "cytoscape": "^3.30.4",
     "cytoscape-cose-bilkent": "^4.1.0",
+    "dagre": "^0.8.5",
     "marked": "^15.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
@@ -32,6 +34,7 @@
     "@tailwindcss/vite": "^4.0.0",
     "@tauri-apps/cli": "^2.1.0",
     "@types/cytoscape": "^3.21.8",
+    "@types/dagre": "^0.7.52",
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

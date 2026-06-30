@@ -17,6 +17,11 @@
 
 import { getSettings } from '../shared/settings.js';
 import { setLocale, t } from '../shared/i18n.js';
+import {
+  saveSnippet,
+  snippetToMarkdown,
+  buildNodxDeepLink,
+} from '../shared/snippets.js';
 
 const HIDE_DELAY_MS = 300;
 const SELECTION_DEBOUNCE_MS = 120;
@@ -128,20 +133,30 @@ function ensureHost(): ShadowRoot {
     <style>
       :host, * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif; }
 
-      .trigger {
+      .trigger-bar {
         position: fixed; z-index: 2147483647;
         pointer-events: auto;
-        display: flex; align-items: center; gap: 4px;
-        padding: 4px 10px; border-radius: 999px;
+        display: inline-flex; align-items: stretch;
+        border-radius: 999px;
         background: #1a1a1a; color: #fff;
         font-size: 12px; font-weight: 500;
         box-shadow: 0 4px 14px rgba(0,0,0,0.25);
-        cursor: pointer; user-select: none;
+        user-select: none; overflow: hidden;
         opacity: 0; transform: translateY(4px);
         transition: opacity 120ms ease, transform 120ms ease;
       }
-      .trigger.show { opacity: 1; transform: translateY(0); }
-      .trigger:hover { background: #000; }
+      .trigger-bar.show { opacity: 1; transform: translateY(0); }
+      .trigger-btn {
+        padding: 5px 11px;
+        cursor: pointer;
+        display: inline-flex; align-items: center;
+        transition: background 120ms ease;
+      }
+      .trigger-btn:hover { background: #2C5282; }
+      .trigger-divider {
+        width: 1px; background: rgba(255,255,255,0.18);
+      }
+      .trigger-btn.quick:hover { background: #F59E0B; color: #1a1a1a; }
 
       .panel {
         position: fixed; z-index: 2147483647;
@@ -216,30 +231,121 @@ function ensureHost(): ShadowRoot {
 // ============================================================================
 
 function hideTrigger() {
-  shadowRoot?.querySelector('.trigger')?.remove();
+  shadowRoot?.querySelector('.trigger-bar')?.remove();
 }
 
 function showTrigger(rect: DOMRect, selectedText: string, range: Range) {
   const root = ensureHost();
   hideTrigger();
-  const btn = document.createElement('div');
-  btn.className = 'trigger';
-  btn.textContent = t('triggerLabel');
-  btn.style.top = `${Math.max(8, rect.top - 36)}px`;
-  btn.style.left = `${Math.max(8, Math.min(window.innerWidth - 80, rect.right - 60))}px`;
-  root.appendChild(btn);
-  requestAnimationFrame(() => btn.classList.add('show'));
+  const bar = document.createElement('div');
+  bar.className = 'trigger-bar';
+  bar.style.top = `${Math.max(8, rect.top - 36)}px`;
+  // Bar width ~140px; clamp inside viewport
+  bar.style.left = `${Math.max(8, Math.min(window.innerWidth - 150, rect.right - 90))}px`;
 
-  btn.addEventListener('mousedown', (e) => {
-    // Avoid the click from clearing the selection prematurely
+  const explainBtn = document.createElement('div');
+  explainBtn.className = 'trigger-btn explain';
+  explainBtn.textContent = t('triggerLabel');
+  explainBtn.title = t('triggerExplainTitle');
+
+  const divider = document.createElement('div');
+  divider.className = 'trigger-divider';
+
+  const quickBtn = document.createElement('div');
+  quickBtn.className = 'trigger-btn quick';
+  quickBtn.textContent = t('triggerQuickLabel');
+  quickBtn.title = t('triggerQuickTitle');
+
+  bar.append(explainBtn, divider, quickBtn);
+  root.appendChild(bar);
+  requestAnimationFrame(() => bar.classList.add('show'));
+
+  // Prevent selection collapse on mousedown
+  bar.addEventListener('mousedown', (e) => {
     e.preventDefault();
     e.stopPropagation();
   });
-  btn.addEventListener('click', (e) => {
+
+  explainBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     hideTrigger();
     openPanelForNewSelection(selectedText, range);
   });
+
+  quickBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    hideTrigger();
+    void handleQuickSave(selectedText);
+  });
+}
+
+/**
+ * Quick save: no AI call. Just stash the snippet to chrome.storage.local,
+ * fire the nodx://capture deep link, and show a tiny toast at the selection.
+ */
+async function handleQuickSave(selectedText: string) {
+  let snippet;
+  try {
+    snippet = await saveSnippet({
+      text: selectedText,
+      sourceUrl: location.href,
+      sourceTitle: document.title,
+      capturedAt: Date.now(),
+      kind: 'quick',
+    });
+  } catch {
+    return;
+  }
+  // Fire deep link silently
+  try {
+    const a = document.createElement('a');
+    a.href = buildNodxDeepLink(snippet);
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch {
+    /* nodx desktop probably not installed yet — that's fine, snippet is local */
+  }
+  showQuickSavedToast();
+}
+
+function showQuickSavedToast() {
+  const root = ensureHost();
+  const old = root.querySelector('.quick-toast');
+  if (old) old.remove();
+  const toast = document.createElement('div');
+  toast.className = 'quick-toast';
+  toast.innerHTML = `
+    <div style="font-weight:600;color:#F59E0B;">${t('quickSavedToast')}</div>
+    <div style="font-size:11px;color:#aaa;margin-top:3px;">${t('quickSavedDetail')}</div>
+  `;
+  toast.style.cssText = [
+    'position:fixed',
+    'z-index:2147483647',
+    'pointer-events:none',
+    'bottom:24px',
+    'right:24px',
+    'background:#1a1a1a',
+    'color:#fff',
+    'padding:10px 14px',
+    'border-radius:8px',
+    'box-shadow:0 6px 20px rgba(0,0,0,0.3)',
+    'font-size:13px',
+    'opacity:0',
+    'transform:translateY(8px)',
+    'transition:opacity 160ms ease, transform 160ms ease',
+  ].join(';');
+  root.appendChild(toast);
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+  });
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(8px)';
+    setTimeout(() => toast.remove(), 200);
+  }, 2400);
 }
 
 // ============================================================================
@@ -319,6 +425,67 @@ function openPanelForAnnotation(ann: Annotation) {
   wirePanelClicks(panel, ann.text, ann.range);
 }
 
+async function handleSaveToNodx(panel: HTMLDivElement, selectedText: string) {
+  const bodyEl = panel.querySelector('.panel-body');
+  const explanation = bodyEl?.textContent ?? '';
+  if (!explanation) return;
+
+  // 1. Persist as a SavedSnippet (chrome.storage.local, capped at 100)
+  let snippet;
+  try {
+    snippet = await saveSnippet({
+      text: selectedText,
+      explanation,
+      sourceUrl: location.href,
+      sourceTitle: document.title,
+      capturedAt: Date.now(),
+      kind: 'explain',
+    });
+  } catch {
+    // chrome.storage may fail if extension context invalidated; degrade silently
+    return;
+  }
+
+  // 2. Copy markdown to clipboard — works immediately, no app dependency
+  const md = snippetToMarkdown(snippet);
+  try {
+    await navigator.clipboard.writeText(md);
+  } catch {
+    /* clipboard may fail in iframes — not fatal */
+  }
+
+  // 3. Try opening the deep link to nodx desktop (silent failure if not installed)
+  try {
+    const a = document.createElement('a');
+    a.href = buildNodxDeepLink(snippet);
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch { /* deep link unsupported / app not installed */ }
+
+  // 4. Show the styled in-panel confirmation
+  showSavedFlash(panel);
+}
+
+function showSavedFlash(panel: HTMLDivElement) {
+  const footer = panel.querySelector('.panel-footer') as HTMLDivElement | null;
+  if (!footer) return;
+
+  // Stash existing footer HTML, swap to a confirmation
+  const original = footer.innerHTML;
+  footer.innerHTML = `
+    <div class="save-flash" style="display:flex;flex-direction:column;gap:6px;width:100%;">
+      <div style="font-weight:600;color:#10B981;">${t('saved')}</div>
+      <div style="font-size:11px;color:#666;">${t('savedDetail')}</div>
+      <div style="font-size:11px;color:#888;font-style:italic;">${t('savedTryDesktop')}</div>
+    </div>
+  `;
+  setTimeout(() => {
+    if (panel.querySelector('.save-flash')) footer.innerHTML = original;
+  }, 3200);
+}
+
 function wirePanelClicks(panel: HTMLDivElement, selectedText: string, range: Range) {
   panel.addEventListener('click', (e) => {
     const target = (e.target as HTMLElement).closest('[data-action]') as HTMLElement | null;
@@ -330,7 +497,7 @@ function wirePanelClicks(panel: HTMLDivElement, selectedText: string, range: Ran
       const body = panel.querySelector('.panel-body');
       if (body?.textContent) void navigator.clipboard.writeText(body.textContent);
     } else if (action === 'save') {
-      alert(t('saveToNodxNotImpl'));
+      void handleSaveToNodx(panel, selectedText);
     }
   });
 }
