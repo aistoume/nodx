@@ -18,6 +18,9 @@ import { markdownToHtml, markdownToInlineHtml } from '../../lib/markdown.js';
 interface CaseSearchViewProps {
   /** Open a (newly created) topic in dialog view — used by the panel handoff. */
   onOpenTopic: (topicId: string) => void;
+  /** Deep-link from a 素材 graph node: scroll to + highlight this case id. */
+  focusId?: string;
+  onFocusConsumed?: () => void;
 }
 
 /**
@@ -28,7 +31,11 @@ interface CaseSearchViewProps {
  * NOTE the Sonnet steps are slow (fusion ~60–90s, adapt ~30–60s); each action
  * shows its own pending state.
  */
-export function CaseSearchView({ onOpenTopic }: CaseSearchViewProps) {
+export function CaseSearchView({
+  onOpenTopic,
+  focusId,
+  onFocusConsumed,
+}: CaseSearchViewProps) {
   const [query, setQuery] = useState('');
   const [retrieval, setRetrieval] = useState<RetrievalResult | null>(null);
   const [report, setReport] = useState<FusionReport | null>(null);
@@ -39,10 +46,26 @@ export function CaseSearchView({ onOpenTopic }: CaseSearchViewProps) {
   const [error, setError] = useState<string | null>(null);
   // Library preview (browse what's available before typing a query).
   const [briefs, setBriefs] = useState<CaseBrief[]>([]);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   useEffect(() => {
     void listCasesBrief().then(setBriefs).catch(() => setBriefs([]));
   }, []);
+
+  // Deep-link focus: once briefs are loaded, scroll to + highlight the target.
+  useEffect(() => {
+    if (!focusId || briefs.length === 0) return;
+    if (!briefs.some((b) => b.id === focusId)) {
+      onFocusConsumed?.();
+      return;
+    }
+    const el = document.getElementById(`mat-case-${focusId}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightId(focusId);
+    onFocusConsumed?.();
+    const t = window.setTimeout(() => setHighlightId(null), 2600);
+    return () => window.clearTimeout(t);
+  }, [focusId, briefs, onFocusConsumed]);
 
   const run = async (label: string, fn: () => Promise<void>) => {
     setBusy(label);
@@ -153,7 +176,11 @@ export function CaseSearchView({ onOpenTopic }: CaseSearchViewProps) {
 
           {/* Library preview — browse what's available before searching. */}
           {!retrieval && !busy && (
-            <LibraryPreview briefs={briefs} onPick={runSearch} />
+            <LibraryPreview
+              briefs={briefs}
+              onPick={runSearch}
+              highlightId={highlightId}
+            />
           )}
 
           {retrieval && !busy && retrieval.results.length === 0 && (
@@ -224,9 +251,11 @@ const DECISION_TYPE_LABEL: Record<string, string> = {
 function LibraryPreview({
   briefs,
   onPick,
+  highlightId,
 }: {
   briefs: CaseBrief[];
   onPick: (query: string) => void;
+  highlightId?: string | null;
 }) {
   if (briefs.length === 0) {
     return (
@@ -248,13 +277,24 @@ function LibraryPreview({
       </div>
       <ul className="flex flex-col gap-2">
         {briefs.map((c) => (
-          <li key={c.id}>
+          <li key={c.id} id={`mat-case-${c.id}`}>
             <button
               type="button"
               onClick={() => onPick(c.domain)}
-              className="w-full text-left rounded-lg border border-border bg-surface p-3 hover:border-accent hover:bg-accent-soft/40 transition flex flex-col gap-1"
+              className={
+                'w-full text-left rounded-lg border bg-surface p-3 transition flex flex-col gap-1 ' +
+                (highlightId === c.id
+                  ? 'border-amber-400 ring-2 ring-amber-300/60 bg-amber-50/40'
+                  : 'border-border hover:border-accent hover:bg-accent-soft/40')
+              }
             >
               <div className="flex items-center gap-2">
+                <span
+                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-700"
+                  title="素材 · 方案（可从网络图「加载素材」拉到画布上）"
+                >
+                  🧩 素材·方案
+                </span>
                 <span className="text-sm font-medium text-ink">{c.domain}</span>
                 <span className="text-[10px] text-ink-muted">
                   {DECISION_TYPE_LABEL[c.decisionType] ?? c.decisionType}

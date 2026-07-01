@@ -302,3 +302,22 @@ export {
   type ResearchVerdictInput,
   type ResearchVerdict,
 } from './prompts/auto-recursion/researcher.js';
+
+export {
+  EXTRACT_EXECUTION_PROMPT_VERSION,
+  EXTRACT_EXECUTION_PROMPT_MODEL,
+  ExecutionPlanOutputSchema,
+  buildExtractExecutionPrompt,
+  executionToMarkdown,
+  type AtomicActionInput,
+  type ExtractExecutionInput,
+  type ExecutionPlanOutput,
+} from './prompts/execution.js';
+
+export {
+  SYNTHESIZE_MATERIALS_PROMPT_VERSION,
+  SYNTHESIZE_MATERIALS_PROMPT_MODEL,
+  buildSynthesizeMaterialsPrompt,
+  type SynthesisMaterialInput,
+  type SynthesizeMaterialsInput,
+} from './prompts/synthesize-materials.js';

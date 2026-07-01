@@ -17,6 +17,7 @@ const validTopic: Topic = {
   updatedAt: 1_700_000_001_000,
   meta: { messageCount: 3, childCount: 1, lastActivity: 1_700_000_001_000 },
   hasOpenQuestions: false,
+  nodeKind: 'thinking',
 };
 
 describe('TopicStatusSchema', () => {
@@ -113,6 +114,21 @@ describe('TopicSchema', () => {
     expect(t.generatedByAutoRecursionRunId).toBeUndefined();
     expect(t.autoRecursionDepth).toBeUndefined();
     expect(t.parentNextMovePlanId).toBeUndefined();
+  });
+
+  it('defaults nodeKind to thinking when omitted (old rows)', () => {
+    expect(TopicSchema.parse(validTopic).nodeKind).toBe('thinking');
+  });
+
+  it('accepts an execution node kind', () => {
+    const t = TopicSchema.parse({ ...validTopic, nodeKind: 'execution' });
+    expect(t.nodeKind).toBe('execution');
+  });
+
+  it('rejects an unknown nodeKind', () => {
+    expect(() =>
+      TopicSchema.parse({ ...validTopic, nodeKind: 'action' }),
+    ).toThrow();
   });
 
   it('rejects wrong-typed auto-recursion fields', () => {

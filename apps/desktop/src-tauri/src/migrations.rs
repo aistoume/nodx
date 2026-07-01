@@ -519,6 +519,28 @@ CREATE INDEX idx_attentions_promoted ON attentions(promoted_to_topic_id)
     WHERE promoted_to_topic_id IS NOT NULL;
 "#;
 
+/// Schema v12 — 素材 (Material) kind on both source tables.
+///
+/// Unifies the 案例库 (abstracted_cases → 方案素材) and the 灵感池
+/// (attentions → 灵感素材) under one "素材" concept the network graph can
+/// load as nodes. `material_kind` makes each row's material identity
+/// explicit (defaults backfill every existing row). NOTE: attentions
+/// already has a `kind` column with a different meaning ('explain'|'quick'),
+/// so the material discriminator is a separate `material_kind` column.
+const V12_SQL: &str = r#"
+ALTER TABLE abstracted_cases ADD COLUMN material_kind TEXT NOT NULL DEFAULT 'solution';
+ALTER TABLE attentions       ADD COLUMN material_kind TEXT NOT NULL DEFAULT 'inspiration';
+"#;
+
+/// Schema v13 — 思考 / 执行 node kind on topics.
+///
+/// A Topic is either a 思考 (deliberation) or 执行 (concrete action plan)
+/// node. Execution nodes are split out of a thinking node's action plan via
+/// 「拆出执行」. Every existing topic backfills to 'thinking'.
+const V13_SQL: &str = r#"
+ALTER TABLE topics ADD COLUMN node_kind TEXT NOT NULL DEFAULT 'thinking';
+"#;
+
 pub fn all() -> Vec<Migration> {
     vec![
         Migration {
@@ -585,6 +607,18 @@ pub fn all() -> Vec<Migration> {
             version: 11,
             description: "attention_inbox",
             sql: V11_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 12,
+            description: "material_kind",
+            sql: V12_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 13,
+            description: "topic_node_kind",
+            sql: V13_SQL,
             kind: MigrationKind::Up,
         },
     ]

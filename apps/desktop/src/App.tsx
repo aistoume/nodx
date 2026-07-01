@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Attention, Comment, Topic } from '@nodx/models';
+import type { Attention, Comment, MaterialKind, Topic } from '@nodx/models';
 import { listen } from '@tauri-apps/api/event';
 import { Header } from './components/Header.js';
 import { LeftPanel } from './components/LeftPanel.js';
@@ -12,6 +12,7 @@ import { AttentionInboxView } from './components/attention/AttentionInboxView.js
 import { TopicTabsBar } from './components/TopicTabsBar.js';
 import { SettingsView } from './components/SettingsView.js';
 import { listArchivedTopics, listTopics, createTopic } from './db/topics.js';
+import { markCanvasTopic } from './lib/canvas-topics.js';
 import { listComments, listAllOpenQuestions } from './db/comments.js';
 import { createUserMessage } from './db/messages.js';
 import { markPromoted, upsertCaptured } from './db/attentions.js';
@@ -59,6 +60,11 @@ function saveOpenTabs(ids: string[]): void {
 
 export function App() {
   const [view, setView] = useState<View>('dialog');
+  // Deep-link from a 素材 graph node → focus that item in its library.
+  const [materialFocus, setMaterialFocus] = useState<{
+    kind: MaterialKind;
+    id: string;
+  } | null>(null);
   const [attentionRefreshTick, setAttentionRefreshTick] = useState(0);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [archivedTopics, setArchivedTopics] = useState<Topic[]>([]);
@@ -330,6 +336,10 @@ export function App() {
       >
         {view === 'cases' ? (
           <CaseSearchView
+            focusId={
+              materialFocus?.kind === 'solution' ? materialFocus.id : undefined
+            }
+            onFocusConsumed={() => setMaterialFocus(null)}
             onOpenTopic={(id) => {
               openTopicInTab(id);
               setView('dialog');
@@ -339,6 +349,12 @@ export function App() {
         ) : view === 'attention' ? (
           <AttentionInboxView
             refreshTick={attentionRefreshTick}
+            focusId={
+              materialFocus?.kind === 'inspiration'
+                ? materialFocus.id
+                : undefined
+            }
+            onFocusConsumed={() => setMaterialFocus(null)}
             onPromote={(a) => {
               void promoteAttentionToTopic(a);
             }}
@@ -377,6 +393,18 @@ export function App() {
                 selectedTopicId={selectedTopicId}
                 onSelectTopic={openTopicInTab}
                 onSwitchToDialog={() => setView('dialog')}
+                onOpenMaterialLibrary={(kind, id) => {
+                  setMaterialFocus({ kind, id });
+                  setView(kind === 'solution' ? 'cases' : 'attention');
+                }}
+                onRequestNewCanvas={(name) => {
+                  void (async () => {
+                    const t = await createTopic({ title: name });
+                    markCanvasTopic(t.id); // stay blank; user fires Survey manually
+                    await refreshTopics();
+                    openTopicInTab(t.id); // stays on the graph view
+                  })();
+                }}
               />
             ) : null}
           </>

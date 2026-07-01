@@ -9,6 +9,17 @@ export const TopicStatusSchema = z.enum([
 ]);
 export type TopicStatus = z.infer<typeof TopicStatusSchema>;
 
+/**
+ * A Topic is one of two node kinds (feature: 思考/执行 拆分):
+ *   thinking  — deliberation: the exploratory reasoning (the default; all
+ *               pre-existing topics are thinking nodes).
+ *   execution — a concrete action plan split out of a thinking node via
+ *               「拆出执行」. Holds a structured 行动清单 (who/what/when/
+ *               deliverable), typically status='atomic'.
+ */
+export const TopicNodeKindSchema = z.enum(['thinking', 'execution']);
+export type TopicNodeKind = z.infer<typeof TopicNodeKindSchema>;
+
 export const TopicMetaSchema = z.object({
   messageCount: z.number().int().nonnegative(),
   childCount: z.number().int().nonnegative(),
@@ -47,5 +58,11 @@ export const TopicSchema = z.object({
   generatedByAutoRecursionRunId: IdSchema.optional(),
   autoRecursionDepth: z.number().int().nonnegative().optional(),
   parentNextMovePlanId: IdSchema.optional(),
+  /**
+   * 思考 vs 执行 node kind (default 'thinking'; DB column DEFAULT 'thinking'
+   * backfills every existing row). Execution nodes are split out of a
+   * thinking node's action plan via 「拆出执行」.
+   */
+  nodeKind: TopicNodeKindSchema.default('thinking'),
 });
 export type Topic = z.infer<typeof TopicSchema>;
