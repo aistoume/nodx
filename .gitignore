@@ -10,9 +10,14 @@ out/
 .turbo/
 *.tsbuildinfo
 
-# Tauri
+# Tauri — build outputs / generated code for every app (not just desktop)
+**/src-tauri/target/
+**/src-tauri/gen/
 apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/gen/
+
+# Build artifacts (packaged installers)
+*.dmg
 
 # Logs
 *.log
