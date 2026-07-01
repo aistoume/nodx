@@ -9,6 +9,7 @@ import {
 } from '../ai/document.js';
 import { isAiConfigured } from '../ai/gateway.js';
 import { decomposeSelected, generateSurvey } from '../ai/survey.js';
+import { isCanvasTopic, unmarkCanvasTopic } from '../lib/canvas-topics.js';
 import {
   createAiMessage,
   createSurveyMessage,
@@ -189,24 +190,39 @@ function Conversation({
         return;
       }
 
+      // Blank canvas topics stay empty — the user fires Survey manually.
+      if (isCanvasTopic(topic.id)) return;
+
       // Top-level topic — Survey flow.
-      setAiThinking(true);
-      setAiPhase('生成 Survey…');
-      try {
-        const survey = await generateSurvey(topic.title);
-        await createSurveyMessage(topic.id, survey.factors);
-        await refreshAll();
-        onMutated();
-      } catch (err) {
-        autoSurveyFiredFor.current.delete(topic.id);
-        setAiError(err instanceof Error ? err.message : String(err));
-      } finally {
-        setAiThinking(false);
-        setAiPhase('');
-      }
+      await runSurvey();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topic.id, retryNonce]);
+
+  /** Generate the Survey for this (top-level) topic. Shared by the auto-fire
+   *  effect and the manual 「生成 Survey」 button (canvas topics). */
+  const runSurvey = useCallback(async () => {
+    setAiThinking(true);
+    setAiPhase('生成 Survey…');
+    try {
+      const survey = await generateSurvey(topic.title);
+      await createSurveyMessage(topic.id, survey.factors);
+      await refreshAll();
+      onMutated();
+    } catch (err) {
+      autoSurveyFiredFor.current.delete(topic.id);
+      setAiError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAiThinking(false);
+      setAiPhase('');
+    }
+  }, [topic.id, topic.title, refreshAll, onMutated]);
+
+  const handleManualSurvey = useCallback(() => {
+    unmarkCanvasTopic(topic.id);
+    autoSurveyFiredFor.current.add(topic.id);
+    void runSurvey();
+  }, [topic.id, runSurvey]);
 
   /**
    * User typed a custom factor on the Survey card. Append to the message
@@ -406,11 +422,29 @@ function Conversation({
           )}
 
           {!loading && !surveyMsg && !aiThinking && !aiError && (
-            <p className="text-sm text-ink-muted italic">
-              {topic.parentId
-                ? '稍等，AI 正在围绕子话题写文档…'
-                : '等待 AI 生成 Survey…（如果一直没出现，检查 worker 是否在跑）'}
-            </p>
+            topic.parentId ? (
+              <p className="text-sm text-ink-muted italic">
+                稍等，AI 正在围绕子话题写文档…
+              </p>
+            ) : isCanvasTopic(topic.id) ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm text-ink-muted leading-relaxed">
+                  这是一块空白画布。你可以在「网络图」上加载素材、连线、综合；
+                  想让 AI 从这个主题正式起步时，点下面按钮跑一次 Survey。
+                </p>
+                <button
+                  type="button"
+                  onClick={handleManualSurvey}
+                  className="self-start px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition"
+                >
+                  ▶ 生成 Survey（AI 拆维度）
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-ink-muted italic">
+                等待 AI 生成 Survey…（如果一直没出现，检查 worker 是否在跑）
+              </p>
+            )
           )}
 
           {aiThinking && (

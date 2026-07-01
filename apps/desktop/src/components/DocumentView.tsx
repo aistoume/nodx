@@ -25,6 +25,9 @@ import { ReportModal } from './report/ReportModal.js';
 import { exportTopicBundle } from '../db/bundle.js';
 import { saveBundleFile, safeFileName } from '../lib/bundle-file.js';
 import { upsertDocument } from '../db/documents.js';
+import { createTopic } from '../db/topics.js';
+import { extractExecutionPlan, executionToMarkdown } from '../ai/execution.js';
+import { MergePreviewModal } from './panel/MergePreviewModal.js';
 import {
   createAiMessage,
   createUserMessage,
@@ -88,6 +91,37 @@ export function DocumentView({
   // .nodx bundle export status.
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
+  // 拆出执行 (思考→执行 split).
+  const [splitting, setSplitting] = useState(false);
+  const [execPreview, setExecPreview] = useState<string | null>(null);
+  const [execTitle, setExecTitle] = useState('');
+
+  const handleSplitExecution = async () => {
+    setSplitting(true);
+    setError(null);
+    try {
+      const plan = await extractExecutionPlan(topic.id, topic.title);
+      setExecTitle(plan.title);
+      setExecPreview(executionToMarkdown(plan));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSplitting(false);
+    }
+  };
+
+  const handleConfirmSplit = async (markdown: string) => {
+    const child = await createTopic({
+      title: execTitle || `执行：${topic.title}`,
+      parentId: topic.id,
+      status: 'atomic',
+      nodeKind: 'execution',
+    });
+    await upsertDocument(child.id, markdownToHtml(markdown));
+    setExecPreview(null);
+    onMutated();
+    onSelectTopic(child.id);
+  };
 
   const handleExportBundle = async () => {
     setExporting(true);
@@ -560,6 +594,17 @@ export function DocumentView({
               </h1>
             </div>
             <div className="shrink-0 mt-0.5 flex items-center gap-2">
+              {topic.nodeKind !== 'execution' && (
+                <button
+                  type="button"
+                  onClick={handleSplitExecution}
+                  disabled={splitting}
+                  title="把这个思考节点里的具体执行方案抽取出来，生成一个「执行」子节点（谁/做什么/何时/产出的行动清单）"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-emerald-500 text-emerald-600 hover:bg-emerald-500 hover:text-white transition disabled:opacity-50"
+                >
+                  {splitting ? '抽取执行方案…（约 30s）' : '▶ 拆出执行'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleExportBundle}
@@ -590,6 +635,18 @@ export function DocumentView({
       </header>
       {showReport && (
         <ReportModal topicId={topic.id} onClose={() => setShowReport(false)} />
+      )}
+
+      {execPreview !== null && (
+        <MergePreviewModal
+          initialMarkdown={execPreview}
+          title="▶ 拆出执行 · 预览可编辑"
+          hint="确认后会新建一个「执行」子节点，把这份行动清单作为它的文档"
+          confirmLabel="创建执行节点"
+          busyLabel="创建中…"
+          onConfirm={(md) => void handleConfirmSplit(md)}
+          onClose={() => setExecPreview(null)}
+        />
       )}
 
       <div ref={scrollAreaRef} className="flex-1 overflow-y-auto">

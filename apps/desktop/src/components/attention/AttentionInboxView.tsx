@@ -33,6 +33,9 @@ interface Props {
   refreshTick: number;
   /** Hand back to App so it can create a Topic + flip view. */
   onPromote: (attention: Attention) => void;
+  /** Deep-link from a 素材 graph node: scroll to + highlight this attention id. */
+  focusId?: string;
+  onFocusConsumed?: () => void;
 }
 
 const SOURCE_CHIPS: Array<{ key: AttentionSource; label: string; emoji: string }> = [
@@ -41,11 +44,37 @@ const SOURCE_CHIPS: Array<{ key: AttentionSource; label: string; emoji: string }
   { key: 'manual', label: '手动粘贴', emoji: '✍️' },
 ];
 
-export function AttentionInboxView({ refreshTick, onPromote }: Props) {
+export function AttentionInboxView({
+  refreshTick,
+  onPromote,
+  focusId,
+  onFocusConsumed,
+}: Props) {
   const [items, setItems] = useState<Attention[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [hidePromoted, setHidePromoted] = useState(true);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  // Deep-link from a 素材 graph node: show everything (so a promoted item is
+  // findable) then scroll to + highlight it once the list has that row.
+  useEffect(() => {
+    if (focusId) setHidePromoted(false);
+  }, [focusId]);
+  useEffect(() => {
+    if (!focusId || items.length === 0) return;
+    if (!items.some((a) => a.id === focusId)) {
+      onFocusConsumed?.();
+      return;
+    }
+    document
+      .getElementById(`mat-att-${focusId}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightId(focusId);
+    onFocusConsumed?.();
+    const t = window.setTimeout(() => setHighlightId(null), 2600);
+    return () => window.clearTimeout(t);
+  }, [focusId, items, onFocusConsumed]);
   const [selectedSources, setSelectedSources] = useState<Set<AttentionSource>>(
     new Set(['lens-chrome', 'lens-mac', 'manual']),
   );
@@ -143,6 +172,7 @@ export function AttentionInboxView({ refreshTick, onPromote }: Props) {
                   <AttentionCard
                     key={a.id}
                     attention={a}
+                    highlighted={highlightId === a.id}
                     onChanged={() => {
                       // soft refresh via state update — call list again
                       void (async () => {
@@ -185,9 +215,15 @@ interface CardProps {
   attention: Attention;
   onChanged: () => void;
   onPromote: () => void;
+  highlighted?: boolean;
 }
 
-function AttentionCard({ attention, onChanged, onPromote }: CardProps) {
+function AttentionCard({
+  attention,
+  onChanged,
+  onPromote,
+  highlighted,
+}: CardProps) {
   const [editingTags, setEditingTags] = useState(false);
   const [tagInput, setTagInput] = useState(attention.tags.join(', '));
   const [editingExpl, setEditingExpl] = useState(false);
@@ -225,13 +261,16 @@ function AttentionCard({ attention, onChanged, onPromote }: CardProps) {
 
   return (
     <div
+      id={`mat-att-${attention.id}`}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
       className={
         'group border rounded-xl bg-surface px-5 py-4 transition-all ' +
-        (promoted
-          ? 'opacity-50 border-border'
-          : 'border-border hover:border-accent/60 hover:shadow-sm')
+        (highlighted
+          ? 'border-amber-400 ring-2 ring-amber-300/60'
+          : promoted
+            ? 'opacity-50 border-border'
+            : 'border-border hover:border-accent/60 hover:shadow-sm')
       }
     >
       {/* ── Header: favicon + title + chips ─────────────────────── */}
@@ -274,6 +313,12 @@ function AttentionCard({ attention, onChanged, onPromote }: CardProps) {
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span
+            className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-300"
+            title="素材 · 灵感（可从网络图「加载素材」拉到画布上）"
+          >
+            💡 素材·灵感
+          </span>
           {attention.kind === 'quick' && (
             <span
               className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200"

@@ -2,6 +2,7 @@ import {
   TopicSchema,
   TopicStatusSchema,
   type Topic,
+  type TopicNodeKind,
   type TopicStatus,
 } from '@nodx/models';
 import { getDb } from './client.js';
@@ -24,10 +25,11 @@ interface TopicRow {
   generated_by_auto_recursion_run_id: string | null;
   auto_recursion_depth: number | null;
   parent_next_move_plan_id: string | null;
+  node_kind: string | null;
 }
 
 const SELECT_COLUMNS =
-  'id, parent_id, title, status, is_pinned, is_archived, created_at, updated_at, message_count, child_count, last_activity, ai_summary, reasoning_trace, has_open_questions, generated_by_auto_recursion_run_id, auto_recursion_depth, parent_next_move_plan_id';
+  'id, parent_id, title, status, is_pinned, is_archived, created_at, updated_at, message_count, child_count, last_activity, ai_summary, reasoning_trace, has_open_questions, generated_by_auto_recursion_run_id, auto_recursion_depth, parent_next_move_plan_id, node_kind';
 
 function rowToTopic(r: TopicRow): Topic {
   return TopicSchema.parse({
@@ -56,6 +58,7 @@ function rowToTopic(r: TopicRow): Topic {
     ...(r.parent_next_move_plan_id != null
       ? { parentNextMovePlanId: r.parent_next_move_plan_id }
       : {}),
+    nodeKind: r.node_kind === 'execution' ? 'execution' : 'thinking',
   });
 }
 
@@ -87,6 +90,8 @@ export interface CreateTopicInput {
   title: string;
   status?: TopicStatus;
   parentId?: string | null;
+  /** 'thinking' (default) or 'execution' (a split-out action plan). */
+  nodeKind?: TopicNodeKind;
 }
 
 export async function createTopic(input: CreateTopicInput): Promise<Topic> {
@@ -101,12 +106,13 @@ export async function createTopic(input: CreateTopicInput): Promise<Topic> {
     createdAt: now,
     updatedAt: now,
     meta: { messageCount: 0, childCount: 0, lastActivity: now },
+    nodeKind: input.nodeKind ?? 'thinking',
   });
 
   const db = await getDb();
   await db.execute(
-    `INSERT INTO topics (id, parent_id, title, status, is_pinned, created_at, updated_at, message_count, child_count, last_activity, ai_summary)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    `INSERT INTO topics (id, parent_id, title, status, is_pinned, created_at, updated_at, message_count, child_count, last_activity, ai_summary, node_kind)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
     [
       topic.id,
       topic.parentId,
@@ -119,6 +125,7 @@ export async function createTopic(input: CreateTopicInput): Promise<Topic> {
       topic.meta.childCount,
       topic.meta.lastActivity,
       topic.aiSummary ?? null,
+      topic.nodeKind,
     ],
   );
 
@@ -136,6 +143,18 @@ export async function createTopic(input: CreateTopicInput): Promise<Topic> {
   }
 
   return topic;
+}
+
+/** Flip a topic between 思考 / 执行 node kinds. */
+export async function setTopicNodeKind(
+  id: string,
+  nodeKind: TopicNodeKind,
+): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    'UPDATE topics SET node_kind = $1, updated_at = $2 WHERE id = $3',
+    [nodeKind, Date.now(), id],
+  );
 }
 
 /** Persist the AI-maintained reasoning path (思路复现 core, PRD §8.8). */

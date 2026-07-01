@@ -4,10 +4,18 @@ import { markdownToHtml } from '../../lib/markdown.js';
 interface MergePreviewModalProps {
   /** Sonnet-generated Markdown section to fold into the document. */
   initialMarkdown: string;
-  /** True while the append-to-doc mutation is in flight. */
+  /** True while the confirm mutation is in flight. */
   busy?: boolean;
   onConfirm: (markdown: string) => void;
   onClose: () => void;
+  /** Header title. Defaults to the 归纳进文档 wording. */
+  title?: string;
+  /** Sub-hint next to the title. */
+  hint?: string;
+  /** Confirm button label. Defaults to 插入到文档末尾. */
+  confirmLabel?: string;
+  /** Confirm button label while busy. */
+  busyLabel?: string;
 }
 
 /**
@@ -20,6 +28,10 @@ export function MergePreviewModal({
   busy,
   onConfirm,
   onClose,
+  title = '📄 归纳进文档 · 预览可编辑',
+  hint = '这一节将追加到左侧思考文档末尾，插入前可自由修改',
+  confirmLabel = '插入到文档末尾',
+  busyLabel = '插入中…',
 }: MergePreviewModalProps) {
   const [md, setMd] = useState(initialMarkdown);
   const html = useMemo(() => markdownToHtml(md), [md]);
@@ -35,12 +47,8 @@ export function MergePreviewModal({
         className="bg-surface rounded-lg shadow-2xl w-full max-w-5xl max-h-[85vh] flex flex-col overflow-hidden"
       >
         <header className="px-6 py-3 border-b border-border flex items-center gap-2 shrink-0">
-          <span className="text-sm font-semibold text-ink">
-            📄 归纳进文档 · 预览可编辑
-          </span>
-          <span className="text-[11px] text-ink-muted">
-            这一节将追加到左侧思考文档末尾，插入前可自由修改
-          </span>
+          <span className="text-sm font-semibold text-ink">{title}</span>
+          <span className="text-[11px] text-ink-muted">{hint}</span>
           <button
             type="button"
             onClick={onClose}
@@ -88,7 +96,7 @@ export function MergePreviewModal({
             disabled={busy || empty}
             className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
           >
-            {busy ? '插入中…' : '插入到文档末尾'}
+            {busy ? busyLabel : confirmLabel}
           </button>
         </footer>
       </div>

@@ -253,6 +253,21 @@ nodx/
   web_search 时放开 WebSearch / max_tokens 停因改 end_turn / 嵌入返回 501（CBR 检索
   在此模式不可用）。**正当性**：外包给本机 `claude` CLI，不取 OAuth token 打 API。
   —— 详见 **`docs/cli-provider.md`**
+- ✅ **素材（Material）+ 网络图加载**（2026，把案例库/灵感池统一成"素材"并能加载成图节点）：
+  models `material.ts`（MaterialKind solution|inspiration + MaterialRef）+ **migration v12**
+  （abstracted_cases/attentions += material_kind，已回填）+ `db/materials.ts:listMaterials`
+  （两表 union）+ 网络图新增 `material` 节点类型（`graph/MaterialNode.tsx` 琥珀色 + ✕ 移除）
+  + `graph/MaterialPicker.tsx`「➕ 加载素材」加载器（筛选/搜索）+ 自由浮动不自动连线 +
+  localStorage `nodx:graph-materials:v1` 持久化（哪些素材挂哪个画布）+ 案例库/灵感池的
+  「🧩 素材·方案 / 💡 素材·灵感」徽章;**素材综合**（把多份素材手画连线到一个思考节点
+  → 🔗综合按钮 → 素材综合者(Sonnet)读连入素材+问题→写进该话题文档）+ **新画布**（🆕 建空白
+  根话题当白板）—— 详见 **`docs/materials.md`**
+- ✅ **思考/执行 节点拆分**（2026）：Topic 加 `nodeKind: thinking|execution`（**migration v13**，
+  默认 thinking，已回填）+ 思考节点文档页头「▶ 拆出执行」→ 执行拆分者(Sonnet)读文档+原子动作
+  抽出行动清单（谁/做什么/何时/产出）→ 可编辑预览 → 建 execution 子节点（status=atomic）+
+  文档=清单；网络图 `TopicNode` 按 nodeKind 分支（执行=翠绿 + ▶执行 徽章）。
+  `packages/ai/prompts/execution.ts` + `ai/execution.ts:extractExecutionPlan` +
+  `db/topics.ts:setTopicNodeKind` —— 详见 **`docs/execution-nodes.md`**
 - ⏳ 自动递进 Sprint C：CBR 复用接入 + 清僵尸 run + PM eval 集（见 docs/auto-recursion.md §5）
 - ⏳ M1 收尾项：草稿区、@引用 UI（卡点/上次回顾/决策汇报/数据包导出/专家组归纳进文档已完成）
 

@@ -28,3 +28,6 @@ export * from './auto-recursion-run.js';
 
 // Attention Inbox (Lens → desktop pipeline)
 export * from './attention.js';
+
+// 素材 (Material) — unified case + attention handle (PRD §3.16 / 灵感池)
+export * from './material.js';
