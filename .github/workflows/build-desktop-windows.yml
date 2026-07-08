@@ -1,0 +1,125 @@
+# Windows build for nodx desktop
+#
+# Runs on GitHub-hosted windows-latest runners because cross-building Tauri
+# for Windows from macOS is impractical (requires wine + MSVC toolchain in
+# Docker; the CI path is drastically simpler).
+#
+# Triggers:
+#   - Manual dispatch (workflow_dispatch) — for ad-hoc builds
+#   - Push of a tag `v*.*.*` — for tagged releases (attaches artefacts to
+#     the matching GitHub Release if present)
+#
+# Outputs:
+#   - `nodx_<version>_x64_en-US.msi`  — signed MSI installer (unsigned in CI
+#     unless WIX_SIGN_CERT env is provided)
+#   - `nodx_<version>_x64-setup.exe`  — NSIS-style .exe installer
+#
+# The artefacts are uploaded to the workflow run so you can download them
+# from https://github.com/aistoume/nodx/actions/runs/<run-id>
+# even without cutting a Release.
+
+name: Build desktop (Windows)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Optional: attach to an existing GitHub Release with this tag (e.g. v0.4.0). Leave blank to only upload as workflow artefact.'
+        required: false
+        default: ''
+
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    permissions:
+      contents: write   # so we can attach to a release when the trigger is a tag
+
+    env:
+      # Skip the Tauri updater signing step in CI (we sign manually if needed).
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      # Rust cache — a ~5-min build becomes ~1 min on subsequent runs.
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (tauri)
+        run: pnpm --filter @nodx/desktop tauri build
+        env:
+          # Prevent Cargo from grabbing all cores on tiny CI runners.
+          CARGO_BUILD_JOBS: 2
+
+      - name: Locate installers
+        id: locate
+        shell: bash
+        run: |
+          set -euo pipefail
+          MSI=$(find apps/desktop/src-tauri/target/release/bundle/msi -name "*.msi" | head -n1)
+          EXE=$(find apps/desktop/src-tauri/target/release/bundle/nsis -name "*.exe" | head -n1 || true)
+          echo "msi_path=$MSI" >> "$GITHUB_OUTPUT"
+          echo "exe_path=$EXE" >> "$GITHUB_OUTPUT"
+          echo "Bundle contents:"
+          find apps/desktop/src-tauri/target/release/bundle -maxdepth 3 -print
+
+      - name: Upload MSI as workflow artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nodx-windows-msi
+          path: ${{ steps.locate.outputs.msi_path }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload NSIS installer as workflow artefact
+        if: steps.locate.outputs.exe_path != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: nodx-windows-nsis
+          path: ${{ steps.locate.outputs.exe_path }}
+          retention-days: 30
+
+      # ── Attach to GitHub Release if this run corresponds to a version tag,
+      # or if the caller supplied an existing release_tag input.
+      - name: Attach installers to GitHub Release
+        if: >-
+          startsWith(github.ref, 'refs/tags/v') ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: >-
+            ${{ startsWith(github.ref, 'refs/tags/v')
+                && github.ref_name
+                || github.event.inputs.release_tag }}
+          files: |
+            ${{ steps.locate.outputs.msi_path }}
+            ${{ steps.locate.outputs.exe_path }}
+          fail_on_unmatched_files: false

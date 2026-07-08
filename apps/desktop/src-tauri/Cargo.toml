@@ -1,6 +1,6 @@
 [package]
 name = "nodx-desktop"
-version = "0.3.0"
+version = "0.4.0"
 description = "nodx — AI 决策思考工作台 (desktop)"
 authors = ["nodx team"]
 license = ""

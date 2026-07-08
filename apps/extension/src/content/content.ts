@@ -17,11 +17,7 @@
 
 import { getSettings } from '../shared/settings.js';
 import { setLocale, t } from '../shared/i18n.js';
-import {
-  saveSnippet,
-  snippetToMarkdown,
-  buildNodxDeepLink,
-} from '../shared/snippets.js';
+import { attemptSave, openDownloadPage } from '../shared/save-hook.js';
 
 const HIDE_DELAY_MS = 300;
 const SELECTION_DEBOUNCE_MS = 120;
@@ -240,23 +236,14 @@ function showTrigger(rect: DOMRect, selectedText: string, range: Range) {
   const bar = document.createElement('div');
   bar.className = 'trigger-bar';
   bar.style.top = `${Math.max(8, rect.top - 36)}px`;
-  // Bar width ~140px; clamp inside viewport
-  bar.style.left = `${Math.max(8, Math.min(window.innerWidth - 150, rect.right - 90))}px`;
+  bar.style.left = `${Math.max(8, Math.min(window.innerWidth - 90, rect.right - 60))}px`;
 
   const explainBtn = document.createElement('div');
   explainBtn.className = 'trigger-btn explain';
   explainBtn.textContent = t('triggerLabel');
   explainBtn.title = t('triggerExplainTitle');
 
-  const divider = document.createElement('div');
-  divider.className = 'trigger-divider';
-
-  const quickBtn = document.createElement('div');
-  quickBtn.className = 'trigger-btn quick';
-  quickBtn.textContent = t('triggerQuickLabel');
-  quickBtn.title = t('triggerQuickTitle');
-
-  bar.append(explainBtn, divider, quickBtn);
+  bar.append(explainBtn);
   root.appendChild(bar);
   requestAnimationFrame(() => bar.classList.add('show'));
 
@@ -271,81 +258,6 @@ function showTrigger(rect: DOMRect, selectedText: string, range: Range) {
     hideTrigger();
     openPanelForNewSelection(selectedText, range);
   });
-
-  quickBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    hideTrigger();
-    void handleQuickSave(selectedText);
-  });
-}
-
-/**
- * Quick save: no AI call. Just stash the snippet to chrome.storage.local,
- * fire the nodx://capture deep link, and show a tiny toast at the selection.
- */
-async function handleQuickSave(selectedText: string) {
-  let snippet;
-  try {
-    snippet = await saveSnippet({
-      text: selectedText,
-      sourceUrl: location.href,
-      sourceTitle: document.title,
-      capturedAt: Date.now(),
-      kind: 'quick',
-    });
-  } catch {
-    return;
-  }
-  // Fire deep link silently
-  try {
-    const a = document.createElement('a');
-    a.href = buildNodxDeepLink(snippet);
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } catch {
-    /* nodx desktop probably not installed yet — that's fine, snippet is local */
-  }
-  showQuickSavedToast();
-}
-
-function showQuickSavedToast() {
-  const root = ensureHost();
-  const old = root.querySelector('.quick-toast');
-  if (old) old.remove();
-  const toast = document.createElement('div');
-  toast.className = 'quick-toast';
-  toast.innerHTML = `
-    <div style="font-weight:600;color:#F59E0B;">${t('quickSavedToast')}</div>
-    <div style="font-size:11px;color:#aaa;margin-top:3px;">${t('quickSavedDetail')}</div>
-  `;
-  toast.style.cssText = [
-    'position:fixed',
-    'z-index:2147483647',
-    'pointer-events:none',
-    'bottom:24px',
-    'right:24px',
-    'background:#1a1a1a',
-    'color:#fff',
-    'padding:10px 14px',
-    'border-radius:8px',
-    'box-shadow:0 6px 20px rgba(0,0,0,0.3)',
-    'font-size:13px',
-    'opacity:0',
-    'transform:translateY(8px)',
-    'transition:opacity 160ms ease, transform 160ms ease',
-  ].join(';');
-  root.appendChild(toast);
-  requestAnimationFrame(() => {
-    toast.style.opacity = '1';
-    toast.style.transform = 'translateY(0)';
-  });
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateY(8px)';
-    setTimeout(() => toast.remove(), 200);
-  }, 2400);
 }
 
 // ============================================================================
@@ -396,7 +308,7 @@ function createPanelAt(top: number, left: number, deepened: boolean): HTMLDivEle
   (panel.querySelector('.panel-title') as HTMLElement).textContent = t('panelTitle');
   const [deepBtn, saveBtn, copyBtn] = Array.from(panel.querySelectorAll('.panel-btn')) as HTMLButtonElement[];
   deepBtn.textContent = t('deepen');
-  saveBtn.textContent = t('saveToNodx');
+  saveBtn.textContent = t('saveExplain');
   copyBtn.textContent = t('copy');
   root.appendChild(panel);
   requestAnimationFrame(() => panel.classList.add('show'));
@@ -425,67 +337,6 @@ function openPanelForAnnotation(ann: Annotation) {
   wirePanelClicks(panel, ann.text, ann.range);
 }
 
-async function handleSaveToNodx(panel: HTMLDivElement, selectedText: string) {
-  const bodyEl = panel.querySelector('.panel-body');
-  const explanation = bodyEl?.textContent ?? '';
-  if (!explanation) return;
-
-  // 1. Persist as a SavedSnippet (chrome.storage.local, capped at 100)
-  let snippet;
-  try {
-    snippet = await saveSnippet({
-      text: selectedText,
-      explanation,
-      sourceUrl: location.href,
-      sourceTitle: document.title,
-      capturedAt: Date.now(),
-      kind: 'explain',
-    });
-  } catch {
-    // chrome.storage may fail if extension context invalidated; degrade silently
-    return;
-  }
-
-  // 2. Copy markdown to clipboard — works immediately, no app dependency
-  const md = snippetToMarkdown(snippet);
-  try {
-    await navigator.clipboard.writeText(md);
-  } catch {
-    /* clipboard may fail in iframes — not fatal */
-  }
-
-  // 3. Try opening the deep link to nodx desktop (silent failure if not installed)
-  try {
-    const a = document.createElement('a');
-    a.href = buildNodxDeepLink(snippet);
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } catch { /* deep link unsupported / app not installed */ }
-
-  // 4. Show the styled in-panel confirmation
-  showSavedFlash(panel);
-}
-
-function showSavedFlash(panel: HTMLDivElement) {
-  const footer = panel.querySelector('.panel-footer') as HTMLDivElement | null;
-  if (!footer) return;
-
-  // Stash existing footer HTML, swap to a confirmation
-  const original = footer.innerHTML;
-  footer.innerHTML = `
-    <div class="save-flash" style="display:flex;flex-direction:column;gap:6px;width:100%;">
-      <div style="font-weight:600;color:#10B981;">${t('saved')}</div>
-      <div style="font-size:11px;color:#666;">${t('savedDetail')}</div>
-      <div style="font-size:11px;color:#888;font-style:italic;">${t('savedTryDesktop')}</div>
-    </div>
-  `;
-  setTimeout(() => {
-    if (panel.querySelector('.save-flash')) footer.innerHTML = original;
-  }, 3200);
-}
-
 function wirePanelClicks(panel: HTMLDivElement, selectedText: string, range: Range) {
   panel.addEventListener('click', (e) => {
     const target = (e.target as HTMLElement).closest('[data-action]') as HTMLElement | null;
@@ -497,9 +348,93 @@ function wirePanelClicks(panel: HTMLDivElement, selectedText: string, range: Ran
       const body = panel.querySelector('.panel-body');
       if (body?.textContent) void navigator.clipboard.writeText(body.textContent);
     } else if (action === 'save') {
-      void handleSaveToNodx(panel, selectedText);
+      void handleSaveExplanation(panel, selectedText);
     }
   });
+}
+
+/**
+ * "Save explanation" — hands the current snippet + explanation to a local
+ * companion app via the nodx:// URL scheme. If the app isn't installed we
+ * degrade gracefully to a one-tap link that opens the download page.
+ *
+ * We never *require* the local app: this is a hand-off convenience, and
+ * the explanation is already in the panel + copy button + local history.
+ */
+async function handleSaveExplanation(panel: HTMLDivElement, selectedText: string) {
+  const bodyEl = panel.querySelector('.panel-body');
+  const explanation = (bodyEl?.textContent ?? '').trim();
+  if (!explanation) return;
+
+  const footer = panel.querySelector('.panel-footer') as HTMLDivElement | null;
+  const saveBtn = panel.querySelector('[data-action="save"]') as HTMLButtonElement | null;
+  const setBtn = (text: string, disabled = false) => {
+    if (saveBtn) {
+      saveBtn.textContent = text;
+      saveBtn.disabled = disabled;
+    }
+  };
+
+  setBtn(t('saveSending'), true);
+  const outcome = await attemptSave({
+    id: crypto.randomUUID(),
+    text: selectedText,
+    explanation,
+    sourceUrl: location.href,
+    sourceTitle: document.title,
+    capturedAt: Date.now(),
+  });
+
+  if (outcome.kind === 'handoff') {
+    // Focus left the tab → local app got the payload. Just confirm.
+    setBtn(t('saveSuccess'), true);
+    setTimeout(() => setBtn(t('saveExplain'), false), 2400);
+    return;
+  }
+
+  if (outcome.kind === 'error') {
+    setBtn(t('saveExplain'), false);
+    return;
+  }
+
+  // outcome.kind === 'app-missing' → show inline "get it" hint
+  setBtn(t('saveExplain'), false);
+  showAppMissingHint(footer);
+}
+
+/**
+ * When we suspect the companion isn't installed, replace the footer with
+ * a small "Get nodx" hint the user can click to visit the download page.
+ * Auto-reverts to the normal footer after ~4 s.
+ */
+function showAppMissingHint(footer: HTMLDivElement | null) {
+  if (!footer) return;
+  const original = footer.innerHTML;
+  footer.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = [
+    'display:flex',
+    'align-items:center',
+    'gap:8px',
+    'font-size:11px',
+    'color:#666',
+    'width:100%',
+  ].join(';');
+  const text = document.createElement('span');
+  text.textContent = t('saveAppMissing');
+  const link = document.createElement('a');
+  link.textContent = t('saveAppGetLink');
+  link.href = 'https://aicon.solutions/nodx/';
+  link.style.cssText = 'color:#2C5282;text-decoration:underline;cursor:pointer;';
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    openDownloadPage();
+  });
+  wrap.append(text, link);
+  footer.appendChild(wrap);
+  setTimeout(() => {
+    if (footer.contains(wrap)) footer.innerHTML = original;
+  }, 4200);
 }
 
 // ============================================================================
