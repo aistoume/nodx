@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Support — Aicon Solutions</title>
+    <meta name="description" content="Get help with nodx Lens, nodx desktop, and other Aicon Solutions products. Report bugs, ask questions, or share feedback." />
+    <meta property="og:title" content="Support — Aicon Solutions" />
+    <meta property="og:description" content="Get help, report a bug, or share feedback for any Aicon product." />
+    <link rel="icon" type="image/png" href="/icons/icon-128.png" />
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      .legal { max-width: 760px; margin: 0 auto; padding: 24px; }
+      .legal h1 { font-size: 32px; margin-top: 24px; }
+      .legal h2 { font-size: 20px; margin-top: 36px; margin-bottom: 10px; color: var(--brand-dark, #1F3F66); }
+      .legal h3 { font-size: 16px; margin-top: 20px; margin-bottom: 6px; }
+      .legal p, .legal li { line-height: 1.65; color: var(--ink, #1a1a1a); }
+      .legal ul { margin: 8px 0 16px 24px; }
+      .legal code { background: var(--canvas, #f5f5f5); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+      .legal .meta { color: var(--ink-muted, #6b6b6b); font-size: 14px; margin-top: 4px; }
+      .legal .card {
+        border: 1px solid var(--border, #e5e5e3);
+        border-radius: 10px;
+        padding: 20px 24px;
+        margin: 20px 0;
+        background: var(--surface, #fff);
+      }
+      .legal .card h2 { margin-top: 0; }
+      .legal .contact-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin: 24px 0;
+      }
+      @media (max-width: 640px) {
+        .legal .contact-grid { grid-template-columns: 1fr; }
+      }
+      .legal .contact-card {
+        border: 1px solid var(--border, #e5e5e3);
+        border-radius: 10px;
+        padding: 20px;
+        background: var(--surface, #fff);
+      }
+      .legal .contact-card .label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--brand, #2C5282);
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      .legal .contact-card .value {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--ink, #1a1a1a);
+      }
+      .legal .contact-card p {
+        font-size: 13px;
+        color: var(--ink-muted, #6b6b6b);
+        margin-top: 6px;
+      }
+      .legal details {
+        border: 1px solid var(--border, #e5e5e3);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin: 10px 0;
+        background: var(--surface, #fff);
+      }
+      .legal details summary {
+        cursor: pointer;
+        font-weight: 600;
+        color: var(--ink, #1a1a1a);
+      }
+      .legal details[open] summary {
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="container">
+      <a class="brand" href="/">
+        <span class="brand-mark">A</span>
+        <span class="brand-text">Aicon Solutions</span>
+      </a>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/nodx/">nodx</a>
+        <a href="/support.html">Support</a>
+        <a class="x-link" href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏</a>
+      </nav>
+    </header>
+
+    <main class="legal">
+      <h1>Support</h1>
+      <p class="meta">
+        We're a small studio — usually one person answering. That means we're
+        slower than a giant, but we actually read every message.
+      </p>
+
+      <!-- ── Contact methods ─────────────────────────────────────────── -->
+      <div class="contact-grid">
+        <div class="contact-card">
+          <div class="label">Email</div>
+          <div class="value">
+            <a href="mailto:contact@aicon.solutions">contact@aicon.solutions</a>
+          </div>
+          <p>
+            Best for bug reports, feature requests, or anything that's not a
+            quick question. Response usually within 2 business days.
+          </p>
+        </div>
+        <div class="contact-card">
+          <div class="label">𝕏 (Twitter)</div>
+          <div class="value">
+            <a href="https://x.com/LaoMo9394" target="_blank" rel="noopener">@LaoMo9394</a>
+          </div>
+          <p>
+            Best for quick questions, product roadmap discussions, or public
+            feedback. DMs open.
+          </p>
+        </div>
+      </div>
+
+      <!-- ── nodx Lens (Chrome extension) ────────────────────────────── -->
+      <div class="card">
+        <h2>nodx Lens · Chrome extension</h2>
+
+        <details>
+          <summary>How do I use it?</summary>
+          <p>
+            After installing, open <strong>Options</strong> (right-click the
+            nodx Lens icon → Options) and paste your API key from one of:
+            Anthropic, OpenAI, or Google. Then on any webpage, highlight some
+            text — a small 🔍 button appears. Click it for an inline
+            explanation.
+          </p>
+        </details>
+
+        <details>
+          <summary>The 🔍 button doesn't show up</summary>
+          <p>Check three things, in order:</p>
+          <ul>
+            <li>
+              Is the API key saved in Options? Some pages (like new tab,
+              Chrome Web Store, chrome:// pages) block extensions — try on a
+              regular webpage.
+            </li>
+            <li>
+              Is your selection between 2 and 500 characters? Very short or
+              very long selections are ignored to avoid noise.
+            </li>
+            <li>
+              In Options → Trigger, is "Show the explain button" turned on?
+            </li>
+          </ul>
+        </details>
+
+        <details>
+          <summary>I get "Missing API key" or authentication errors</summary>
+          <p>
+            Open Options and paste your key again. Then reload the webpage —
+            content scripts hold the old settings until reload. If your key was
+            revoked or hit a rate limit, that message comes straight from the
+            AI provider.
+          </p>
+        </details>
+
+        <details>
+          <summary>Do you see the text I highlight?</summary>
+          <p>
+            No. The text goes directly from your browser to the AI provider you
+            configured. nodx Lens has no server. See the
+            <a href="/privacy.html">Privacy Policy</a> for details.
+          </p>
+        </details>
+
+        <details>
+          <summary>Does it work in Chinese / Japanese / other languages?</summary>
+          <p>
+            Yes — the AI provider handles the language. In Options you can pick
+            "Follow browser" or force Chinese / English for the UI itself.
+          </p>
+        </details>
+      </div>
+
+      <!-- ── nodx desktop (macOS) ────────────────────────────────────── -->
+      <div class="card">
+        <h2>nodx desktop · macOS app</h2>
+
+        <details>
+          <summary>How do I install and set up?</summary>
+          <p>
+            Download the <code>.dmg</code> from
+            <a href="/nodx/">aicon.solutions/nodx</a>, drag <code>nodx.app</code>
+            to <code>/Applications</code>, right-click → Open (the app is signed
+            but not Apple-notarized yet, so Gatekeeper prompts once). Then open
+            <strong>⚙ Settings</strong> and either:
+          </p>
+          <ul>
+            <li>Paste your Anthropic API key (<code>sk-ant-…</code>), or</li>
+            <li>Switch to Claude Code subscription mode if you already have <code>claude</code> CLI installed and logged in.</li>
+          </ul>
+        </details>
+
+        <details>
+          <summary>⌥+E doesn't do anything in other apps</summary>
+          <p>
+            Almost always a missing Accessibility permission. Open ⚙ Settings →
+            "⌥+E 全局划词解释" → click "Open System Settings · Accessibility",
+            then check the box next to nodx. Come back to nodx, click "Re-check"
+            in Settings, and try again.
+          </p>
+        </details>
+
+        <details>
+          <summary>Claude Code mode says "claude not found"</summary>
+          <p>
+            macOS apps launched from Finder don't see your shell's
+            <code>PATH</code>, so <code>claude</code> installed via nvm / bun /
+            homebrew may be invisible to nodx. Either:
+          </p>
+          <ul>
+            <li>Run <code>which claude</code> in your terminal, symlink it: <code>sudo ln -s $(which claude) /usr/local/bin/claude</code></li>
+            <li>Or start nodx from a terminal with <code>CLAUDE_BIN="$(which claude)" open /Applications/nodx.app</code></li>
+          </ul>
+        </details>
+
+        <details>
+          <summary>How do I export or move my data?</summary>
+          <p>
+            All data is in a local SQLite database at
+            <code>~/Library/Application Support/nodx.desktop/</code>. From
+            within nodx you can also export any topic subtree as a
+            <code>.nodx</code> data pack (Document page header → "📦 Export")
+            and re-import it on another machine.
+          </p>
+        </details>
+      </div>
+
+      <!-- ── General questions ──────────────────────────────────────── -->
+      <div class="card">
+        <h2>General</h2>
+
+        <details>
+          <summary>How do I report a bug?</summary>
+          <p>
+            Email <a href="mailto:contact@aicon.solutions">contact@aicon.solutions</a>
+            with:
+          </p>
+          <ul>
+            <li>The product and version (visible in Options / Settings)</li>
+            <li>What you did and what happened</li>
+            <li>What you expected to happen</li>
+            <li>A screenshot if it helps</li>
+          </ul>
+          <p>
+            For nodx desktop, if it's a crash, macOS keeps a crash report at
+            <code>~/Library/Logs/DiagnosticReports/</code> — attaching that
+            speeds up diagnosis a lot.
+          </p>
+        </details>
+
+        <details>
+          <summary>How do I request a feature?</summary>
+          <p>
+            Same email. Extra points if you explain the problem you're trying
+            to solve — sometimes there's already a way, or a simpler approach.
+          </p>
+        </details>
+
+        <details>
+          <summary>Are Aicon products open source?</summary>
+          <p>
+            The website source (this page included) is at
+            <a href="https://github.com/aistoume/aicon-web" target="_blank" rel="noopener">github.com/aistoume/aicon-web</a>
+            and is public. The product source repositories are currently
+            private, but we're planning to gradually open-source portions as
+            the products stabilise.
+          </p>
+        </details>
+
+        <details>
+          <summary>Do you offer refunds?</summary>
+          <p>
+            Our products are currently free (bring-your-own API key). When paid
+            tiers ship (nodx Team / Enterprise), refund terms will be published
+            here.
+          </p>
+        </details>
+
+        <details>
+          <summary>Something's not on this page</summary>
+          <p>
+            Email or DM me. If it's a common question, I'll add it here.
+          </p>
+        </details>
+      </div>
+    </main>
+
+    <footer class="container">
+      <div class="footer-row">
+        <div>
+          <strong>Aicon Solutions</strong>
+          <p>A product studio for AI-augmented thinking tools.</p>
+        </div>
+        <div class="footer-links">
+          <a href="/">Home</a> ·
+          <a href="/nodx/">nodx</a> ·
+          <a href="/support.html">Support</a> ·
+          <a href="/privacy.html">Privacy</a> ·
+          <a href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏</a>
+        </div>
+      </div>
+      <div class="copyright">© 2026 Aicon Solutions</div>
+    </footer>
+  </body>
+</html>

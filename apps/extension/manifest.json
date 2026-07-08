@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "nodx Lens",
-  "version": "0.3.0",
-  "description": "Select any text on any webpage to get an instant AI explanation in place. Annotations stay. Bring your own API key.",
+  "version": "0.5.0",
+  "description": "Highlight any text on a webpage to get an inline AI explanation. Underlines stay — click them later to revisit.",
   "minimum_chrome_version": "120",
   "icons": {
     "16": "public/icons/icon-16.png",
@@ -12,7 +12,7 @@
   },
   "action": {
     "default_popup": "src/popup/popup.html",
-    "default_title": "nodx Lens — history & settings"
+    "default_title": "nodx Lens"
   },
   "options_ui": {
     "page": "src/options/options.html",
@@ -31,7 +31,6 @@
     }
   ],
   "permissions": [
-    "activeTab",
     "storage"
   ],
   "host_permissions": [

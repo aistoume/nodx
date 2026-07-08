@@ -2,16 +2,243 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>nodx Lens — Privacy Policy</title>
-    <meta http-equiv="refresh" content="0; url=https://gist.github.com/LaoMo9394" />
-    <link rel="canonical" href="https://gist.github.com/LaoMo9394" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacy — Aicon Solutions</title>
+    <meta name="description" content="Privacy policy for nodx Lens, nodx desktop, and other Aicon Solutions products. Local-first by design — no accounts, no telemetry, no data collection." />
+    <meta property="og:title" content="Privacy — Aicon Solutions" />
+    <meta property="og:description" content="Local-first by design. No accounts. No telemetry." />
+    <link rel="icon" type="image/png" href="/icons/icon-128.png" />
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      /* Legal-page adjustments — kept lightweight, uses site colours */
+      .legal { max-width: 760px; margin: 0 auto; padding: 24px; }
+      .legal h1 { font-size: 32px; margin-top: 24px; }
+      .legal h2 { font-size: 20px; margin-top: 36px; margin-bottom: 10px; color: var(--brand-dark, #1F3F66); }
+      .legal h3 { font-size: 16px; margin-top: 24px; margin-bottom: 6px; }
+      .legal p, .legal li { line-height: 1.65; color: var(--ink, #1a1a1a); }
+      .legal ul { margin: 8px 0 16px 24px; }
+      .legal code { background: var(--canvas, #f5f5f5); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+      .legal .meta { color: var(--ink-muted, #6b6b6b); font-size: 14px; margin-top: 4px; }
+      .legal .product-section {
+        border: 1px solid var(--border, #e5e5e3);
+        border-radius: 10px;
+        padding: 20px 24px;
+        margin: 20px 0;
+        background: var(--surface, #fff);
+      }
+      .legal .product-section h2 { margin-top: 0; }
+      .legal .callout {
+        border-left: 3px solid var(--brand, #2C5282);
+        padding: 8px 16px;
+        margin: 14px 0;
+        background: rgba(44, 82, 130, 0.04);
+        color: var(--ink, #1a1a1a);
+      }
+    </style>
   </head>
   <body>
-    <p>
-      Redirecting to the privacy policy…
-      <br />
-      If you are not redirected automatically,
-      <a href="https://gist.github.com/LaoMo9394">click here</a>.
-    </p>
+    <header class="container">
+      <a class="brand" href="/">
+        <span class="brand-mark">A</span>
+        <span class="brand-text">Aicon Solutions</span>
+      </a>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/nodx/">nodx</a>
+        <a href="/support.html">Support</a>
+        <a class="x-link" href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏</a>
+      </nav>
+    </header>
+
+    <main class="legal">
+      <h1>Privacy Policy</h1>
+      <p class="meta">Effective 2026-06-30 · Applies to all Aicon Solutions products</p>
+
+      <div class="callout">
+        <strong>The short version:</strong> Aicon Solutions has no servers that
+        store your data. Our products are local-first. We collect no analytics,
+        no telemetry, and no personal information. AI features route your
+        requests directly to the provider you configure (Anthropic, OpenAI, or
+        Google) using your own API key — we never see the content.
+      </div>
+
+      <h2>1 · Who we are</h2>
+      <p>
+        Aicon Solutions ("we", "us") is an independent product studio operated
+        by Youbin Mo (Aicon Solutions, contact@aicon.solutions). This page
+        applies to every product we ship, including <strong>nodx Lens</strong>
+        (Chrome extension), <strong>nodx desktop</strong> (macOS app), and any
+        past or future products listed on aicon.solutions.
+      </p>
+
+      <h2>2 · What data each product handles</h2>
+
+      <!-- ── nodx Lens (Chrome extension) ────────────────────────────── -->
+      <div class="product-section">
+        <h2>nodx Lens (Chrome extension)</h2>
+
+        <h3>What stays on your device</h3>
+        <ul>
+          <li>Your AI provider API key (Anthropic / OpenAI / Google), stored in <code>chrome.storage.local</code></li>
+          <li>Your language, model, and trigger preferences</li>
+          <li>Up to the 100 most recent explanations (text you highlighted + the AI's response)</li>
+        </ul>
+
+        <h3>What leaves your browser</h3>
+        <p>
+          When you click 🔍 to explain a highlighted phrase, an HTTPS request
+          goes <strong>directly</strong> from your browser to the AI provider you
+          configured. The request contains only:
+        </p>
+        <ul>
+          <li>The text you highlighted</li>
+          <li>A short prompt asking the AI to explain it</li>
+          <li>Your API key (as an authorization header)</li>
+        </ul>
+        <p>
+          The request goes to <code>api.anthropic.com</code>,
+          <code>api.openai.com</code>, or
+          <code>generativelanguage.googleapis.com</code> depending on which
+          provider you chose. nodx Lens has no server of its own that sees this
+          traffic.
+        </p>
+
+        <h3>What we <em>don't</em> do</h3>
+        <ul>
+          <li>No analytics, no telemetry, no crash reports</li>
+          <li>No account registration or sign-in</li>
+          <li>No selling, transferring, or aggregating user data</li>
+          <li>No use of user data for advertising or credit decisions</li>
+        </ul>
+      </div>
+
+      <!-- ── nodx desktop (macOS app) ────────────────────────────────── -->
+      <div class="product-section">
+        <h2>nodx desktop (macOS app)</h2>
+
+        <h3>What stays on your device</h3>
+        <ul>
+          <li>All your topics, messages, decisions, and reasoning traces (local SQLite database in your app data folder)</li>
+          <li>Your AI provider API key (stored in macOS Keychain, same encryption Safari uses)</li>
+          <li>Your preferences (theme, hotkey settings, layout)</li>
+        </ul>
+
+        <h3>What leaves your device</h3>
+        <p>
+          Same model as nodx Lens: an in-process gateway inside the app makes
+          HTTPS requests directly to your chosen AI provider using your own
+          API key. Nothing is sent to any nodx-owned server. If you opt into
+          <strong>Claude Code subscription mode</strong>, the app spawns the
+          <code>claude</code> CLI on your machine, which in turn calls Anthropic
+          under your Claude Code subscription — nodx never touches the OAuth
+          token.
+        </p>
+
+        <h3>System permissions we request</h3>
+        <ul>
+          <li>
+            <strong>Accessibility</strong> (⌥+E system-wide selection capture) —
+            required for the app to synthesise <code>⌘+C</code> so it can read
+            what you highlighted in another app. The synthesised copy is
+            reverted within ~120 ms so your clipboard content is preserved.
+          </li>
+        </ul>
+      </div>
+
+      <!-- ── Other Aicon products ────────────────────────────────────── -->
+      <div class="product-section">
+        <h2>LaoMOS · Still Employed? and future products</h2>
+        <p>
+          Any product we build follows the same principle: local-first, no
+          telemetry, minimal data collection. Individual product pages document
+          any product-specific data handling. As of writing there are no
+          exceptions to this policy.
+        </p>
+      </div>
+
+      <h2>3 · Data we handle (Chrome Web Store terminology)</h2>
+      <p>Per Chrome Web Store's data-handling categories:</p>
+      <ul>
+        <li>
+          <strong>Authentication information</strong> — your AI provider API
+          key, stored locally in your browser (Lens) or the macOS Keychain
+          (desktop). Never leaves your device except in HTTPS requests you
+          initiate to the provider you chose.
+        </li>
+        <li>
+          <strong>Website content</strong> — the text you explicitly highlight
+          and choose to explain. Sent only to the AI provider you configured.
+          Not retained by us.
+        </li>
+      </ul>
+
+      <p>We do <strong>not</strong> handle:</p>
+      <ul>
+        <li>Personally identifiable information (name, email, phone, address)</li>
+        <li>Health information</li>
+        <li>Financial information</li>
+        <li>Personal communications</li>
+        <li>Location data</li>
+        <li>Web browsing history</li>
+        <li>User activity beyond what you deliberately trigger</li>
+      </ul>
+
+      <h2>4 · Third parties</h2>
+      <p>
+        When you use an AI feature, the request goes to the third-party
+        provider you configured. Those providers have their own privacy
+        policies:
+      </p>
+      <ul>
+        <li><a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">Anthropic</a></li>
+        <li><a href="https://openai.com/policies/privacy-policy/" target="_blank" rel="noopener">OpenAI</a></li>
+        <li><a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google (Gemini)</a></li>
+      </ul>
+
+      <h2>5 · Certifications</h2>
+      <ul>
+        <li>We do <strong>not</strong> sell or transfer user data to third parties.</li>
+        <li>We do <strong>not</strong> use or transfer user data for purposes unrelated to the item's single purpose.</li>
+        <li>We do <strong>not</strong> use or transfer user data to determine creditworthiness or for lending purposes.</li>
+      </ul>
+
+      <h2>6 · Children's privacy</h2>
+      <p>
+        Our products are not directed at children under 13. We knowingly
+        collect nothing from anyone — including children — because we collect
+        nothing at all.
+      </p>
+
+      <h2>7 · Changes</h2>
+      <p>
+        If this policy changes, we will update the <em>Effective</em> date at
+        the top of this page. Because we don't have accounts, we can't email
+        you about changes — please bookmark this page if you want to check
+        back.
+      </p>
+
+      <h2>8 · Contact</h2>
+      <p>
+        Questions, concerns, or a data-related request:
+        <a href="mailto:contact@aicon.solutions">contact@aicon.solutions</a>.
+      </p>
+    </main>
+
+    <footer class="container">
+      <div class="footer-row">
+        <div>
+          <strong>Aicon Solutions</strong>
+          <p>A product studio for AI-augmented thinking tools.</p>
+        </div>
+        <div class="footer-links">
+          <a href="/">Home</a> ·
+          <a href="/nodx/">nodx</a> ·
+          <a href="/support.html">Support</a> ·
+          <a href="/privacy.html">Privacy</a> ·
+          <a href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏</a>
+        </div>
+      </div>
+      <div class="copyright">© 2026 Aicon Solutions</div>
+    </footer>
   </body>
 </html>

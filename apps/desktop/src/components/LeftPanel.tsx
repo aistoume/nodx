@@ -430,7 +430,7 @@ function TopicRow({
       )}
       <div className="flex items-stretch">
         <span style={{ width: indent }} className="shrink-0" aria-hidden />
-        <div className="w-6 shrink-0 flex items-center justify-center">
+        <div className="w-5 shrink-0 flex items-center justify-center">
           {hasChildren ? (
             <button
               type="button"
@@ -440,45 +440,47 @@ function TopicRow({
                 onToggle();
               }}
               className={
-                'w-6 h-7 flex items-center justify-center rounded text-base leading-none hover:bg-border/60 hover:text-accent transition ' +
-                (selected ? 'text-accent' : 'text-ink-muted')
+                'w-5 h-6 flex items-center justify-center rounded hover:bg-border/60 hover:text-accent transition ' +
+                (selected ? 'text-accent' : 'text-ink-muted/70')
               }
             >
-              {collapsed ? '▸' : '▾'}
+              <ChevronIcon collapsed={collapsed} />
             </button>
           ) : isChild ? (
             <span
               aria-hidden
               className={
-                'text-[11px] ' +
-                (selected ? 'text-accent/70' : 'text-ink-muted/60')
+                'w-1 h-1 rounded-full ' +
+                (selected ? 'bg-accent/60' : 'bg-ink-muted/30')
               }
-            >
-              ↳
-            </span>
+            />
           ) : null}
         </div>
         <button
           type="button"
           onClick={onSelect}
           className={
-            'flex-1 min-w-0 text-left py-2 pr-20 pl-1 rounded-md text-sm transition flex flex-col gap-0.5 ' +
+            'flex-1 min-w-0 text-left py-1.5 pr-20 pl-1.5 rounded-md text-[13px] leading-tight transition flex flex-col gap-1 ' +
             (selected ? 'text-accent font-medium' : 'text-ink')
           }
         >
           <span className="truncate">{topic.title}</span>
-          <div className="flex items-center gap-2 text-[11px]">
+          <div className="flex items-center gap-1.5 text-[10px] leading-none">
             <StatusBadge status={topic.status} />
-            <span className={selected ? 'text-accent/70' : 'text-ink-muted'}>
-              {topic.meta.messageCount} 条
+            <span className={selected ? 'text-accent/60' : 'text-ink-muted/80'}>
+              {topic.meta.messageCount}
+              <span className="opacity-60"> 条</span>
             </span>
             {topic.meta.childCount > 0 && (
               <span
-                className={selected ? 'text-accent/70' : 'text-ink-muted'}
-                title={`${topic.meta.childCount} 个子话题`}
+                className={
+                  (selected ? 'text-accent/60' : 'text-ink-muted/80') +
+                  (collapsed ? ' font-medium' : '')
+                }
+                title={`${topic.meta.childCount} 个子话题${collapsed ? '（已折叠）' : ''}`}
               >
-                · {topic.meta.childCount} 子
-                {collapsed ? '（已折叠）' : ''}
+                {topic.meta.childCount}
+                <span className="opacity-60"> 子</span>
               </span>
             )}
           </div>
@@ -493,6 +495,33 @@ function TopicRow({
         <DeleteAction onConfirm={onDelete} />
       </div>
     </li>
+  );
+}
+
+/**
+ * Crisp collapse/expand chevron. Replaces the Unicode ▸/▾ characters which
+ * rendered with inconsistent baselines and made the topic-tree rows feel
+ * misaligned. SVG width/height are fixed, stroke-linecap round for softness.
+ */
+function ChevronIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{
+        transform: collapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+        transition: 'transform 140ms ease',
+      }}
+      aria-hidden
+    >
+      <path d="M3 1.5 L7 5 L3 8.5" />
+    </svg>
   );
 }
 
@@ -596,22 +625,28 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-const STATUS_STYLES: Record<TopicStatus, string> = {
-  exploring: 'bg-blue-100 text-blue-700',
-  summarized: 'bg-green-100 text-green-700',
-  atomic: 'bg-purple-100 text-purple-700',
-  ghost: 'bg-gray-100 text-gray-500',
+/**
+ * Compact status indicator: a coloured dot + 2-char abbreviation.
+ * The old badge showed the full English word ("exploring") which took ~60px
+ * per row and made the meta-line feel loose. This variant is 22-28px and
+ * still readable at a glance thanks to the colour code.
+ */
+const STATUS_META: Record<TopicStatus, { dot: string; short: string; full: string }> = {
+  exploring:  { dot: 'bg-blue-400',    short: '探索', full: '探索中' },
+  summarized: { dot: 'bg-emerald-400', short: '收束', full: '已收束' },
+  atomic:     { dot: 'bg-violet-500',  short: '原子', full: '原子化' },
+  ghost:      { dot: 'bg-zinc-400',    short: '草稿', full: '草稿' },
 };
 
 function StatusBadge({ status }: { status: TopicStatus }) {
+  const meta = STATUS_META[status];
   return (
     <span
-      className={
-        'inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium ' +
-        STATUS_STYLES[status]
-      }
+      className="inline-flex items-center gap-1 text-[10px] leading-none text-ink-muted"
+      title={meta.full}
     >
-      {status}
+      <span className={'w-1.5 h-1.5 rounded-full ' + meta.dot} />
+      <span>{meta.short}</span>
     </span>
   );
 }
