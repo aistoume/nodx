@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useT } from '../i18n/index.js';
 
 type View = 'dialog' | 'graph' | 'cases' | 'attention' | 'settings';
 
@@ -24,35 +25,36 @@ export function Header({
   openQuestions,
   onJumpToTopic,
 }: HeaderProps) {
+  const { t } = useT();
   return (
     <header className="h-14 bg-surface border-b border-border flex items-center px-6 gap-4 shrink-0">
       <div className="flex items-baseline gap-2">
-        <span className="font-bold text-lg text-accent">nodx</span>
-        <span className="text-xs text-ink-muted">AI 决策思考工作台</span>
+        <span className="font-bold text-lg text-accent">{t('app.name')}</span>
+        <span className="text-xs text-ink-muted">{t('app.tagline')}</span>
       </div>
       <nav className="ml-auto flex gap-1">
         <ViewTab
-          label="对话"
+          label={t('header.tab.dialog')}
           active={view === 'dialog'}
           onClick={() => onViewChange('dialog')}
         />
         <ViewTab
-          label="网络图"
+          label={t('header.tab.graph')}
           active={view === 'graph'}
           onClick={() => onViewChange('graph')}
         />
         <ViewTab
-          label="案例库"
+          label={t('header.tab.cases')}
           active={view === 'cases'}
           onClick={() => onViewChange('cases')}
         />
         <ViewTab
-          label="💡 灵感池"
+          label={t('header.tab.attention')}
           active={view === 'attention'}
           onClick={() => onViewChange('attention')}
         />
         <ViewTab
-          label="⚙ 设置"
+          label={t('header.tab.settings')}
           active={view === 'settings'}
           onClick={() => onViewChange('settings')}
         />
@@ -65,7 +67,7 @@ export function Header({
         type="button"
         className="px-3 py-1.5 text-sm rounded-md border border-border bg-surface text-ink-muted hover:bg-canvas hover:text-ink transition"
       >
-        草稿区
+        {t('header.drafts')}
       </button>
     </header>
   );

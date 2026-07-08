@@ -26,12 +26,13 @@ import {
   type AiMode,
   type AiProvider,
 } from '../ai/gateway.js';
+import { useT, type LocaleSetting, type StringKey } from '../i18n/index.js';
 
 interface ProviderConfig {
   id: AiProvider;
   label: string;
   signupUrl: string;
-  signupHint: string;
+  signupHintKey: StringKey;
   keyPrefix: string;
   required: 'core' | 'cbr-only' | 'future';
 }
@@ -41,7 +42,7 @@ const PROVIDERS: ProviderConfig[] = [
     id: 'anthropic',
     label: 'Anthropic (Claude)',
     signupUrl: 'https://console.anthropic.com/settings/keys',
-    signupHint: '在 console.anthropic.com → Settings → API Keys 申请',
+    signupHintKey: 'settings.keys.anthropic.hint',
     keyPrefix: 'sk-ant-',
     required: 'core',
   },
@@ -49,15 +50,15 @@ const PROVIDERS: ProviderConfig[] = [
     id: 'gemini',
     label: 'Google Gemini (embeddings)',
     signupUrl: 'https://aistudio.google.com/apikey',
-    signupHint: '在 aistudio.google.com/apikey 免费申请',
+    signupHintKey: 'settings.keys.gemini.hint',
     keyPrefix: 'AIza',
     required: 'cbr-only',
   },
   {
     id: 'openai',
-    label: 'OpenAI (GPT) — 暂未使用',
+    label: 'OpenAI (GPT)',
     signupUrl: 'https://platform.openai.com/api-keys',
-    signupHint: '保留接口，目前 nodx 内不调用',
+    signupHintKey: 'settings.keys.openai.hint',
     keyPrefix: 'sk-',
     required: 'future',
   },
@@ -69,6 +70,7 @@ interface Props {
 }
 
 export function SettingsView({ onClose }: Props) {
+  const { t, setting: localeSetting, setSetting: setLocaleSetting } = useT();
   const [mode, setMode] = useState<AiMode | null>(null);
 
   useEffect(() => {
@@ -93,40 +95,82 @@ export function SettingsView({ onClose }: Props) {
           type="button"
           onClick={onClose}
           className="text-ink-muted hover:text-ink"
-          title="返回"
+          title={t('settings.back')}
         >
-          ← 返回
+          {t('settings.back')}
         </button>
-        <div className="font-bold text-lg">⚙ 设置</div>
+        <div className="font-bold text-lg">{t('settings.title')}</div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6 max-w-2xl mx-auto w-full">
+        {/* ── Language selector ─────────────────────────────────────── */}
+        <section className="mb-8">
+          <h2 className="text-base font-semibold mb-1">{t('settings.language.h')}</h2>
+          <p className="text-sm text-ink-muted leading-relaxed mb-4">
+            {t('settings.language.desc')}
+          </p>
+          <div className="flex gap-2">
+            {(['auto', 'zh', 'en'] as LocaleSetting[]).map((s) => {
+              const active = localeSetting === s;
+              const label =
+                s === 'auto'
+                  ? t('settings.language.auto')
+                  : s === 'zh'
+                    ? t('settings.language.zh')
+                    : t('settings.language.en');
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setLocaleSetting(s)}
+                  className={
+                    'px-3 py-1.5 text-sm rounded-md border transition ' +
+                    (active
+                      ? 'border-accent bg-accent/5 text-accent font-medium'
+                      : 'border-border text-ink-muted hover:border-accent/60 hover:text-ink')
+                  }
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
         {/* ── Mode selector ─────────────────────────────────────────── */}
         <section className="mb-8">
-          <h2 className="text-base font-semibold mb-1">AI 接入方式</h2>
+          <h2 className="text-base font-semibold mb-1">{t('settings.mode.h')}</h2>
           <p className="text-sm text-ink-muted leading-relaxed mb-4">
-            nodx 支持两种方式调 Claude — 选一种用，随时可以切换。
+            {t('settings.mode.desc')}
           </p>
 
           {mode === null ? (
-            <div className="text-sm text-ink-muted py-3">加载中…</div>
+            <div className="text-sm text-ink-muted py-3">{t('settings.mode.loading')}</div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <ModeCard
                 active={mode === 'api_key'}
                 onClick={() => void handleModeChange('api_key')}
                 icon="🔑"
-                title="API key 直连"
-                subtitle="sk-ant-... · 按 token 用量付费"
-                pros={['延迟最低 <500ms', '支持 web 搜索', '案例库（embedding）可用']}
+                title={t('settings.mode.apiKey.title')}
+                subtitle={t('settings.mode.apiKey.subtitle')}
+                pros={[
+                  t('settings.mode.apiKey.pros.latency'),
+                  t('settings.mode.apiKey.pros.web'),
+                  t('settings.mode.apiKey.pros.embed'),
+                ]}
               />
               <ModeCard
                 active={mode === 'cli'}
                 onClick={() => void handleModeChange('cli')}
                 icon="🎫"
-                title="Claude Code 订阅"
-                subtitle="走本机已登录的 claude CLI · 月费封顶"
-                pros={['不用填 API key', '订阅一价无量限', '用你已付的 Pro/Max']}
+                title={t('settings.mode.cli.title')}
+                subtitle={t('settings.mode.cli.subtitle')}
+                pros={[
+                  t('settings.mode.cli.pros.noKey'),
+                  t('settings.mode.cli.pros.flat'),
+                  t('settings.mode.cli.pros.reuse'),
+                ]}
               />
             </div>
           )}
@@ -137,11 +181,9 @@ export function SettingsView({ onClose }: Props) {
           <ClaudeCliSection />
         ) : (
           <section className="mb-8">
-            <h2 className="text-base font-semibold mb-1">AI 提供商 API key</h2>
+            <h2 className="text-base font-semibold mb-1">{t('settings.keys.h')}</h2>
             <p className="text-sm text-ink-muted leading-relaxed mb-4">
-              nodx 不存任何 key 到云端，也不收集任何用量数据。你填的 key 直接
-              存到 macOS 钥匙串（加密 · 跟 Safari/Mail 同款），AI 调用从你的
-              机器直接打到提供商，<strong>nodx 服务器从不在数据链路里</strong>。
+              {t('settings.keys.desc')}
             </p>
 
             <div className="flex flex-col gap-4">
@@ -156,16 +198,8 @@ export function SettingsView({ onClose }: Props) {
         <SystemCaptureSection />
 
         <section className="mt-8 pt-6 border-t border-border text-xs text-ink-muted">
-          <p>
-            <strong>钥匙串安全</strong>：API key 存在 macOS Keychain
-            （搜 <code>app.nodx.desktop</code> 可见），只有这个 app 的
-            进程能读，nodx 服务器拿不到。
-          </p>
-          <p className="mt-2">
-            <strong>Claude Code 模式</strong>：nodx Rust 进程
-            <code> spawn claude -p </code>子进程，输出原样回流，
-            <strong>nodx 从不接触你的 OAuth token</strong>。
-          </p>
+          <p>{t('settings.footer.keychain')}</p>
+          <p className="mt-2">{t('settings.footer.cliMode')}</p>
         </section>
       </div>
     </div>
@@ -183,6 +217,7 @@ export function SettingsView({ onClose }: Props) {
  *  - a one-click button into the right System Settings pane
  */
 function SystemCaptureSection() {
+  const { t } = useT();
   const [hotkeyActive, setHotkeyActive] = useState<boolean | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
@@ -214,59 +249,56 @@ function SystemCaptureSection() {
 
   return (
     <section className="mt-8 pt-6 border-t border-border">
-      <h2 className="text-base font-semibold mb-1">⌥+E 全局划词解释</h2>
+      <h2 className="text-base font-semibold mb-1">{t('settings.capture.h')}</h2>
       <p className="text-sm text-ink-muted leading-relaxed mb-4">
-        在任意 macOS app 里选中文字 → 按 <kbd className="px-1.5 py-0.5 rounded bg-canvas border border-border text-xs">⌥+E</kbd> →
-        nodx 弹浮窗给你 AI 解释。一键收进 💡 灵感池。
+        {t('settings.capture.desc')}
       </p>
 
       <div className="border border-border rounded-lg bg-surface p-4 mb-4">
         {/* Hotkey row */}
         <Row
-          label="全局快捷键"
+          label={t('settings.capture.hotkey')}
           value={
             hotkeyActive === null ? (
-              <span className="text-ink-muted text-xs">检测中…</span>
+              <span className="text-ink-muted text-xs">{t('settings.keys.detecting')}</span>
             ) : hotkeyActive ? (
               <span className="text-emerald-600 font-medium text-sm">
-                ✓ 已激活 (⌥+E)
+                {t('settings.capture.hotkeyOn')}
               </span>
             ) : (
               <span className="text-amber-600 font-medium text-sm">
-                ⚠️ 未激活
+                {t('settings.capture.hotkeyOff')}
               </span>
             )
           }
         />
         {hotkeyActive === false && (
           <p className="text-xs text-ink-muted mt-1 leading-relaxed">
-            可能是另一个 app 占用了 ⌥+E（比如老版 nodx Lens for Mac —— 0.3 之后它已经合并进 nodx，
-            建议从 /Applications 里删掉，然后重启 nodx）。
+            {t('settings.capture.hotkeyOffHint')}
           </p>
         )}
 
         {/* Permission row */}
         <div className="border-t border-border my-3" />
         <Row
-          label="Accessibility 权限"
+          label={t('settings.capture.perm')}
           value={
             hasPermission === null ? (
-              <span className="text-ink-muted text-xs">检测中…</span>
+              <span className="text-ink-muted text-xs">{t('settings.keys.detecting')}</span>
             ) : hasPermission ? (
               <span className="text-emerald-600 font-medium text-sm">
-                ✓ 已授予
+                {t('settings.capture.permGranted')}
               </span>
             ) : (
               <span className="text-amber-600 font-medium text-sm">
-                ⚠️ 未授予
+                {t('settings.capture.permMissing')}
               </span>
             )
           }
         />
         {hasPermission === false && (
           <p className="text-xs text-ink-muted mt-1 leading-relaxed">
-            nodx 需要这个权限才能在其它 app 里模拟 ⌘+C 拿到你选中的文字。
-            打开系统设置 → 隐私与安全性 → 辅助功能 → 勾选 nodx 即可。
+            {t('settings.capture.permMissingHint')}
           </p>
         )}
 
@@ -276,27 +308,24 @@ function SystemCaptureSection() {
             onClick={() => void openSettings()}
             className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90"
           >
-            打开系统设置 · 辅助功能
+            {t('settings.capture.openSystem')}
           </button>
           <button
             type="button"
             onClick={() => void refresh()}
             className="px-3 py-1.5 text-xs font-medium rounded-md border border-border hover:border-accent text-ink-muted hover:text-ink"
           >
-            🔄 重新探测
+            {t('settings.capture.recheck')}
           </button>
         </div>
       </div>
 
       <details className="text-xs text-ink-muted">
         <summary className="cursor-pointer hover:text-ink">
-          ⚠ macOS 权限工作原理
+          {t('settings.capture.how')}
         </summary>
         <p className="mt-2 leading-relaxed">
-          Apple 不允许应用直接读取其它 app 的选区文本 ——
-          所以 nodx 走「Accessibility 权限 + CGEvent 模拟 ⌘+C + 读剪贴板」这套
-          标准 macOS 流程。整个过程在你本机进行，原始剪贴板会在 120ms 内还原，
-          nodx 不会看到也不会上传任何东西。
+          {t('settings.capture.howBody')}
         </p>
       </details>
     </section>
@@ -329,6 +358,7 @@ function ModeCard({
   subtitle,
   pros,
 }: ModeCardProps) {
+  const { t } = useT();
   return (
     <button
       type="button"
@@ -348,7 +378,7 @@ function ModeCard({
         </div>
         {active && (
           <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-accent text-white">
-            当前
+            {t('settings.mode.current')}
           </span>
         )}
       </div>
@@ -362,6 +392,7 @@ function ModeCard({
 }
 
 function ClaudeCliSection() {
+  const { t } = useT();
   const [status, setStatus] = useState<
     | { state: 'checking' }
     | { state: 'ok'; version: string }
@@ -387,59 +418,57 @@ function ClaudeCliSection() {
 
   return (
     <section className="mb-8">
-      <h2 className="text-base font-semibold mb-1">Claude Code CLI 状态</h2>
+      <h2 className="text-base font-semibold mb-1">{t('settings.cli.h')}</h2>
       <p className="text-sm text-ink-muted leading-relaxed mb-4">
-        每次 AI 调用，nodx 都会跑你本机的 <code>claude -p</code>。要先装好
-        Claude Code 并登录一次 —— nodx 不接触你的 OAuth token，只读子进程
-        输出。
+        {t('settings.cli.desc')}
       </p>
 
       <div className="border border-border rounded-lg bg-surface p-4 mb-4">
         {status.state === 'checking' && (
           <div className="text-sm text-ink-muted flex items-center gap-2">
             <span className="inline-block w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-            正在探测 claude CLI…
+            {t('settings.cli.probing')}
           </div>
         )}
         {status.state === 'ok' && (
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-emerald-600 font-semibold">✓ 已就绪</span>
+              <span className="text-emerald-600 font-semibold">{t('settings.cli.ok')}</span>
               <code className="text-xs text-ink-muted bg-canvas px-1.5 py-0.5 rounded">
                 {status.version}
               </code>
             </div>
             <div className="text-xs text-ink-muted">
-              下一次 AI 调用就会用你的订阅 — 可以直接关 Settings 试一下了。
+              {t('settings.cli.okHint')}
             </div>
             <button
               type="button"
               onClick={() => void runDetect()}
               className="text-xs text-accent hover:underline mt-2"
             >
-              重新探测
+              {t('settings.cli.retry')}
             </button>
           </div>
         )}
         {status.state === 'error' && (
           <div>
             <div className="text-sm text-red-600 font-semibold mb-2">
-              ⚠️ Claude Code 不可用
+              {t('settings.cli.error')}
             </div>
             <div className="text-xs text-ink-muted mb-3 whitespace-pre-wrap break-words">
               {status.message}
             </div>
-            <div className="text-sm font-medium mb-1">怎么装：</div>
+            <div className="text-sm font-medium mb-1">{t('settings.cli.installTitle')}</div>
             <pre className="text-xs bg-canvas rounded p-2 overflow-x-auto">
 {`npm i -g @anthropic-ai/claude-code
-claude            # 第一次跑会弹浏览器让你登录`}
+claude`}
             </pre>
             <button
               type="button"
               onClick={() => void runDetect()}
               className="text-xs text-accent hover:underline mt-2"
             >
-              装完了 → 重新探测
+              {t('settings.cli.installedRetry')}
             </button>
           </div>
         )}
@@ -447,13 +476,13 @@ claude            # 第一次跑会弹浏览器让你登录`}
 
       <details className="text-xs text-ink-muted">
         <summary className="cursor-pointer hover:text-ink">
-          ⚠ CLI 模式的限制
+          {t('settings.cli.limits')}
         </summary>
         <ul className="mt-2 space-y-1 list-disc list-inside leading-relaxed">
-          <li>每次调用 cold-start <code>claude</code>，延迟 2-5 秒（vs API key 模式 &lt;500ms）</li>
-          <li>不支持 embedding（案例库 / CBR 功能在 CLI 模式下不可用）</li>
-          <li>需要本机装 Claude Code + 登录过</li>
-          <li>无法保证 web search / 多模态等高级功能的稳定性 — 切回 API key 模式更可靠</li>
+          <li>{t('settings.cli.limit.latency')}</li>
+          <li>{t('settings.cli.limit.noEmbed')}</li>
+          <li>{t('settings.cli.limit.needsInstall')}</li>
+          <li>{t('settings.cli.limit.webSearch')}</li>
         </ul>
       </details>
     </section>
@@ -461,6 +490,7 @@ claude            # 第一次跑会弹浏览器让你登录`}
 }
 
 function ProviderRow({ provider }: { provider: ProviderConfig }) {
+  const { t } = useT();
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [editing, setEditing] = useState(false);
   const [keyInput, setKeyInput] = useState('');
@@ -480,7 +510,10 @@ function ProviderRow({ provider }: { provider: ProviderConfig }) {
       // Light prefix sanity check — keep typos from silently failing later.
       if (value && !value.startsWith(provider.keyPrefix)) {
         const proceed = confirm(
-          `这个 key 看起来不像 ${provider.label} 的 key（${provider.keyPrefix}... 开头）。继续保存？`,
+          t('settings.keys.prefixWarn', {
+            label: provider.label,
+            prefix: provider.keyPrefix,
+          }),
         );
         if (!proceed) {
           setSaving(false);
@@ -501,15 +534,15 @@ function ProviderRow({ provider }: { provider: ProviderConfig }) {
   const badge =
     provider.required === 'core' ? (
       <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
-        核心 · 必填
+        {t('settings.keys.core')}
       </span>
     ) : provider.required === 'cbr-only' ? (
       <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
-        案例库 · 可选
+        {t('settings.keys.cbrOnly')}
       </span>
     ) : (
       <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-zinc-200 text-zinc-600">
-        未启用
+        {t('settings.keys.futureOnly')}
       </span>
     );
 
@@ -520,26 +553,26 @@ function ProviderRow({ provider }: { provider: ProviderConfig }) {
         {badge}
         <div className="ml-auto">
           {configured === null ? (
-            <span className="text-xs text-ink-muted">检测中…</span>
+            <span className="text-xs text-ink-muted">{t('settings.keys.detecting')}</span>
           ) : configured ? (
             <span className="text-xs text-emerald-600 font-medium">
-              ✓ 已配置
+              {t('settings.keys.configured')}
             </span>
           ) : (
-            <span className="text-xs text-ink-muted">未配置</span>
+            <span className="text-xs text-ink-muted">{t('settings.keys.notConfigured')}</span>
           )}
         </div>
       </div>
 
       <div className="text-xs text-ink-muted mb-3">
-        没 key？{' '}
+        {t('settings.keys.getKey')}{' '}
         <a
           href={provider.signupUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="text-accent hover:underline"
         >
-          {provider.signupHint} ↗
+          {t(provider.signupHintKey)} ↗
         </a>
       </div>
 
@@ -567,7 +600,7 @@ function ProviderRow({ provider }: { provider: ProviderConfig }) {
               type="button"
               onClick={() => setShowKey((v) => !v)}
               className="px-2 py-1 text-xs rounded-md border border-border text-ink-muted hover:text-ink"
-              title={showKey ? '隐藏' : '显示'}
+              title={showKey ? t('settings.keys.hide') : t('settings.keys.show')}
             >
               {showKey ? '🙈' : '👁'}
             </button>
@@ -580,7 +613,11 @@ function ProviderRow({ provider }: { provider: ProviderConfig }) {
               onClick={() => void handleSave()}
               className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-50"
             >
-              {saving ? '保存中…' : keyInput.trim() ? '保存到钥匙串' : '清除已存的 key'}
+              {saving
+                ? t('settings.keys.saving')
+                : keyInput.trim()
+                  ? t('settings.keys.saveToKeychain')
+                  : t('settings.keys.clearStored')}
             </button>
             <button
               type="button"
@@ -591,7 +628,7 @@ function ProviderRow({ provider }: { provider: ProviderConfig }) {
               }}
               className="px-3 py-1.5 text-xs text-ink-muted hover:text-ink"
             >
-              取消
+              {t('common.cancel')}
             </button>
           </div>
         </div>
@@ -602,20 +639,22 @@ function ProviderRow({ provider }: { provider: ProviderConfig }) {
             onClick={() => setEditing(true)}
             className="px-3 py-1.5 text-xs font-medium rounded-md border border-border hover:border-accent hover:text-accent"
           >
-            {configured ? '替换 key' : '+ 添加 key'}
+            {configured ? t('settings.keys.replace') : t('settings.keys.add')}
           </button>
           {configured && (
             <button
               type="button"
               onClick={async () => {
-                if (confirm(`确定从钥匙串删除 ${provider.label} 的 key？`)) {
+                if (
+                  confirm(t('settings.keys.confirmDelete', { provider: provider.label }))
+                ) {
                   await setAiKey(provider.id, '');
                   setConfigured(false);
                 }
               }}
               className="px-3 py-1.5 text-xs font-medium rounded-md text-ink-muted hover:text-red-600"
             >
-              删除
+              {t('settings.keys.delete')}
             </button>
           )}
         </div>
