@@ -27,6 +27,7 @@ import {
   updateTags,
 } from '../../db/attentions.js';
 import { explainSelection } from '../../ai/explain.js';
+import { useT } from '../../i18n/index.js';
 
 interface Props {
   /** Bumped by parent whenever a new capture arrives, to force a re-query. */
@@ -38,10 +39,10 @@ interface Props {
   onFocusConsumed?: () => void;
 }
 
-const SOURCE_CHIPS: Array<{ key: AttentionSource; label: string; emoji: string }> = [
-  { key: 'lens-chrome', label: 'Lens (Chrome)', emoji: '🌐' },
-  { key: 'lens-mac', label: 'Lens (Mac)', emoji: '🍎' },
-  { key: 'manual', label: '手动粘贴', emoji: '✍️' },
+const SOURCE_CHIPS: Array<{ key: AttentionSource; emoji: string }> = [
+  { key: 'lens-chrome', emoji: '🌐' },
+  { key: 'lens-mac', emoji: '🍎' },
+  { key: 'manual', emoji: '✍️' },
 ];
 
 export function AttentionInboxView({
@@ -50,6 +51,7 @@ export function AttentionInboxView({
   focusId,
   onFocusConsumed,
 }: Props) {
+  const { t } = useT();
   const [items, setItems] = useState<Attention[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -72,8 +74,8 @@ export function AttentionInboxView({
       ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setHighlightId(focusId);
     onFocusConsumed?.();
-    const t = window.setTimeout(() => setHighlightId(null), 2600);
-    return () => window.clearTimeout(t);
+    const timeoutId = window.setTimeout(() => setHighlightId(null), 2600);
+    return () => window.clearTimeout(timeoutId);
   }, [focusId, items, onFocusConsumed]);
   const [selectedSources, setSelectedSources] = useState<Set<AttentionSource>>(
     new Set(['lens-chrome', 'lens-mac', 'manual']),
@@ -105,13 +107,13 @@ export function AttentionInboxView({
     <div className="flex flex-col h-full overflow-hidden">
       {/* Toolbar */}
       <div className="px-6 py-3 border-b border-border bg-surface flex items-center gap-3 flex-wrap">
-        <div className="font-bold text-lg">💡 灵感池</div>
+        <div className="font-bold text-lg">{t('attention.title')}</div>
         <div className="text-xs text-ink-muted ml-2">
-          {items.length > 0 && <>共 {items.length} 条灵感</>}
+          {items.length > 0 && t('attention.count', { count: items.length })}
         </div>
         <input
           type="search"
-          placeholder="搜索文本 / 解释…"
+          placeholder={t('attention.search')}
           value={search}
           onChange={(e) => setSearch(e.currentTarget.value)}
           className="ml-auto px-3 py-1.5 text-sm rounded-md border border-border bg-canvas focus:outline-none focus:border-accent w-56"
@@ -122,13 +124,13 @@ export function AttentionInboxView({
             checked={hidePromoted}
             onChange={(e) => setHidePromoted(e.currentTarget.checked)}
           />
-          隐藏已升级的
+          {t('attention.hidePromoted')}
         </label>
       </div>
 
       {/* Source chips */}
       <div className="px-6 py-2 border-b border-border flex items-center gap-2 text-xs">
-        <span className="text-ink-muted mr-1">来源:</span>
+        <span className="text-ink-muted mr-1">{t('attention.source')}</span>
         {SOURCE_CHIPS.map((chip) => {
           const active = selectedSources.has(chip.key);
           return (
@@ -149,7 +151,7 @@ export function AttentionInboxView({
                   : 'bg-surface text-ink-muted border-border hover:border-accent')
               }
             >
-              {chip.emoji} {chip.label}
+              {chip.emoji} {t(`source.${chip.key}` as const)}
             </button>
           );
         })}
@@ -158,14 +160,14 @@ export function AttentionInboxView({
       {/* List */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         {loading && items.length === 0 ? (
-          <div className="text-center text-ink-muted text-sm py-10">加载中…</div>
+          <div className="text-center text-ink-muted text-sm py-10">{t('attention.loading')}</div>
         ) : items.length === 0 ? (
           <EmptyState />
         ) : (
-          groups.map(({ label, rows }) => (
-            <div key={label} className="mb-6">
+          groups.map(({ labelKey, rows }) => (
+            <div key={labelKey} className="mb-6">
               <div className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
-                {label}
+                {t(labelKey)}
               </div>
               <div className="space-y-3">
                 {rows.map((a) => (
@@ -197,15 +199,13 @@ export function AttentionInboxView({
 }
 
 function EmptyState() {
+  const { t } = useT();
   return (
     <div className="text-center text-ink-muted py-12 max-w-md mx-auto">
       <div className="text-4xl mb-3">💡</div>
-      <div className="font-semibold mb-2">灵感池还空着</div>
-      <div className="text-sm leading-relaxed">
-        在浏览器里用 nodx Lens 划词 → 点 <strong>🔍 解释</strong> 或 <strong>💾 收</strong>，
-        这里会自动出现新条目。
-        <br />
-        每条灵感都是"思考的原料"，可以一键升级为话题，进入 nodx 的完整思考流程。
+      <div className="font-semibold mb-2">{t('attention.empty.title')}</div>
+      <div className="text-sm leading-relaxed whitespace-pre-line">
+        {t('attention.empty.body')}
       </div>
     </div>
   );
@@ -224,6 +224,7 @@ function AttentionCard({
   onPromote,
   highlighted,
 }: CardProps) {
+  const { t } = useT();
   const [editingTags, setEditingTags] = useState(false);
   const [tagInput, setTagInput] = useState(attention.tags.join(', '));
   const [editingExpl, setEditingExpl] = useState(false);
@@ -299,17 +300,17 @@ function AttentionCard({
               title={attention.sourceUrl}
               className="text-sm font-semibold text-ink hover:text-accent truncate block leading-tight"
             >
-              {attention.sourceTitle || hostname || '(无标题)'}
+              {attention.sourceTitle || hostname || t('source.none')}
             </a>
           ) : (
             <div className="text-sm font-semibold text-ink truncate leading-tight">
-              {attention.sourceTitle || '(手动录入)'}
+              {attention.sourceTitle || t('source.manual')}
             </div>
           )}
           <div className="flex items-center gap-1.5 text-[11px] text-ink-muted mt-0.5">
             {hostname && <span className="truncate">{hostname}</span>}
             {hostname && <span>·</span>}
-            <span>{formatRelative(attention.capturedAt)}</span>
+            <span>{formatRelative(attention.capturedAt, t)}</span>
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -322,14 +323,14 @@ function AttentionCard({
           {attention.kind === 'quick' && (
             <span
               className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200"
-              title="未调用 AI · 直接收藏"
+              title={t('attention.noExplain')}
             >
-              裸卡
+              {t('attention.bareCard')}
             </span>
           )}
           {promoted && (
             <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200">
-              已升级
+              {t('attention.promoted')}
             </span>
           )}
         </div>
@@ -346,7 +347,7 @@ function AttentionCard({
           <textarea
             value={explInput}
             onChange={(e) => setExplInput(e.currentTarget.value)}
-            placeholder="写下你的解释 / 笔记…"
+            placeholder={t('attention.addExplanation')}
             className="w-full text-[13px] bg-transparent focus:outline-none min-h-[80px] resize-y leading-relaxed"
             autoFocus
           />
@@ -480,7 +481,7 @@ function AttentionCard({
             className="px-2.5 py-1 rounded-md text-accent hover:bg-accent/10 font-medium"
             onClick={onPromote}
           >
-            🎯 升级为话题
+            {t('attention.promote')}
           </button>
         )}
         <div
@@ -495,7 +496,7 @@ function AttentionCard({
               className="px-2 py-1 rounded-md text-ink-muted hover:bg-canvas hover:text-ink"
               onClick={() => setEditingExpl(true)}
             >
-              ✏️ 改解释
+              {t('attention.editExplanation')}
             </button>
           )}
           {!editingExpl && !attention.explanation && (
@@ -515,7 +516,7 @@ function AttentionCard({
               className="px-2 py-1 rounded-md text-ink-muted hover:bg-canvas hover:text-ink"
               onClick={() => setEditingTags(true)}
             >
-              🏷 标签
+              {t('attention.tags')}
             </button>
           )}
         </div>
@@ -525,9 +526,9 @@ function AttentionCard({
             'ml-auto px-2 py-1 rounded-md text-ink-muted hover:bg-red-50 hover:text-red-600 transition ' +
             (hovering ? 'opacity-100' : 'opacity-0')
           }
-          title="删除"
+          title={t('common.delete')}
           onClick={async () => {
-            if (confirm('删除这条 attention？')) {
+            if (confirm(t('attention.confirmDelete'))) {
               await deleteAttention(attention.id);
               onChanged();
             }
@@ -553,16 +554,18 @@ function safeHostname(url: string): string | null {
   }
 }
 
-function formatRelative(ts: number): string {
+import type { StringKey } from '../../i18n/index.js';
+
+function formatRelative(ts: number, t: (k: StringKey, p?: Record<string, string | number>) => string): string {
   const diff = Date.now() - ts;
   const min = 60 * 1000;
   const hour = 60 * min;
   const day = 24 * hour;
-  if (diff < min) return '刚刚';
-  if (diff < hour) return `${Math.floor(diff / min)} 分钟前`;
-  if (diff < day) return `${Math.floor(diff / hour)} 小时前`;
-  if (diff < 7 * day) return `${Math.floor(diff / day)} 天前`;
-  return new Date(ts).toLocaleDateString('zh-CN', {
+  if (diff < min) return t('time.justNow');
+  if (diff < hour) return t('time.minsAgo', { n: Math.floor(diff / min) });
+  if (diff < day) return t('time.hoursAgo', { n: Math.floor(diff / hour) });
+  if (diff < 7 * day) return t('time.daysAgo', { n: Math.floor(diff / day) });
+  return new Date(ts).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
   });
@@ -572,27 +575,30 @@ function formatRelative(ts: number): string {
 // Time grouping
 // ============================================================================
 
-function groupByTime(items: Attention[]): Array<{ label: string; rows: Attention[] }> {
+type TimeBucketKey = 'time.today' | 'time.yesterday' | 'time.thisWeek' | 'time.earlier';
+
+function groupByTime(items: Attention[]): Array<{ labelKey: TimeBucketKey; rows: Attention[] }> {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const startOfYesterday = startOfToday - 24 * 3600 * 1000;
   const startOfThisWeek = startOfToday - now.getDay() * 24 * 3600 * 1000;
 
-  const buckets: Record<string, Attention[]> = {
-    今天: [],
-    昨天: [],
-    本周: [],
-    更早: [],
+  const buckets: Record<TimeBucketKey, Attention[]> = {
+    'time.today': [],
+    'time.yesterday': [],
+    'time.thisWeek': [],
+    'time.earlier': [],
   };
 
   for (const a of items) {
-    if (a.capturedAt >= startOfToday) buckets['今天']!.push(a);
-    else if (a.capturedAt >= startOfYesterday) buckets['昨天']!.push(a);
-    else if (a.capturedAt >= startOfThisWeek) buckets['本周']!.push(a);
-    else buckets['更早']!.push(a);
+    if (a.capturedAt >= startOfToday) buckets['time.today']!.push(a);
+    else if (a.capturedAt >= startOfYesterday) buckets['time.yesterday']!.push(a);
+    else if (a.capturedAt >= startOfThisWeek) buckets['time.thisWeek']!.push(a);
+    else buckets['time.earlier']!.push(a);
   }
 
-  return Object.entries(buckets)
-    .filter(([, rows]) => rows.length > 0)
-    .map(([label, rows]) => ({ label, rows }));
+  const order: TimeBucketKey[] = ['time.today', 'time.yesterday', 'time.thisWeek', 'time.earlier'];
+  return order
+    .filter((k) => buckets[k].length > 0)
+    .map((k) => ({ labelKey: k, rows: buckets[k] }));
 }

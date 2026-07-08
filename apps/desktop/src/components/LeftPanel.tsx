@@ -9,6 +9,7 @@ import {
 } from '../db/topics.js';
 import { importTopicBundle } from '../db/bundle.js';
 import { openBundleFile } from '../lib/bundle-file.js';
+import { useT, type StringKey } from '../i18n/index.js';
 
 interface LeftPanelProps {
   topics: Topic[];
@@ -29,6 +30,7 @@ export function LeftPanel({
   onSelectTopic,
   onMutated,
 }: LeftPanelProps) {
+  const { t } = useT();
   const [title, setTitle] = useState('');
   const [status, setStatus] = useState<TopicStatus>('exploring');
   const [submitting, setSubmitting] = useState(false);
@@ -45,12 +47,12 @@ export function LeftPanel({
     setImporting(true);
     try {
       const res = await importTopicBundle(file.text);
-      setImportMsg(`已导入 ${res.topicCount} 个话题节点`);
+      setImportMsg(`✓ ${res.topicCount}`);
       onSelectTopic(res.rootTopicId);
       onMutated();
       window.setTimeout(() => setImportMsg(null), 3000);
     } catch (err) {
-      setImportMsg(`导入失败：${err instanceof Error ? err.message : String(err)}`);
+      setImportMsg(`${t('common.error')}: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setImporting(false);
     }
@@ -60,7 +62,7 @@ export function LeftPanel({
     e.preventDefault();
     setFormError(null);
     if (!title.trim()) {
-      setFormError('请输入对话标题');
+      setFormError(t('tabs.picker.needTitle'));
       return;
     }
     setSubmitting(true);
@@ -107,11 +109,11 @@ export function LeftPanel({
 
   return (
     <aside className="border-r border-border bg-surface overflow-y-auto p-4 flex flex-col gap-4">
-      <SectionTitle>新建</SectionTitle>
+      <SectionTitle>{t('left.section.new')}</SectionTitle>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <input
           type="text"
-          placeholder="问题或决策标题…"
+          placeholder={t('left.newTopic.placeholder')}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           disabled={submitting}
@@ -135,7 +137,7 @@ export function LeftPanel({
             disabled={submitting}
             className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-50 transition"
           >
-            {submitting ? '…' : '+ 新建'}
+            {submitting ? t('left.newTopic.submitting') : t('left.newTopic.submit')}
           </button>
         </div>
         {formError && <p className="text-xs text-red-600">{formError}</p>}
@@ -145,10 +147,10 @@ export function LeftPanel({
         type="button"
         onClick={handleImport}
         disabled={importing}
-        title="加载一个 .nodx 数据包文件（来自本机或其他电脑），作为新话题导入"
+        title={t('left.import')}
         className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-ink-muted hover:border-accent hover:text-accent disabled:opacity-50 transition"
       >
-        {importing ? '导入中…' : '⬆ 导入 .nodx 数据包'}
+        {importing ? t('left.importing') : t('left.import')}
       </button>
       {importMsg && <p className="text-xs text-accent">{importMsg}</p>}
 
@@ -160,15 +162,15 @@ export function LeftPanel({
 
       <div className="border-t border-border -mx-4" />
 
-      <SectionTitle>对话列表 ({topics.length})</SectionTitle>
-      {loading && <p className="text-xs text-ink-muted">loading…</p>}
+      <SectionTitle>{t('left.section.list', { count: topics.length })}</SectionTitle>
+      {loading && <p className="text-xs text-ink-muted">{t('left.loading')}</p>}
       {loadError && (
         <pre className="text-xs text-red-600 bg-red-50 p-2 rounded whitespace-pre-wrap">
           {loadError}
         </pre>
       )}
       {!loading && !loadError && topics.length === 0 && (
-        <p className="text-xs text-ink-muted italic">还没有对话。先建一个吧。</p>
+        <p className="text-xs text-ink-muted italic">{t('left.empty')}</p>
       )}
       <TopicTree
         topics={topics}
@@ -186,7 +188,7 @@ export function LeftPanel({
             onClick={() => setShowArchived((v) => !v)}
             className="flex items-center justify-between text-[11px] uppercase tracking-wider text-ink-muted font-medium hover:text-ink transition"
           >
-            <span>已归档 ({archivedTopics.length})</span>
+            <span>{t('left.section.archived', { count: archivedTopics.length })}</span>
             <span className="text-sm">{showArchived ? '−' : '+'}</span>
           </button>
           {showArchived && (
@@ -256,6 +258,7 @@ function TopicTree({
   onArchive: (id: string) => Promise<void> | void;
   onDelete: (id: string) => Promise<void> | void;
 }) {
+  useT(); // subscribe so localised inner labels re-render on switch
   const tree = useMemo(() => buildTopicTree(topics), [topics]);
 
   // child id → effective parent id (parent must still be in the active list).
@@ -317,7 +320,7 @@ function TopicTree({
           }
           className="self-end text-[10px] text-ink-muted hover:text-accent transition mb-0.5"
         >
-          {allCollapsed ? '展开全部' : '折叠全部'}
+          {allCollapsed ? '＋' : '－'}
         </button>
       )}
       <ul className="flex flex-col gap-0.5">
@@ -434,7 +437,7 @@ function TopicRow({
           {hasChildren ? (
             <button
               type="button"
-              title={collapsed ? '展开子话题' : '折叠子话题'}
+              title={collapsed ? /*i18n*/ 'Expand' : /*i18n*/ 'Collapse'}
               onClick={(e) => {
                 e.stopPropagation();
                 onToggle();
@@ -469,7 +472,7 @@ function TopicRow({
             <StatusBadge status={topic.status} />
             <span className={selected ? 'text-accent/60' : 'text-ink-muted/80'}>
               {topic.meta.messageCount}
-              <span className="opacity-60"> 条</span>
+              <span className="opacity-60"> {/*i18n*/ 'msg'}</span>
             </span>
             {topic.meta.childCount > 0 && (
               <span
@@ -477,10 +480,10 @@ function TopicRow({
                   (selected ? 'text-accent/60' : 'text-ink-muted/80') +
                   (collapsed ? ' font-medium' : '')
                 }
-                title={`${topic.meta.childCount} 个子话题${collapsed ? '（已折叠）' : ''}`}
+                title={`${topic.meta.childCount}${collapsed ? ' · collapsed' : ''}`}
               >
                 {topic.meta.childCount}
-                <span className="opacity-60"> 子</span>
+                <span className="opacity-60"> {/*i18n*/ 'sub'}</span>
               </span>
             )}
           </div>
@@ -488,8 +491,8 @@ function TopicRow({
       </div>
       <div className="absolute right-1 top-1.5 flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
         <PrimaryAction
-          label="归档"
-          title="归档（隐藏到底部抽屉）"
+          label="⊘"
+          title="Archive"
           onClick={onArchive}
         />
         <DeleteAction onConfirm={onDelete} />
@@ -538,7 +541,7 @@ function ArchivedRow({
     <li className="group relative rounded-md hover:bg-canvas px-2.5 py-1.5 text-xs flex items-center justify-between">
       <span className="truncate">{topic.title}</span>
       <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition shrink-0 ml-2">
-        <PrimaryAction label="恢复" title="移回主列表" onClick={onUnarchive} />
+        <PrimaryAction label="↺" title="Restore" onClick={onUnarchive} />
         <DeleteAction onConfirm={onDelete} />
       </div>
     </li>
@@ -603,7 +606,7 @@ function DeleteAction({ onConfirm }: { onConfirm: () => void }) {
   return (
     <button
       type="button"
-      title={pending ? '再点一次确认删除' : '删除（不可撤销）'}
+      title={pending ? 'Click again to confirm' : 'Delete (irreversible)'}
       onClick={handleClick}
       className={
         'px-1.5 py-0.5 text-[10px] rounded font-medium transition border ' +
@@ -612,7 +615,7 @@ function DeleteAction({ onConfirm }: { onConfirm: () => void }) {
           : 'text-red-600 border-red-200 hover:bg-red-50')
       }
     >
-      {pending ? '确认删除' : '删除'}
+      {pending ? '✓' : '×'}
     </button>
   );
 }
@@ -626,27 +629,41 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Compact status indicator: a coloured dot + 2-char abbreviation.
+ * Compact status indicator: a coloured dot + short label (localised).
  * The old badge showed the full English word ("exploring") which took ~60px
  * per row and made the meta-line feel loose. This variant is 22-28px and
  * still readable at a glance thanks to the colour code.
  */
-const STATUS_META: Record<TopicStatus, { dot: string; short: string; full: string }> = {
-  exploring:  { dot: 'bg-blue-400',    short: '探索', full: '探索中' },
-  summarized: { dot: 'bg-emerald-400', short: '收束', full: '已收束' },
-  atomic:     { dot: 'bg-violet-500',  short: '原子', full: '原子化' },
-  ghost:      { dot: 'bg-zinc-400',    short: '草稿', full: '草稿' },
+const STATUS_DOT: Record<TopicStatus, string> = {
+  exploring: 'bg-blue-400',
+  summarized: 'bg-emerald-400',
+  atomic: 'bg-violet-500',
+  ghost: 'bg-zinc-400',
+};
+
+const STATUS_SHORT_KEY: Record<TopicStatus, StringKey> = {
+  exploring: 'left.status.exploring',
+  summarized: 'left.status.summarized',
+  atomic: 'left.status.atomic',
+  ghost: 'left.status.ghost',
+};
+
+const STATUS_FULL_KEY: Record<TopicStatus, StringKey> = {
+  exploring: 'left.status.exploring.full',
+  summarized: 'left.status.summarized.full',
+  atomic: 'left.status.atomic.full',
+  ghost: 'left.status.ghost.full',
 };
 
 function StatusBadge({ status }: { status: TopicStatus }) {
-  const meta = STATUS_META[status];
+  const { t } = useT();
   return (
     <span
       className="inline-flex items-center gap-1 text-[10px] leading-none text-ink-muted"
-      title={meta.full}
+      title={t(STATUS_FULL_KEY[status])}
     >
-      <span className={'w-1.5 h-1.5 rounded-full ' + meta.dot} />
-      <span>{meta.short}</span>
+      <span className={'w-1.5 h-1.5 rounded-full ' + STATUS_DOT[status]} />
+      <span>{t(STATUS_SHORT_KEY[status])}</span>
     </span>
   );
 }

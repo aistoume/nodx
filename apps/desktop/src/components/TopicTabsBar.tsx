@@ -17,6 +17,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Topic, TopicStatus } from '@nodx/models';
+import { useT } from '../i18n/index.js';
 
 const STATUS_DOT: Record<TopicStatus, string> = {
   exploring: 'bg-blue-400',
@@ -50,6 +51,7 @@ export function TopicTabsBar({
   onOpenPicker,
   onCreate,
 }: Props) {
+  const { t } = useT();
   const byId = new Map(topics.map((t) => [t.id, t]));
   const openTopics = openTopicIds
     .map((id) => byId.get(id))
@@ -89,7 +91,7 @@ export function TopicTabsBar({
   const handleCreate = async () => {
     const title = newTitle.trim();
     if (!title) {
-      setCreateError('请先填写标题');
+      setCreateError(t('tabs.picker.needTitle'));
       return;
     }
     setSubmitting(true);
@@ -112,7 +114,7 @@ export function TopicTabsBar({
       <div className="flex items-stretch overflow-x-auto scrollbar-thin">
         {openTopics.length === 0 && (
           <div className="px-4 flex items-center text-xs text-ink-muted italic">
-            从左栏选一个话题，或点 + 打开
+            {t('tabs.emptyHint')}
           </div>
         )}
         {openTopics.map((t) => {
@@ -141,7 +143,7 @@ export function TopicTabsBar({
                   'hover:bg-canvas hover:text-ink transition ' +
                   (active ? 'opacity-70' : 'opacity-0 group-hover:opacity-100')
                 }
-                title="关闭"
+                title={/* i18n:tabs.close */ 'Close'}
                 onClick={(e) => {
                   e.stopPropagation();
                   onClose(t.id);
@@ -159,7 +161,7 @@ export function TopicTabsBar({
         <button
           type="button"
           className="px-3 text-ink-muted hover:bg-surface hover:text-ink text-base"
-          title="新建或打开话题"
+          title={t('tabs.picker.title')}
           onClick={() => {
             setPickerOpen((v) => !v);
             setCreating(false);
@@ -175,13 +177,13 @@ export function TopicTabsBar({
               {creating ? (
                 <div className="p-3 bg-canvas">
                   <label className="block text-[10px] uppercase tracking-wide text-ink-muted mb-1.5">
-                    新话题标题
+                    {t('tabs.picker.newTopicLabel')}
                   </label>
                   <input
                     ref={inputRef}
                     type="text"
                     value={newTitle}
-                    placeholder="问题或决策标题…"
+                    placeholder={t('tabs.picker.newTopicPlaceholder')}
                     disabled={submitting}
                     onChange={(e) => {
                       setNewTitle(e.currentTarget.value);
@@ -209,7 +211,7 @@ export function TopicTabsBar({
                       onClick={() => void handleCreate()}
                       className="px-3 py-1 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-50"
                     >
-                      {submitting ? '创建中…' : '✓ 创建并打开'}
+                      {submitting ? t('tabs.picker.creating') : t('tabs.picker.createAndOpen')}
                     </button>
                     <button
                       type="button"
@@ -220,10 +222,10 @@ export function TopicTabsBar({
                       }}
                       className="px-3 py-1 text-xs text-ink-muted hover:text-ink"
                     >
-                      取消
+                      {t('tabs.picker.cancel')}
                     </button>
                     <span className="ml-auto self-center text-[10px] text-ink-muted">
-                      Enter 提交 · Esc 取消
+                      {t('tabs.picker.enterEsc')}
                     </span>
                   </div>
                 </div>
@@ -234,7 +236,7 @@ export function TopicTabsBar({
                   className="w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 hover:bg-canvas text-accent font-medium"
                 >
                   <span className="text-base leading-none">+</span>
-                  <span>新建话题…</span>
+                  <span>{t('tabs.picker.newTopic')}</span>
                 </button>
               )}
             </div>
@@ -242,11 +244,11 @@ export function TopicTabsBar({
             {/* ── Section 2: 添加已有 ─────────────────────────── */}
             <div className="overflow-y-auto flex-1">
               <div className="px-3 py-2 text-[10px] uppercase tracking-wide text-ink-muted border-b border-border bg-canvas/50">
-                或添加已有话题
+                {t('tabs.picker.existing')}
               </div>
               {availableForPicker.length === 0 ? (
                 <div className="px-3 py-4 text-xs text-ink-muted italic text-center">
-                  所有活跃话题都已在 tab 中
+                  {t('tabs.picker.allOpen')}
                 </div>
               ) : (
                 availableForPicker.map((t) => (

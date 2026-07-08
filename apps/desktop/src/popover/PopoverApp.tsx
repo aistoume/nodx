@@ -18,6 +18,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { explainSelection } from '../ai/explain.js';
 import { createAttention } from '../db/attentions.js';
+import { useT } from '../i18n/index.js';
 
 type Phase = 'idle' | 'loading' | 'done' | 'error' | 'no-permission';
 
@@ -27,6 +28,7 @@ interface CapturedSnippet {
 }
 
 export function PopoverApp() {
+  const { t } = useT();
   const [snippet, setSnippet] = useState<string>('');
   const [explanation, setExplanation] = useState<string>('');
   const [phase, setPhase] = useState<Phase>('idle');
@@ -163,7 +165,7 @@ export function PopoverApp() {
       {/* Header */}
       <div className="px-3 py-2 border-b border-border flex items-center gap-2 shrink-0">
         <span className="text-[12px] font-semibold tracking-wide text-accent">
-          nodx · 划词解释
+          {t('popover.title')}
         </span>
         <span className="text-[10px] text-ink-muted">⌥+E</span>
         {phase === 'loading' && (
@@ -171,16 +173,16 @@ export function PopoverApp() {
             type="button"
             onClick={cancelAndClose}
             className="text-[10px] px-1.5 py-0.5 rounded text-rose-600 hover:bg-rose-50 font-medium"
-            title="取消请求并关闭"
+            title={t('popover.cancel')}
           >
-            取消
+            {t('popover.cancel')}
           </button>
         )}
         <button
           type="button"
           onClick={cancelAndClose}
           className="ml-auto text-ink-muted hover:text-ink text-[14px] w-5 h-5 flex items-center justify-center rounded hover:bg-canvas"
-          title="关闭 (Esc)"
+          title={t('popover.close')}
         >
           ✕
         </button>
@@ -189,7 +191,7 @@ export function PopoverApp() {
       {/* Snippet quote — only when we have content */}
       {snippet && (
         <div className="px-3 py-2 border-b border-border bg-canvas/40">
-          <div className="text-[11px] text-ink-muted mb-1">划中文本</div>
+          <div className="text-[11px] text-ink-muted mb-1">{t('popover.snippetLabel')}</div>
           <blockquote className="text-[12px] text-ink line-clamp-3 border-l-2 border-accent/40 pl-2 italic">
             {snippet}
           </blockquote>
@@ -200,40 +202,37 @@ export function PopoverApp() {
       <div className="flex-1 overflow-y-auto px-3 py-3">
         {phase === 'idle' && !snippet && (
           <div className="h-full flex items-center justify-center text-center text-ink-muted text-[12px]">
-            在任意 macOS app 里选中文字 → 按 <kbd className="px-1 py-0.5 rounded bg-canvas border border-border text-[10px] mx-1">⌥+E</kbd> 即可解释
+            {t('popover.emptyHint')}
           </div>
         )}
 
         {phase === 'no-permission' && (
           <div className="text-[12px] leading-relaxed">
-            <div className="font-semibold text-rose-600 mb-2">⚠️ 需要 Accessibility 权限</div>
-            <p className="text-ink-muted mb-2">
-              nodx 需要这个权限才能在其它 app 里模拟 ⌘+C 拿到你选中的文字。
-              已自动打开 macOS 系统设置 → 隐私与安全性 → 辅助功能。
-            </p>
-            <p className="text-ink-muted">
-              勾选 <strong>nodx</strong> → 重新触发 ⌥+E 即可。
-            </p>
+            <div className="font-semibold text-rose-600 mb-2">{t('popover.permTitle')}</div>
+            <p className="text-ink-muted mb-2">{t('popover.permBody')}</p>
+            <p className="text-ink-muted">{t('popover.permAction')}</p>
           </div>
         )}
 
         {phase === 'loading' && (
           <div className="flex items-center gap-2 text-[12px] text-ink-muted">
             <span className="inline-block w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-            AI 正在解释「{snippet.slice(0, 30)}{snippet.length > 30 ? '…' : ''}」…
+            {t('popover.loading', {
+              preview: snippet.slice(0, 30) + (snippet.length > 30 ? '…' : ''),
+            })}
           </div>
         )}
 
         {phase === 'error' && error && (
           <div className="text-[12px]">
-            <div className="font-semibold text-rose-600 mb-1">⚠️ 解释失败</div>
+            <div className="font-semibold text-rose-600 mb-1">{t('popover.errorTitle')}</div>
             <div className="text-rose-500 break-words mb-2">{error}</div>
             <button
               type="button"
               onClick={() => void runExplain(snippet)}
               className="text-accent hover:underline"
             >
-              重试
+              {t('popover.retry')}
             </button>
           </div>
         )}
@@ -250,7 +249,7 @@ export function PopoverApp() {
         <div className="px-3 py-2 border-t border-border flex items-center gap-2 shrink-0 bg-canvas/40">
           {savedId ? (
             <span className="text-[11px] text-emerald-600 font-medium">
-              ✓ 已收进灵感池
+              {t('popover.savedToPool')}
             </span>
           ) : (
             <button
@@ -258,7 +257,7 @@ export function PopoverApp() {
               onClick={() => void saveToPool()}
               className="text-[11px] px-2.5 py-1 rounded-md bg-accent text-white hover:opacity-90 font-medium"
             >
-              🎯 收进灵感池
+              {t('popover.saveToPool')}
             </button>
           )}
           <button
@@ -274,10 +273,10 @@ export function PopoverApp() {
             }}
             className="text-[11px] px-2.5 py-1 rounded-md border border-border hover:border-accent text-ink-muted hover:text-ink"
           >
-            📋 复制
+            {t('popover.copy')}
           </button>
           <span className="ml-auto text-[10px] text-ink-muted italic">
-            Esc / ⌘W 关闭
+            {t('popover.escHint')}
           </span>
         </div>
       )}

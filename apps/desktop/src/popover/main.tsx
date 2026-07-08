@@ -15,7 +15,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { PopoverApp } from './PopoverApp.js';
+import { initLocale } from '../i18n/index.js';
 import '../index.css';
+
+initLocale();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
