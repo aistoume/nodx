@@ -11,6 +11,7 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { MATERIAL_KIND_META, type MaterialKind } from '@nodx/models';
+import { useT } from '../../i18n/index.js';
 
 export interface MaterialNodeData extends Record<string, unknown> {
   /** Source material id (case / attention). */
@@ -43,9 +44,13 @@ const KIND_STYLE: Record<
 };
 
 function MaterialNodeInner({ data }: NodeProps) {
+  const { t } = useT();
   const d = data as MaterialNodeData;
   const meta = MATERIAL_KIND_META[d.kind];
   const style = KIND_STYLE[d.kind];
+  const kindLabel = d.kind === 'solution'
+    ? t('material.kind.solution')
+    : t('material.kind.inspiration');
   return (
     <div
       className={
@@ -71,9 +76,9 @@ function MaterialNodeInner({ data }: NodeProps) {
             'text-[10px] px-1.5 py-0.5 rounded border font-medium flex-shrink-0 ' +
             style.chip
           }
-          title={`素材 · ${meta.label}`}
+          title={t('material.badgeTip', { label: kindLabel })}
         >
-          {meta.emoji} 素材·{meta.label}
+          {meta.emoji} {t('material.badge', { label: kindLabel })}
         </span>
         <button
           type="button"
@@ -81,7 +86,7 @@ function MaterialNodeInner({ data }: NodeProps) {
             e.stopPropagation();
             d.onRemove(d.materialId);
           }}
-          title="从画布移除（不删除素材本身）"
+          title={t('material.removeTip')}
           className="ml-auto text-zinc-500 hover:text-rose-400 text-xs opacity-0 group-hover:opacity-100 transition"
         >
           ✕
@@ -114,7 +119,7 @@ function MaterialNodeInner({ data }: NodeProps) {
           </div>
         ) : (
           <div className="text-[10.5px] text-zinc-600 italic">
-            （无摘要）
+            {t('material.noSummary')}
           </div>
         )}
       </div>
@@ -122,7 +127,7 @@ function MaterialNodeInner({ data }: NodeProps) {
       {/* Footer hint */}
       <div className="relative px-3 py-1 border-t border-amber-700/20 text-[10px] text-zinc-500 flex">
         <span className="ml-auto opacity-0 group-hover:opacity-100 transition">
-          双击去{d.kind === 'solution' ? '案例库' : '灵感池'}看详情
+          {d.kind === 'solution' ? t('material.dblCases') : t('material.dblInspiration')}
         </span>
       </div>
 

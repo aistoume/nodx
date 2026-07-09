@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MATERIAL_KIND_META, type MaterialKind, type MaterialRef } from '@nodx/models';
 import { listMaterials } from '../../db/materials.js';
+import { useT } from '../../i18n/index.js';
 
 interface MaterialPickerProps {
   /** Source ids already on the canvas (marked as loaded). */
@@ -18,6 +19,7 @@ interface MaterialPickerProps {
 type KindFilter = 'all' | MaterialKind;
 
 export function MaterialPicker({ loadedIds, onPick, onClose }: MaterialPickerProps) {
+  const { t } = useT();
   const [materials, setMaterials] = useState<MaterialRef[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
@@ -55,16 +57,16 @@ export function MaterialPicker({ loadedIds, onPick, onClose }: MaterialPickerPro
         className="relative m-auto w-[520px] max-h-[80%] flex flex-col rounded-xl border border-zinc-700 bg-zinc-900 text-zinc-100 shadow-2xl overflow-hidden"
       >
         <header className="px-4 py-3 border-b border-zinc-800 flex items-center gap-2">
-          <span className="text-sm font-semibold">➕ 加载素材到画布</span>
+          <span className="text-sm font-semibold">{t('picker.title')}</span>
           <span className="text-[11px] text-zinc-500">
-            案例库(方案) + 灵感池(灵感)
+            {t('picker.subtitle')}
           </span>
           <button
             type="button"
             onClick={onClose}
             className="ml-auto text-zinc-500 hover:text-zinc-200 text-sm"
           >
-            关闭
+            {t('picker.close')}
           </button>
         </header>
 
@@ -83,8 +85,8 @@ export function MaterialPicker({ loadedIds, onPick, onClose }: MaterialPickerPro
                 }
               >
                 {k === 'all'
-                  ? '全部'
-                  : `${MATERIAL_KIND_META[k].emoji} ${MATERIAL_KIND_META[k].label}`}
+                  ? t('picker.all')
+                  : `${MATERIAL_KIND_META[k].emoji} ${k === 'solution' ? t('material.kind.solution') : t('material.kind.inspiration')}`}
               </button>
             ))}
           </div>
@@ -92,7 +94,7 @@ export function MaterialPicker({ loadedIds, onPick, onClose }: MaterialPickerPro
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="搜索素材…"
+            placeholder={t('picker.searchPlaceholder')}
             className="ml-auto flex-1 max-w-[220px] px-2.5 py-1 text-xs rounded bg-zinc-800 border border-zinc-700 focus:outline-none focus:border-amber-500/50"
           />
         </div>
@@ -102,11 +104,11 @@ export function MaterialPicker({ loadedIds, onPick, onClose }: MaterialPickerPro
             <p className="text-xs text-rose-400 p-2">{error}</p>
           )}
           {!materials && !error && (
-            <p className="text-xs text-zinc-500 p-2">加载素材中…</p>
+            <p className="text-xs text-zinc-500 p-2">{t('picker.loading')}</p>
           )}
           {materials && filtered.length === 0 && (
             <p className="text-xs text-zinc-500 p-3">
-              没有匹配的素材。专家组采纳会入「案例库(方案)」，Lens 捕获会进「灵感池(灵感)」。
+              {t('picker.emptyHint')}
             </p>
           )}
           <ul className="flex flex-col gap-1.5">
@@ -128,14 +130,14 @@ export function MaterialPicker({ loadedIds, onPick, onClose }: MaterialPickerPro
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-amber-300 flex-shrink-0">
-                        {meta.emoji} {meta.label}
+                        {meta.emoji} {m.kind === 'solution' ? t('material.kind.solution') : t('material.kind.inspiration')}
                       </span>
                       <span className="text-xs font-medium truncate">
                         {m.title}
                       </span>
                       {loaded && (
                         <span className="ml-auto text-[10px] text-zinc-500 flex-shrink-0">
-                          已在画布
+                          {t('picker.loaded')}
                         </span>
                       )}
                     </div>

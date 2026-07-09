@@ -5,6 +5,8 @@ import type {
 } from '@nodx/models';
 import { markdownToHtml } from '../../lib/markdown.js';
 import { roleStyle } from './roles.js';
+import { useT } from '../../i18n/index.js';
+import type { StringKey } from '../../i18n/index.js';
 
 interface PanelTranscriptProps {
   rounds: PanelRound[];
@@ -13,17 +15,17 @@ interface PanelTranscriptProps {
   activeRoundId?: string | null;
 }
 
-const ROUND_LABEL: Record<PanelRound['type'], string> = {
-  initial: '第 1 轮 · 独立首发',
-  critique: '第 2 轮 · 交叉质疑',
-  refined: '第 3 轮 · 修正立场',
-  synthesis: '主持人综合',
+const ROUND_LABEL_KEY: Record<PanelRound['type'], StringKey> = {
+  initial: 'transcript.round.initial',
+  critique: 'transcript.round.critique',
+  refined: 'transcript.round.refined',
+  synthesis: 'transcript.round.synthesis',
 };
 
-const STOP_SIGNAL_LABEL: Record<PanelStopSignal, string> = {
-  semantic_convergence: '语义收敛',
-  marginal_decay: '边际改进递减',
-  max_rounds: '达到轮数上限',
+const STOP_SIGNAL_KEY: Record<PanelStopSignal, StringKey> = {
+  semantic_convergence: 'transcript.stop.semantic',
+  marginal_decay: 'transcript.stop.decay',
+  max_rounds: 'transcript.stop.maxRounds',
 };
 
 /**
@@ -37,6 +39,7 @@ export function PanelTranscript({
   members,
   activeRoundId,
 }: PanelTranscriptProps) {
+  const { t } = useT();
   const byId = new Map(members.map((m) => [m.id, m]));
   return (
     <ol className="flex flex-col gap-5">
@@ -44,26 +47,26 @@ export function PanelTranscript({
         <li key={round.id}>
           <div className="flex items-center gap-2 mb-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-accent">
-              {ROUND_LABEL[round.type]}
+              {t(ROUND_LABEL_KEY[round.type])}
             </h3>
             {round.stopSignalsHit?.map((sig) => (
               <span
                 key={sig}
                 className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent-soft border border-accent/30 text-accent"
-                title="收敛判官触发的停止信号"
+                title={t('transcript.stop.tip')}
               >
-                {STOP_SIGNAL_LABEL[sig]}
+                {t(STOP_SIGNAL_KEY[sig])}
               </span>
             ))}
           </div>
 
           {round.type === 'synthesis' ? (
             <p className="text-xs text-ink-muted italic pl-3">
-              主持人已综合全部立场 → 见下方 Local Max
+              {t('transcript.synthDone')}
             </p>
           ) : round.exchanges.length === 0 ? (
             <p className="text-xs text-ink-muted italic pl-3">
-              {activeRoundId === round.id ? '专家发言生成中…' : '（无发言）'}
+              {activeRoundId === round.id ? t('transcript.streaming') : t('transcript.empty')}
             </p>
           ) : (
             <ul className="flex flex-col gap-3">

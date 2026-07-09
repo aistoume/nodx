@@ -30,10 +30,16 @@ interface AttentionRow {
   promoted_to_topic_id: string | null;
   captured_at: number;
   ingested_at: number;
+  image_path: string | null;
+  image_mime: string | null;
+  image_width: number | null;
+  image_height: number | null;
 }
 
 const SELECT_COLUMNS =
-  'id, text, explanation, source_url, source_title, source_kind, kind, tags_json, promoted_to_topic_id, captured_at, ingested_at';
+  'id, text, explanation, source_url, source_title, source_kind, kind, ' +
+  'tags_json, promoted_to_topic_id, captured_at, ingested_at, ' +
+  'image_path, image_mime, image_width, image_height';
 
 function rowToAttention(r: AttentionRow): Attention {
   let tags: string[] = [];
@@ -55,6 +61,10 @@ function rowToAttention(r: AttentionRow): Attention {
     ...(r.promoted_to_topic_id != null
       ? { promotedToTopicId: r.promoted_to_topic_id }
       : {}),
+    ...(r.image_path != null ? { imagePath: r.image_path } : {}),
+    ...(r.image_mime != null ? { imageMime: r.image_mime } : {}),
+    ...(r.image_width != null ? { imageWidth: r.image_width } : {}),
+    ...(r.image_height != null ? { imageHeight: r.image_height } : {}),
     capturedAt: r.captured_at,
     ingestedAt: r.ingested_at,
   });
@@ -160,6 +170,11 @@ export interface CreateAttentionInput {
   kind: AttentionKind;
   tags?: string[];
   capturedAt?: number;
+  /** Optional image fields (v14). Filesystem path, not a URL. */
+  imagePath?: string;
+  imageMime?: string;
+  imageWidth?: number;
+  imageHeight?: number;
 }
 
 export async function createAttention(
@@ -173,8 +188,9 @@ export async function createAttention(
     `INSERT INTO attentions (
        id, text, explanation, source_url, source_title,
        source_kind, kind, tags_json, promoted_to_topic_id,
-       captured_at, ingested_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+       captured_at, ingested_at,
+       image_path, image_mime, image_width, image_height
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       input.text,
@@ -186,6 +202,10 @@ export async function createAttention(
       JSON.stringify(input.tags ?? []),
       input.capturedAt ?? now,
       now,
+      input.imagePath ?? null,
+      input.imageMime ?? null,
+      input.imageWidth ?? null,
+      input.imageHeight ?? null,
     ],
   );
 

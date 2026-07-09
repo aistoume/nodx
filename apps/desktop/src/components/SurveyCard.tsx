@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { SurveyFactor } from '@nodx/ai';
 import type { Message } from '@nodx/models';
 import { parseSurveyContent } from '../db/messages.js';
+import { useT } from '../i18n/index.js';
 
 interface SurveyCardProps {
   message: Message;
@@ -30,6 +31,7 @@ export function SurveyCard({
   onAddCustom,
   decomposing,
 }: SurveyCardProps) {
+  const { t } = useT();
   const data = useMemo(() => parseSurveyContent(message.content), [
     message.content,
   ]);
@@ -58,23 +60,23 @@ export function SurveyCard({
 
   const handleAddCustom = async () => {
     if (isCompleted || decomposing || adding) return;
-    const t = customTitle.trim();
-    if (!t) return;
-    if (t.length > MAX_CUSTOM_TITLE_LEN) {
-      setAddError(`标题请控制在 ${MAX_CUSTOM_TITLE_LEN} 字以内`);
+    const title = customTitle.trim();
+    if (!title) return;
+    if (title.length > MAX_CUSTOM_TITLE_LEN) {
+      setAddError(t('survey.errorTooLong', { max: String(MAX_CUSTOM_TITLE_LEN) }));
       return;
     }
     const dup = data.factors.some(
-      (f) => f.title.trim().toLowerCase() === t.toLowerCase(),
+      (f) => f.title.trim().toLowerCase() === title.toLowerCase(),
     );
     if (dup) {
-      setAddError('已经有同名维度');
+      setAddError(t('survey.errorDuplicate'));
       return;
     }
     setAdding(true);
     setAddError(null);
     try {
-      const newId = await onAddCustom(t);
+      const newId = await onAddCustom(title);
       setCustomTitle('');
       setPicked((prev) => {
         const next = new Set(prev);
@@ -106,8 +108,11 @@ export function SurveyCard({
           </span>
           <h3 className="text-sm font-medium text-ink">
             {isCompleted
-              ? '已选定的关注维度'
-              : `选感兴趣的维度（建议 ${SUGGESTED_MIN}–${SUGGESTED_MAX} 个，全选也行）`}
+              ? t('survey.titleDone')
+              : t('survey.titlePick', {
+                  min: String(SUGGESTED_MIN),
+                  max: String(SUGGESTED_MAX),
+                })}
           </h3>
         </header>
 
@@ -146,7 +151,7 @@ export function SurveyCard({
                             : 'border-accent/40 text-accent')
                         }
                       >
-                        自定义
+                        {t('survey.customBadge')}
                       </span>
                     )}
                     {f.hint && !isCustom && (
@@ -182,7 +187,7 @@ export function SurveyCard({
                     void handleAddCustom();
                   }
                 }}
-                placeholder="自己补一个 AI 没列出的维度…"
+                placeholder={t('survey.customPlaceholder')}
                 maxLength={MAX_CUSTOM_TITLE_LEN}
                 disabled={adding || decomposing}
                 className="flex-1 px-2.5 py-1.5 text-sm border border-border rounded-md bg-surface focus:outline-none focus:border-accent transition"
@@ -193,7 +198,7 @@ export function SurveyCard({
                 disabled={!customTitle.trim() || adding || decomposing}
                 className="px-3 py-1.5 text-xs font-medium rounded-md border border-accent text-accent hover:bg-accent hover:text-white disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-accent transition"
               >
-                {adding ? '…' : '+ 添加'}
+                {adding ? '…' : t('survey.addBtn')}
               </button>
             </div>
             {addError && (
@@ -205,12 +210,15 @@ export function SurveyCard({
         {!isCompleted && (
           <footer className="mt-3 flex items-center justify-between gap-3">
             <span className="text-xs text-ink-muted">
-              已选 {picked.size}
+              {t('survey.picked', { n: String(picked.size) })}
               {picked.size > 0 &&
                 (picked.size < SUGGESTED_MIN ||
                   picked.size > SUGGESTED_MAX) && (
                   <span className="ml-1 opacity-70">
-                    （建议 {SUGGESTED_MIN}–{SUGGESTED_MAX}，但你说了算）
+                    {t('survey.pickedHint', {
+                      min: String(SUGGESTED_MIN),
+                      max: String(SUGGESTED_MAX),
+                    })}
                   </span>
                 )}
             </span>
@@ -220,14 +228,14 @@ export function SurveyCard({
               disabled={continueDisabled}
               className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
             >
-              {decomposing ? '拆解中…' : '继续 →'}
+              {decomposing ? t('survey.decomposing') : t('survey.continue')}
             </button>
           </footer>
         )}
 
         {isCompleted && (
           <p className="mt-3 text-xs text-ink-muted">
-            未选项暂保留为候选，后续可在这里重启。
+            {t('survey.remainderHint')}
           </p>
         )}
       </div>

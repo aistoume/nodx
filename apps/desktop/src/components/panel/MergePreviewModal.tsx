@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { markdownToHtml } from '../../lib/markdown.js';
+import { useT } from '../../i18n/index.js';
 
 interface MergePreviewModalProps {
   /** Sonnet-generated Markdown section to fold into the document. */
@@ -28,11 +29,16 @@ export function MergePreviewModal({
   busy,
   onConfirm,
   onClose,
-  title = '📄 归纳进文档 · 预览可编辑',
-  hint = '这一节将追加到左侧思考文档末尾，插入前可自由修改',
-  confirmLabel = '插入到文档末尾',
-  busyLabel = '插入中…',
+  title,
+  hint,
+  confirmLabel,
+  busyLabel,
 }: MergePreviewModalProps) {
+  const { t } = useT();
+  const resolvedTitle = title ?? t('merge.title');
+  const resolvedHint = hint ?? t('merge.hint');
+  const resolvedConfirm = confirmLabel ?? t('merge.confirm');
+  const resolvedBusyLabel = busyLabel ?? t('merge.busy');
   const [md, setMd] = useState(initialMarkdown);
   const html = useMemo(() => markdownToHtml(md), [md]);
   const empty = md.trim().length === 0;
@@ -47,21 +53,21 @@ export function MergePreviewModal({
         className="bg-surface rounded-lg shadow-2xl w-full max-w-5xl max-h-[85vh] flex flex-col overflow-hidden"
       >
         <header className="px-6 py-3 border-b border-border flex items-center gap-2 shrink-0">
-          <span className="text-sm font-semibold text-ink">{title}</span>
-          <span className="text-[11px] text-ink-muted">{hint}</span>
+          <span className="text-sm font-semibold text-ink">{resolvedTitle}</span>
+          <span className="text-[11px] text-ink-muted">{resolvedHint}</span>
           <button
             type="button"
             onClick={onClose}
             className="ml-auto px-2.5 py-1 text-xs text-ink-muted hover:text-ink"
           >
-            关闭
+            {t('picker.close')}
           </button>
         </header>
 
         <div className="flex-1 min-h-0 grid grid-cols-2 divide-x divide-border">
           <div className="flex flex-col min-h-0">
             <p className="px-4 pt-3 pb-1 text-[11px] uppercase tracking-wider text-ink-muted">
-              Markdown（可编辑）
+              {t('merge.mdLabel')}
             </p>
             <textarea
               value={md}
@@ -72,7 +78,7 @@ export function MergePreviewModal({
           </div>
           <div className="flex flex-col min-h-0">
             <p className="px-4 pt-3 pb-1 text-[11px] uppercase tracking-wider text-ink-muted">
-              预览
+              {t('merge.previewLabel')}
             </p>
             <div
               className="prose-doc flex-1 overflow-y-auto px-5 py-2 text-sm text-ink"
@@ -88,7 +94,7 @@ export function MergePreviewModal({
             disabled={busy}
             className="px-3 py-1.5 text-xs font-medium rounded border border-border text-ink-muted hover:text-ink disabled:opacity-40 transition"
           >
-            取消
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -96,7 +102,7 @@ export function MergePreviewModal({
             disabled={busy || empty}
             className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
           >
-            {busy ? busyLabel : confirmLabel}
+            {busy ? resolvedBusyLabel : resolvedConfirm}
           </button>
         </footer>
       </div>

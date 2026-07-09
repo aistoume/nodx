@@ -51,3 +51,9 @@ coverage/
 # Obsidian metadata
 .obsidian/workspace.json
 .obsidian/workspace-mobile.json
+
+# Local Claude Code config
+.claude/
+
+# Pitch deck build scripts — kept local, not on GitHub
+pitch/

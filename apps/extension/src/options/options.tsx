@@ -12,7 +12,7 @@ import { setLocale, t, type Language } from '../shared/i18n.js';
 const MODELS: Record<Provider, { explain: string[]; deepen: string[]; help: string }> = {
   anthropic: {
     explain: ['claude-haiku-4-5'],
-    deepen: ['claude-sonnet-4-6', 'claude-opus-4-6'],
+    deepen: ['claude-sonnet-5', 'claude-opus-4-6'],
     help: 'Get an Anthropic key at console.anthropic.com/settings/keys',
   },
   openai: {
@@ -42,8 +42,12 @@ function App() {
 
   if (!settings) return <div className="loading">{t('loading')}</div>;
 
+  // Local capture — TS's control-flow analysis widens the outer `settings`
+  // back to `Settings | null` inside the nested closure, so we make the
+  // narrowed value explicit.
+  const s = settings;
   async function save(patch: Partial<Settings>) {
-    const next = { ...settings, ...patch };
+    const next: Settings = { ...s, ...patch };
     setSettingsState(next);
     await setSettings(patch);
     setSavedAt(Date.now());
@@ -142,6 +146,39 @@ function App() {
           }
         >
           {helps.deepen.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+      </section>
+
+      <section>
+        <label>{t('imageGenSection')}</label>
+        <p className="hint">{t('imageGenHelp')}</p>
+        <input
+          type="password"
+          value={settings.imageGen.apiKey}
+          placeholder="AIza…"
+          onInput={(e) =>
+            void save({
+              imageGen: {
+                ...settings.imageGen,
+                apiKey: (e.target as HTMLInputElement).value,
+              },
+            })
+          }
+        />
+        <select
+          value={settings.imageGen.model}
+          onChange={(e) =>
+            void save({
+              imageGen: {
+                ...settings.imageGen,
+                model: (e.target as HTMLSelectElement).value,
+              },
+            })
+          }
+        >
+          {['gemini-2.5-flash-image'].map((m) => (
             <option key={m} value={m}>{m}</option>
           ))}
         </select>

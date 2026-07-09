@@ -1,8 +1,10 @@
 import {
   ExplainOutputSchema,
   EXPLAIN_PROMPT_MODEL,
+  MODELS,
   buildExplainPrompt,
 } from '@nodx/ai';
+import { invoke } from '@tauri-apps/api/core';
 import { ai } from './gateway.js';
 
 export interface ExplainResult {
@@ -20,6 +22,79 @@ export interface ExplainResult {
  * Errors are wrapped with a human-readable hint when we can tell what
  * went wrong — most commonly the AI gateway isn't running.
  */
+/**
+ * Ask Claude vision to describe the captured image.
+ *
+ * Unlike `explainSelection`, this one goes via `completeText` (raw text)
+ * rather than `complete` (JSON + Zod). Reason: Sonnet frequently quotes
+ * Chinese characters inside its explanation, e.g. 「包括中文"維"、」;
+ * inside a JSON string those inner double-quotes must be escaped, which
+ * Sonnet doesn't reliably do → JSON.parse blows up. Text output sidesteps
+ * that whole class of failure — we just trim + take what the model wrote.
+ *
+ * `imagePath` is a filesystem path (absolute) — usually the `imagePath`
+ * field of an image-capture Attention. We hand it to a Tauri command
+ * that reads the bytes + base64-encodes them, then send both to the
+ * in-proc gateway which forwards to Anthropic's messages API with an
+ * image content block.
+ *
+ * Model choice: Sonnet, because vision quality matters far more than
+ * speed here (Haiku vision is significantly worse at reading text and
+ * layouts inside screenshots).
+ */
+export async function explainImage(
+  imagePath: string,
+  context?: string,
+): Promise<ExplainResult> {
+  try {
+    const [imageBase64, imageMime] = await invoke<[string, string]>(
+      'read_media_file',
+      { path: imagePath },
+    );
+    const prompt =
+      '看这张截图，用一句话（50–150 字）说清楚它是什么、展示了什么核心内容。' +
+      '有图表/数字就点出关键数字；是产品 UI 就说清是什么产品的什么界面；' +
+      '是文档/文字就概括主旨。目标读者是企业管理层，不要学究气。' +
+      '只输出解释本身，不要"这张图片显示"这种开场白，不要代码块，不要 JSON。' +
+      (context ? `\n\n上下文来源：${context}` : '');
+
+    const r = await ai.completeText({
+      prompt,
+      model: MODELS.sonnet,
+      maxTokens: 600,
+      temperature: 0.3,
+      imageBase64,
+      imageMime,
+    });
+    return {
+      explanation: cleanExplanation(r.text),
+      inputTokens: r.usage.inputTokens,
+      outputTokens: r.usage.outputTokens,
+    };
+  } catch (err) {
+    throw friendlierAiError(err);
+  }
+}
+
+/**
+ * Strip common code-fence / JSON envelope patterns Sonnet sometimes wraps
+ * around a plain answer (```json …```, `{"explanation": "…"}` etc.),
+ * fall back to the raw text if none matches. Also trims whitespace.
+ */
+function cleanExplanation(raw: string): string {
+  let s = raw.trim();
+  // Strip ```lang ... ``` fences (single-fenced, multi-fenced).
+  s = s.replace(/^```(?:json|markdown|md)?\s*/i, '').replace(/```\s*$/i, '');
+  s = s.trim();
+  // If the model still gave us a JSON envelope, pull `explanation` out
+  // with a regex — no JSON.parse, so unescaped inner quotes don't kill us.
+  const m = s.match(/"explanation"\s*:\s*"([\s\S]+?)"\s*[},]/);
+  if (m && m[1]) return m[1].trim();
+  // Or a bare `{ ... }` around the whole thing.
+  s = s.replace(/^\{\s*/, '').replace(/\s*\}$/, '').trim();
+  return s;
+}
+
 export async function explainSelection(
   selection: string,
   context?: string,

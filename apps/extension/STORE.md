@@ -4,6 +4,22 @@
 
 ---
 
+## v0.7.0 更新说明（如果是 update 而不是首次上架）
+
+**主要新功能**：Side panel + 持久截图高亮 + 图片 Q&A
+
+- 点扩展图标不再弹小 popup，而是打开右侧 side panel（Chrome 114+ 原生支持）
+- Side panel 顶部有 **📸 Screenshot region** 按钮：网页上任意位置框选 → 截图变成一张"灵感卡片"
+- 每张截图会作为**黄色边框标注**留在网页上（同一 URL 跨 session 保留，localStorage-based）
+- Side panel 里每张卡有独立的 Q&A 输入框，可对着 Sonnet vision 追问关于这张截图的任何问题
+- 默认自动同步截图到 nodx desktop 灵感池（可关，走 `http://127.0.0.1:8787/v1/capture-image`）
+
+**新权限**：
+- `sidePanel` — 打开 Chrome 侧边栏面板
+- `http://127.0.0.1:8787/*` host permission — 同步截图到本地 nodx desktop 服务（optional，用户可关）
+
+---
+
 ## Name (最多 45 字符)
 
 ```
@@ -241,7 +257,23 @@ nodx Lens has a single purpose: provide on-page AI explanations for user-selecte
 
 ### activeTab
 ```
-We use activeTab to inject the explanation panel (a Shadow DOM overlay) into the page the user is currently reading, so the panel appears in the right context relative to their selection. The content script never reads or modifies page contents on its own — it only activates in response to a deliberate user action (text selection followed by clicking the floating trigger).
+We use activeTab for two features that are both directly initiated by a user click on the extension icon or a button in the side panel:
+
+1. Inject the explanation panel (a Shadow DOM overlay) into the current page so text-selection explanations appear in the right context.
+
+2. chrome.tabs.captureVisibleTab so the user can marquee-select a region of the page they're reading. The screenshot bytes never leave the user's machine except (optionally) to the local nodx desktop app running on 127.0.0.1.
+
+The content script never reads or modifies page contents on its own — it activates only in response to explicit user actions (text selection + clicking the trigger, or clicking "Screenshot region" in the side panel).
+```
+
+### sidePanel
+```
+We use Chrome's sidePanel API to show a per-tab "inspiration inbox" that lists every screenshot the user has taken on the current webpage, plus their Q&A history for each one. The side panel replaces the small popup from previous versions as the extension's main surface — clicking the toolbar icon opens/closes it. All data shown in the side panel comes from the user's own chrome.storage.local; nothing is fetched from a nodx server.
+```
+
+### Host permission — http://127.0.0.1:8787/*
+```
+When the user has the companion nodx desktop app installed and running, the extension can (optionally, off by a checkbox) POST a captured screenshot to nodx desktop's local HTTP server (127.0.0.1:8787) so it lands in the desktop app's inspiration pool automatically. This is entirely local: 127.0.0.1 addresses never leave the user's own machine, and the toggle defaults to on but can be turned off in the side panel at any time. If the desktop app isn't running, the POST silently times out and the extension's own side-panel copy of the screenshot is unaffected.
 ```
 
 ### storage
@@ -254,9 +286,13 @@ We use storage to persist (1) the user's API key for their chosen AI provider, (
 The background service worker calls the AI provider the user selected (Anthropic, OpenAI, or Google) directly from the user's browser using the API key the user supplied. We do not proxy these calls through any nodx-controlled server. host_permissions for these three hostnames is necessary so the worker's fetch() can reach the provider.
 ```
 
-### Why <all_urls> in content_scripts
+### Why <all_urls> in content_scripts + host_permissions (v0.7.1)
 ```
-The extension's value is that "select text, get an explanation" works on ANY webpage the user happens to be reading. We do not know in advance which sites the user will read. The content script is otherwise inert — it observes selection events but does not read page contents until the user actively clicks the "🔍 explain" floating button.
+Two reasons:
+
+1. Content script <all_urls> — the extension's value is that "select text, get an explanation" and "screenshot a region" work on ANY webpage the user happens to be reading. We do not know in advance which sites they will read. The content script is otherwise inert — it observes selection events and installs an idle highlight-layer, but does not read page contents until the user actively clicks the "🔍 explain" floating button or the "📸 Screenshot region" button in the side panel.
+
+2. host_permissions <all_urls> — Chrome's activeTab permission is granted only when the user directly invokes the extension via toolbar click, keyboard shortcut, or context menu. Clicking a button inside the side panel does NOT count as invocation, so activeTab is NOT available at the moment the user clicks "📸 Screenshot region" in the side panel — even though they clearly asked for a screenshot of the visible tab. host_permissions <all_urls> is required for chrome.tabs.captureVisibleTab() to work in this UX. The screenshot bytes never leave the user's machine except (optionally, off by a checkbox) to their own nodx desktop app running on 127.0.0.1.
 ```
 
 ---

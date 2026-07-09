@@ -26,6 +26,8 @@ pub struct EmbedResponse {
 pub struct GeminiError {
     pub status: u16,
     pub message: String,
+    /// Raw upstream body, kept for future error reporting / diagnostics.
+    #[allow(dead_code)]
     pub upstream_body: String,
 }
 

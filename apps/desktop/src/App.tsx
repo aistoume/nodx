@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Attention, Comment, MaterialKind, Topic } from '@nodx/models';
 import { listen } from '@tauri-apps/api/event';
+import { t as tPure } from './i18n/index.js';
 import { Header } from './components/Header.js';
 import { LeftPanel } from './components/LeftPanel.js';
 import { CenterPanel } from './components/CenterPanel.js';
@@ -35,6 +36,16 @@ interface CapturePayload {
   sourceKind: 'lens-chrome' | 'lens-mac' | 'manual';
   kind: 'explain' | 'quick';
   capturedAt: number;
+  /**
+   * Image-capture fields (v14+, POST /v1/capture-image path). When set,
+   * the payload came from Lens's marquee-screenshot flow — the image
+   * already lives on disk at `imagePath` and the row should carry the
+   * path + dimensions through to the DB layer.
+   */
+  imagePath?: string;
+  imageMime?: string;
+  imageWidth?: number;
+  imageHeight?: number;
 }
 
 const OPEN_TABS_KEY = 'nodx:open-topic-tabs:v1';
@@ -235,6 +246,10 @@ export function App() {
           sourceKind: p.sourceKind,
           kind: p.kind,
           capturedAt: p.capturedAt,
+          ...(p.imagePath ? { imagePath: p.imagePath } : {}),
+          ...(p.imageMime ? { imageMime: p.imageMime } : {}),
+          ...(p.imageWidth ? { imageWidth: p.imageWidth } : {}),
+          ...(p.imageHeight ? { imageHeight: p.imageHeight } : {}),
         });
         // Open the inbox so the user sees the new row, and bump the tick.
         setView('attention');
@@ -259,10 +274,10 @@ export function App() {
         rawTitle.length > 60 ? `${rawTitle.slice(0, 57)}…` : rawTitle;
       const topic = await createTopic({ title });
       // Seed message — preserves attribution so the AI can see where it came from.
-      const lines: string[] = [`【来自灵感池 · ${a.sourceTitle || a.sourceUrl}】`];
+      const lines: string[] = [tPure('app.promote.fromPool', { src: a.sourceTitle || a.sourceUrl })];
       lines.push('', `> ${a.text}`);
       if (a.explanation && a.explanation.trim()) {
-        lines.push('', `（Lens 解释）${a.explanation}`);
+        lines.push('', tPure('app.promote.lensNote', { expl: a.explanation }));
       }
       await createUserMessage(topic.id, lines.join('\n'));
       await markPromoted(a.id, topic.id);

@@ -38,6 +38,7 @@ import { TopicNode, type TopicNodeData } from './graph/TopicNode.js';
 import { MaterialNode, type MaterialNodeData } from './graph/MaterialNode.js';
 import { MaterialPicker } from './graph/MaterialPicker.js';
 import { SynthesisModal } from './graph/SynthesisModal.js';
+import { useT, t as tPure } from '../i18n/index.js';
 import { listMaterials } from '../db/materials.js';
 
 // ============================================================================
@@ -258,6 +259,7 @@ function NetworkGraphInner({
   onOpenMaterialLibrary,
   onRequestNewCanvas,
 }: NetworkGraphViewProps) {
+  const { t } = useT();
   const rf = useReactFlow();
 
   // Restrict the canvas to the selected topic's root subtree — one main
@@ -394,7 +396,7 @@ function NetworkGraphInner({
       const data: MaterialNodeData = {
         materialId: lm.id,
         kind: lm.kind,
-        title: ref?.title ?? '（素材已删除）',
+        title: ref?.title ?? tPure('nx.materialDeleted'),
         ...(ref?.subtitle ? { subtitle: ref.subtitle } : {}),
         ...(ref?.body ? { body: ref.body } : {}),
         isSelected: selectedMaterialId === lm.id,
@@ -618,14 +620,14 @@ function NetworkGraphInner({
   if (!rootTopic) {
     return (
       <div className="h-full relative flex flex-col items-center justify-center gap-3 text-ink-muted">
-        请先在左侧选一个话题
+        {t('nx.pickFirst')}
         {onRequestNewCanvas && (
           <button
             type="button"
             onClick={() => setNewCanvasName('')}
             className="px-3 py-1.5 rounded-md bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 hover:bg-emerald-600/30 text-xs"
           >
-            🆕 新建空白画布
+            {t('nx.newBlankCanvas')}
           </button>
         )}
         {newCanvasModal}
@@ -637,22 +639,22 @@ function NetworkGraphInner({
     <div className="h-full flex flex-col bg-zinc-950 relative">
       {/* Header strip — ComfyUI-style toolbar */}
       <div className="px-4 py-2 border-b border-zinc-800 flex items-center gap-3 text-zinc-300 text-sm">
-        <span className="text-zinc-500">网络图 ·</span>
+        <span className="text-zinc-500">{t('nx.headerLabel')}</span>
         <span className="font-semibold truncate max-w-[400px]">
           {rootTopic.title}
         </span>
         <span className="text-zinc-600 text-xs">
-          {subtree.length} 节点 · {edges.length} 边
-          {loaded.length > 0 && ` · ${loaded.length} 素材`}
+          {t('nx.stats.nodesEdges', { n: String(subtree.length), e: String(edges.length) })}
+          {loaded.length > 0 && t('nx.stats.materialsSuffix', { n: String(loaded.length) })}
         </span>
         {onRequestNewCanvas && (
           <button
             type="button"
             onClick={() => setNewCanvasName('')}
             className="ml-auto px-2.5 py-1 rounded-md bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 hover:bg-emerald-600/30 text-xs"
-            title="新建一个空白话题作为画布，在上面加载素材、连线、综合"
+            title={t('nx.newCanvasTip')}
           >
-            🆕 新画布
+            {t('nx.newCanvasBtn')}
           </button>
         )}
         <button
@@ -662,24 +664,24 @@ function NetworkGraphInner({
             (onRequestNewCanvas ? '' : 'ml-auto ') +
             'px-2.5 py-1 rounded-md bg-amber-600/20 text-amber-300 border border-amber-600/40 hover:bg-amber-600/30 text-xs'
           }
-          title="从素材库（案例库/灵感池）加载一个素材节点到画布"
+          title={t('nx.loadMaterialTip')}
         >
-          ➕ 加载素材
+          {t('nx.loadMaterialBtn')}
         </button>
         <button
           type="button"
           onClick={handleAutoLayout}
           className="px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-xs"
-          title="按层级重新排版"
+          title={t('nx.autoLayoutTip')}
         >
-          ⎌ 自动整理
+          {t('nx.autoLayoutBtn')}
         </button>
         <button
           type="button"
           onClick={() => rf.fitView({ padding: 0.2, duration: 400 })}
           className="px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-xs"
         >
-          ⊡ 适配窗口
+          {t('nx.fitBtn')}
         </button>
       </div>
 
@@ -733,7 +735,7 @@ function NetworkGraphInner({
         <SynthesisModal
           topicId={synthTopicId}
           topicTitle={
-            subtree.find((t) => t.id === synthTopicId)?.title ?? '思考节点'
+            subtree.find((tp) => tp.id === synthTopicId)?.title ?? t('nx.thinkingNode')
           }
           materials={links
             .filter((l) => l.topicId === synthTopicId)
@@ -765,7 +767,8 @@ function NewCanvasPrompt({
   onCreate: (name: string) => void;
   onClose: () => void;
 }) {
-  const submit = () => onCreate(name.trim() || '新画布');
+  const { t } = useT();
+  const submit = () => onCreate(name.trim() || t('nx.newCanvasFallback'));
   return (
     <div className="absolute inset-0 z-30 flex" onMouseDown={onClose}>
       <div className="absolute inset-0 bg-black/45" />
@@ -773,10 +776,9 @@ function NewCanvasPrompt({
         onMouseDown={(e) => e.stopPropagation()}
         className="relative m-auto w-[380px] rounded-xl border border-zinc-700 bg-zinc-900 text-zinc-100 shadow-2xl p-4 flex flex-col gap-3"
       >
-        <p className="text-sm font-semibold">🆕 新建空白画布</p>
+        <p className="text-sm font-semibold">{t('nx.newBlankCanvas')}</p>
         <p className="text-[11px] text-zinc-500 leading-relaxed">
-          给这块画布起个名字（就是话题标题）。创建后是空白的，不会自动跑 Survey；
-          你可以加载素材、连线、综合，想起步时再手动跑 Survey。
+          {t('nx.newCanvasDesc')}
         </p>
         <input
           type="text"
@@ -787,7 +789,7 @@ function NewCanvasPrompt({
             if (e.key === 'Enter') submit();
             if (e.key === 'Escape') onClose();
           }}
-          placeholder="例：东南亚市场进入研究"
+          placeholder={t('nx.newCanvasPlaceholder')}
           className="px-3 py-2 text-sm rounded-md bg-zinc-800 border border-zinc-700 focus:outline-none focus:border-emerald-500/60"
         />
         <div className="flex items-center justify-end gap-2">
@@ -796,14 +798,14 @@ function NewCanvasPrompt({
             onClick={onClose}
             className="px-2.5 py-1.5 text-xs rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200"
           >
-            取消
+            {t('common.cancel')}
           </button>
           <button
             type="button"
             onClick={submit}
             className="px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-500 transition"
           >
-            创建画布
+            {t('nx.createCanvasBtn')}
           </button>
         </div>
       </div>

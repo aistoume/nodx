@@ -19,10 +19,9 @@ interface CompleteRequestBody {
 }
 
 const ALLOWED_MODELS = new Set([
-  'claude-sonnet-4-6',
+  'claude-sonnet-5',
   'claude-haiku-4-5',
   // dated aliases — Anthropic publishes these alongside the bare names
-  'claude-sonnet-4-6-20251001',
   'claude-haiku-4-5-20251001',
 ]);
 

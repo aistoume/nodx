@@ -24,6 +24,18 @@ pub struct CompleteRequest {
     pub enable_web_search: Option<bool>,
     #[serde(default)]
     pub assistant_prefill: Option<String>,
+    /**
+     * Optional image content (Claude vision). When present, the first
+     * user message becomes a [{type:'image'}, {type:'text'}] array
+     * instead of a bare string — the prompt still supplies the text
+     * part. Bytes are base64-encoded.
+     */
+    #[serde(default)]
+    #[serde(rename = "image_base64")]
+    pub image_base64: Option<String>,
+    #[serde(default)]
+    #[serde(rename = "image_mime")]
+    pub image_mime: Option<String>,
 }
 
 /// Response shape the desktop client expects from /v1/complete.
@@ -46,6 +58,9 @@ pub struct Usage {
 pub struct AnthropicError {
     pub status: u16,
     pub message: String,
+    /// Raw upstream body, kept for future error reporting / diagnostics.
+    /// Not read anywhere yet — silence the dead-code lint.
+    #[allow(dead_code)]
     pub upstream_body: String,
 }
 
@@ -70,9 +85,33 @@ pub async fn call_anthropic(
     client: &reqwest::Client,
     req: &CompleteRequest,
 ) -> Result<CompleteResponse, AnthropicError> {
+    // When an image is attached, the first user message becomes a
+    // multi-part content array (image then text). Otherwise we send the
+    // prompt as a bare string, matching the pre-vision contract.
+    let user_content: serde_json::Value = if let (Some(b64), Some(mime)) = (
+        req.image_base64.as_ref().filter(|s| !s.is_empty()),
+        req.image_mime.as_ref().filter(|s| !s.is_empty()),
+    ) {
+        serde_json::json!([
+            {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": mime,
+                    "data": b64,
+                }
+            },
+            {
+                "type": "text",
+                "text": req.prompt,
+            }
+        ])
+    } else {
+        serde_json::Value::String(req.prompt.clone())
+    };
     let mut messages = vec![serde_json::json!({
         "role": "user",
-        "content": req.prompt,
+        "content": user_content,
     })];
     if let Some(prefill) = &req.assistant_prefill {
         messages.push(serde_json::json!({

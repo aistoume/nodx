@@ -14,6 +14,8 @@ import { upsertDocument } from '../../db/documents.js';
 import { insertPanelSeed } from '../../db/panels.js';
 import { listCasesBrief, type CaseBrief } from '../../db/cases.js';
 import { markdownToHtml, markdownToInlineHtml } from '../../lib/markdown.js';
+import { useT, t as tPure } from '../../i18n/index.js';
+import type { StringKey } from '../../i18n/index.js';
 
 interface CaseSearchViewProps {
   /** Open a (newly created) topic in dialog view — used by the panel handoff. */
@@ -36,6 +38,7 @@ export function CaseSearchView({
   focusId,
   onFocusConsumed,
 }: CaseSearchViewProps) {
+  const { t } = useT();
   const [query, setQuery] = useState('');
   const [retrieval, setRetrieval] = useState<RetrievalResult | null>(null);
   const [report, setReport] = useState<FusionReport | null>(null);
@@ -63,8 +66,8 @@ export function CaseSearchView({
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setHighlightId(focusId);
     onFocusConsumed?.();
-    const t = window.setTimeout(() => setHighlightId(null), 2600);
-    return () => window.clearTimeout(t);
+    const timeoutId = window.setTimeout(() => setHighlightId(null), 2600);
+    return () => window.clearTimeout(timeoutId);
   }, [focusId, briefs, onFocusConsumed]);
 
   const run = async (label: string, fn: () => Promise<void>) => {
@@ -85,7 +88,7 @@ export function CaseSearchView({
     setQuery(q);
     setReport(null);
     setAdaptations({});
-    void run('检索中…', async () => {
+    void run(t('case.busy.retrieve'), async () => {
       setRetrieval(await retrieveCases(q));
     });
   };
@@ -93,13 +96,13 @@ export function CaseSearchView({
   const handleSearch = () => runSearch(query);
 
   const handleFuse = () =>
-    run('生成参考报告中（Sonnet，约 1 分钟）…', async () => {
+    run(t('case.busy.fuse'), async () => {
       if (!retrieval) return;
       setReport(await fuseCases(retrieval.query, retrieval.results));
     });
 
   const handleAdapt = (caseId: string) =>
-    run('适配改写中（Sonnet，约半分钟）…', async () => {
+    run(t('case.busy.adapt'), async () => {
       if (!retrieval) return;
       const sol = await adaptCase(retrieval.query, caseId);
       setAdaptations((prev) => ({ ...prev, [caseId]: sol }));
@@ -107,7 +110,7 @@ export function CaseSearchView({
 
   const handlePanelHandoff = async (sol: AdaptedSolution) => {
     if (!retrieval) return;
-    await run('新建话题（带差异点种子）…', async () => {
+    await run(t('case.busy.handoff'), async () => {
       const topic = await createTopic({
         title: retrieval.query,
         status: 'exploring',
@@ -132,15 +135,15 @@ export function CaseSearchView({
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-8 py-6 flex flex-col gap-5">
           <header>
-            <h1 className="text-xl font-semibold">案例库 · 复用检索</h1>
+            <h1 className="text-xl font-semibold">{t('case.title')}</h1>
             <p className="text-xs text-ink-muted mt-1 leading-relaxed">
-              输入一个新决策问题，从你过去达成结论的案例里找出相似的，借鉴而非照搬。
+              {t('case.subtitle')}
             </p>
           </header>
 
           {!isAiConfigured() && (
             <p className="text-sm text-ink-muted italic">
-              AI 网关未配置，无法检索。请配置 VITE_AI_CLIENT_TOKEN（及 worker 的 GEMINI_API_KEY）。
+              {t('case.aiNotConfigured')}
             </p>
           )}
 
@@ -152,7 +155,7 @@ export function CaseSearchView({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !busy) handleSearch();
               }}
-              placeholder="例如：要不要给一个新加密交易所做市？"
+              placeholder={t('case.queryPlaceholder')}
               className="flex-1 px-3 py-2 text-sm rounded-md border border-border bg-surface focus:border-accent outline-none"
             />
             <button
@@ -161,7 +164,7 @@ export function CaseSearchView({
               disabled={!!busy || !query.trim()}
               className="px-4 py-2 text-sm font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
             >
-              检索
+              {t('case.search')}
             </button>
           </div>
 
@@ -185,14 +188,14 @@ export function CaseSearchView({
 
           {retrieval && !busy && retrieval.results.length === 0 && (
             <p className="text-sm text-ink-muted italic">
-              案例库里还没有可匹配的案例（先去专家组里达成几个结论，采纳后会自动入库）。
+              {t('case.emptyMatch')}
             </p>
           )}
 
           {/* Sub-intents */}
           {retrieval && retrieval.subIntents.length > 0 && (
             <div className="text-xs text-ink-muted">
-              拆解的子意图：
+              {t('case.subIntents')}
               {retrieval.subIntents.map((s, i) => (
                 <span
                   key={i}
@@ -209,7 +212,7 @@ export function CaseSearchView({
             <section className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-accent">
-                  相似案例 Top {retrieval.results.length}
+                  {t('case.similarTop', { n: String(retrieval.results.length) })}
                 </h2>
                 <button
                   type="button"
@@ -217,7 +220,7 @@ export function CaseSearchView({
                   disabled={!!busy}
                   className="ml-auto px-2.5 py-1 text-xs font-medium rounded border border-accent text-accent hover:bg-accent hover:text-white disabled:opacity-40 transition"
                 >
-                  生成参考报告
+                  {t('case.fuseBtn')}
                 </button>
               </div>
               {retrieval.results.map((c) => (
@@ -241,11 +244,11 @@ export function CaseSearchView({
   );
 }
 
-const DECISION_TYPE_LABEL: Record<string, string> = {
-  go_no_go: '做/不做',
-  allocation: '资源分配',
-  sequencing: '先后顺序',
-  tradeoff: '多选权衡',
+const DECISION_TYPE_KEY: Record<string, StringKey> = {
+  go_no_go: 'case.decision.go_no_go',
+  allocation: 'case.decision.allocation',
+  sequencing: 'case.decision.sequencing',
+  tradeoff: 'case.decision.tradeoff',
 };
 
 function LibraryPreview({
@@ -257,11 +260,11 @@ function LibraryPreview({
   onPick: (query: string) => void;
   highlightId?: string | null;
 }) {
+  const { t } = useT();
   if (briefs.length === 0) {
     return (
       <div className="rounded-lg border border-border bg-surface p-4 text-sm text-ink-muted leading-relaxed">
-        案例库还是空的。先去 <span className="text-accent">🎙 专家组</span>{' '}
-        达成一个结论并「采纳」，它会自动抽象、入库，之后就能在这里检索复用了。
+        {t('case.libraryEmpty')}
       </div>
     );
   }
@@ -269,10 +272,10 @@ function LibraryPreview({
     <section className="flex flex-col gap-2">
       <div className="flex items-baseline gap-2">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-accent">
-          案例库（{briefs.length}）
+          {t('case.libraryTitle', { n: String(briefs.length) })}
         </h2>
         <span className="text-[11px] text-ink-muted">
-          点任意一个看看能检索到什么，或在上方输入你自己的新问题
+          {t('case.libraryHint')}
         </span>
       </div>
       <ul className="flex flex-col gap-2">
@@ -291,22 +294,24 @@ function LibraryPreview({
               <div className="flex items-center gap-2">
                 <span
                   className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-700"
-                  title="素材 · 方案（可从网络图「加载素材」拉到画布上）"
+                  title={t('case.materialTip')}
                 >
-                  🧩 素材·方案
+                  {t('case.materialBadge')}
                 </span>
                 <span className="text-sm font-medium text-ink">{c.domain}</span>
                 <span className="text-[10px] text-ink-muted">
-                  {DECISION_TYPE_LABEL[c.decisionType] ?? c.decisionType}
+                  {DECISION_TYPE_KEY[c.decisionType]
+                    ? t(DECISION_TYPE_KEY[c.decisionType]!)
+                    : c.decisionType}
                 </span>
                 <span className="ml-auto text-[11px] px-1.5 py-0.5 rounded-full bg-accent-soft border border-accent/30 text-accent">
-                  质量 {c.qualityScore.toFixed(2)}
+                  {t('case.qualityLabel')} {c.qualityScore.toFixed(2)}
                 </span>
               </div>
               <p className="text-xs text-ink-muted leading-relaxed line-clamp-2">
                 {c.signatureText}
               </p>
-              <span className="text-[11px] text-accent">↳ 用它试搜相似案例</span>
+              <span className="text-[11px] text-accent">{t('case.trySearchBtn')}</span>
             </button>
           </li>
         ))}
@@ -318,19 +323,19 @@ function LibraryPreview({
 /** Render an AdaptedSolution as the new topic's starting document. */
 function adaptationToMarkdown(sol: AdaptedSolution): string {
   const bullets = (items: string[]) =>
-    items.length ? items.map((s) => `- ${s}`).join('\n') : '（无）';
+    items.length ? items.map((s) => `- ${s}`).join('\n') : tPure('case.md.none');
   return [
-    '## 复用适配方案',
+    `## ${tPure('case.md.h1')}`,
     '',
-    `**可迁移骨架**：${sol.inheritedStructure}`,
+    `**${tPure('case.md.skeleton')}**：${sol.inheritedStructure}`,
     '',
-    '**新语境下的关键杠杆**',
+    `**${tPure('case.md.levers')}**`,
     bullets(sol.contextualizedLevers),
     '',
-    '**新增风险缓解**',
+    `**${tPure('case.md.risks')}**`,
     bullets(sol.newRiskMitigations),
     ...(sol.requiresExpertPanel
-      ? ['', '**待专家组就以下差异点辩论**', bullets(sol.rediscussDirections)]
+      ? ['', `**${tPure('case.md.debate')}**`, bullets(sol.rediscussDirections)]
       : []),
   ].join('\n');
 }
@@ -348,6 +353,7 @@ function CaseResultCard({
   onAdapt: () => void;
   onPanelHandoff: (sol: AdaptedSolution) => void;
 }) {
+  const { t } = useT();
   return (
     <div className="rounded-lg border border-border bg-surface p-3 flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -368,7 +374,7 @@ function CaseResultCard({
           disabled={busy}
           className="self-start px-2.5 py-1 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
         >
-          采用并适配到新问题
+          {t('case.adaptBtn')}
         </button>
       )}
       {adaptation && (
@@ -383,6 +389,7 @@ function ScoreBar({
 }: {
   breakdown: { semantic: number; keyword: number; freshness: number };
 }) {
+  const { t } = useT();
   const seg = (label: string, v: number) => (
     <span className="flex items-center gap-1">
       <span className="text-ink-muted">{label}</span>
@@ -391,9 +398,9 @@ function ScoreBar({
   );
   return (
     <div className="flex gap-3 text-[10px]">
-      {seg('语义', breakdown.semantic)}
-      {seg('关键词', breakdown.keyword)}
-      {seg('时效', breakdown.freshness)}
+      {seg(t('case.score.semantic'), breakdown.semantic)}
+      {seg(t('case.score.keyword'), breakdown.keyword)}
+      {seg(t('case.score.freshness'), breakdown.freshness)}
     </div>
   );
 }
@@ -405,24 +412,25 @@ function AdaptedSolutionCard({
   sol: AdaptedSolution;
   onPanelHandoff: (sol: AdaptedSolution) => void;
 }) {
+  const { t } = useT();
   return (
     <div className="mt-1 rounded-md border border-accent/30 bg-accent-soft p-3 flex flex-col gap-2">
       <span className="text-[10px] uppercase tracking-wider text-accent font-semibold">
-        适配方案（已改写到新语境）
+        {t('case.adaptTitle')}
       </span>
-      <Field title="可迁移骨架">
+      <Field title={t('case.md.skeleton')}>
         <p className="text-xs text-ink leading-relaxed">{sol.inheritedStructure}</p>
       </Field>
-      <Field title="新语境下的关键杠杆">
+      <Field title={t('case.md.levers')}>
         <Bullets items={sol.contextualizedLevers} />
       </Field>
-      <Field title="新增风险缓解">
+      <Field title={t('case.md.risks')}>
         <Bullets items={sol.newRiskMitigations} />
       </Field>
       {sol.requiresExpertPanel && (
         <div className="rounded border border-amber-300 bg-note-yellow/60 p-2 flex flex-col gap-1.5">
           <p className="text-[11px] font-semibold text-amber-800">
-            ⚠ 语境差异较大，建议就这些差异点重新辩论：
+            {t('case.diffWarning')}
           </p>
           <Bullets items={sol.rediscussDirections} />
           <button
@@ -430,7 +438,7 @@ function AdaptedSolutionCard({
             onClick={() => onPanelHandoff(sol)}
             className="self-start mt-1 px-2.5 py-1 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition"
           >
-            用这些差异点新建话题（去组建专家组）
+            {t('case.handoffBtn')}
           </button>
         </div>
       )}
@@ -439,13 +447,14 @@ function AdaptedSolutionCard({
 }
 
 function FusionReportCard({ report }: { report: FusionReport }) {
+  const { t } = useT();
   return (
     <section className="rounded-lg border border-accent/30 bg-accent-soft p-4 flex flex-col gap-3">
       <span className="text-[10px] uppercase tracking-wider text-accent font-semibold">
-        融合参考报告
+        {t('case.fusion.title')}
       </span>
       {report.coreBorrows.length > 0 && (
-        <Field title="核心借鉴">
+        <Field title={t('case.fusion.core')}>
           <ul className="flex flex-col gap-1">
             {report.coreBorrows.map((b, i) => (
               <li key={i} className="text-xs text-ink leading-relaxed">
@@ -457,7 +466,7 @@ function FusionReportCard({ report }: { report: FusionReport }) {
         </Field>
       )}
       {report.contrastCases.length > 0 && (
-        <Field title="对照案例">
+        <Field title={t('case.fusion.contrast')}>
           <ul className="flex flex-col gap-1">
             {report.contrastCases.map((b, i) => (
               <li key={i} className="text-xs text-ink leading-relaxed">
@@ -469,12 +478,12 @@ function FusionReportCard({ report }: { report: FusionReport }) {
         </Field>
       )}
       {report.crossPatterns.length > 0 && (
-        <Field title="跨案例模式">
+        <Field title={t('case.fusion.pattern')}>
           <Bullets items={report.crossPatterns} />
         </Field>
       )}
       {report.contextWarnings.length > 0 && (
-        <Field title="语境警示（不可照搬）">
+        <Field title={t('case.fusion.warning')}>
           <Bullets items={report.contextWarnings} />
         </Field>
       )}

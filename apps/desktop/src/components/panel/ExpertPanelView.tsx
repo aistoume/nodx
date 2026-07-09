@@ -28,6 +28,7 @@ import { PanelMembers } from './PanelMembers.js';
 import { PanelTranscript } from './PanelTranscript.js';
 import { LocalMaxCard } from './LocalMaxCard.js';
 import { AutoRecursionModal } from '../auto-recursion/AutoRecursionModal.js';
+import { useT, t as tPure } from '../../i18n/index.js';
 
 interface ExpertPanelViewProps {
   topic: Topic;
@@ -51,6 +52,7 @@ export function ExpertPanelView({
   onMutated,
   onMergedToDoc,
 }: ExpertPanelViewProps) {
+  const { t } = useT();
   const [panel, setPanel] = useState<ExpertPanel | null>(null);
   // Diff-scoped seed from a CBR adaptation handoff (PRD §3.16 ④), if any.
   const [seed, setSeed] = useState<PanelSeed | null>(null);
@@ -135,14 +137,14 @@ export function ExpertPanelView({
   };
 
   const handleForm = () =>
-    runAction('识别领域 + 组建专家组…', async () => {
+    runAction(t('panel.busy.form'), async () => {
       const ctx = await resolveParentContext(topic);
       const { panel: formed } = await formPanel(topic, ctx);
       setPanel(formed);
     });
 
   const handleRegenerate = () =>
-    runAction('重新组建专家组…', async () => {
+    runAction(t('panel.busy.regenerate'), async () => {
       if (panel) await deletePanel(panel.id);
       setPanel(null);
       const ctx = await resolveParentContext(topic);
@@ -177,7 +179,7 @@ export function ExpertPanelView({
   // debate framed to ONLY the differing points — the inherited structure is
   // given as a settled premise, so the panel runs the diff, not the whole thing.
   const handleScopedForm = () =>
-    runAction('组建专家组并就差异点辩论…', async () => {
+    runAction(t('panel.busy.scopedForm'), async () => {
       if (!seed) return;
       const { panel: formed } = await formPanel(topic);
       setPanel(formed);
@@ -187,12 +189,12 @@ export function ExpertPanelView({
     });
 
   const handleStartDebate = () =>
-    runAction('辩论进行中（每轮多位专家并行，约数分钟）…', async () => {
+    runAction(t('panel.busy.debating'), async () => {
       if (panel) await startDebate(panel);
     });
 
   const handleRerun = () =>
-    runAction('清空旧辩论，重新开打…', async () => {
+    runAction(t('panel.busy.rerun'), async () => {
       if (!panel) return;
       await clearPanelRounds(panel.id);
       await startDebate({ ...panel, status: 'forming', rounds: [] });
@@ -214,18 +216,18 @@ export function ExpertPanelView({
     );
   };
 
-  const handleAccept = () => runAction('采纳中…', doAccept);
+  const handleAccept = () => runAction(t('panel.busy.accept'), doAccept);
 
   // 采纳并推进 (PRD §3.19): accept, then open the auto-recursion modal.
   const [recurseOpen, setRecurseOpen] = useState(false);
   const handleAcceptAndRecurse = () =>
-    runAction('采纳中…', async () => {
+    runAction(t('panel.busy.accept'), async () => {
       await doAccept();
       setRecurseOpen(true);
     });
 
   const handleReject = () =>
-    runAction('拒绝中…', async () => {
+    runAction(t('panel.busy.reject'), async () => {
       if (!panel) return;
       await updatePanelStatus(panel.id, 'rejected_by_user');
       setPanel(await getPanelByTopic(topic.id));
@@ -250,7 +252,7 @@ export function ExpertPanelView({
   };
 
   const handleConfirmMerge = (markdown: string) =>
-    runAction('插入文档…', async () => {
+    runAction(t('panel.busy.insert'), async () => {
       await appendToDocument(topic.id, markdownToHtml(markdown));
       setMergeMarkdown(null);
       onMutated();
@@ -260,7 +262,7 @@ export function ExpertPanelView({
   // 直接替换文档: no AI rewrite — render the Local Max fields verbatim as
   // Markdown and OVERWRITE the whole document (upsert, not append). Instant.
   const handleReplaceDoc = () =>
-    runAction('替换文档…', async () => {
+    runAction(t('panel.busy.replace'), async () => {
       if (!panel?.localMaximum) return;
       const md = localMaxToMarkdown(panel.localMaximum);
       await upsertDocument(topic.id, markdownToHtml(md));
@@ -284,12 +286,12 @@ export function ExpertPanelView({
 
           {!isAiConfigured() && (
             <p className="text-sm text-ink-muted italic">
-              AI 网关未配置，无法运行专家组。请配置 VITE_AI_CLIENT_TOKEN。
+              {t('panel.aiNotConfigured')}
             </p>
           )}
 
           {loading ? (
-            <p className="text-sm text-ink-muted italic">加载专家组…</p>
+            <p className="text-sm text-ink-muted italic">{t('panel.loading')}</p>
           ) : (
             <>
               {/* No panel yet → formation CTA (scoped if a CBR seed exists) */}
@@ -310,8 +312,8 @@ export function ExpertPanelView({
               {panel && (
                 <section className="flex flex-col gap-2">
                   <SectionHeader
-                    title="专家组"
-                    note={panel.domain ? `领域：${panel.domain}` : undefined}
+                    title={t('panel.section.members')}
+                    note={panel.domain ? t('panel.domainLabel', { d: panel.domain }) : undefined}
                   />
                   <PanelMembers members={panel.members} />
                 </section>
@@ -331,7 +333,7 @@ export function ExpertPanelView({
                     disabled={busy}
                     className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
                   >
-                    开始辩论
+                    {t('panel.startDebate')}
                   </button>
                   <button
                     type="button"
@@ -339,7 +341,7 @@ export function ExpertPanelView({
                     disabled={busy}
                     className="px-2.5 py-1 text-xs font-medium rounded border border-border text-ink-muted hover:text-ink hover:border-ink-muted disabled:opacity-40 transition"
                   >
-                    重新组建
+                    {t('panel.regenerate')}
                   </button>
                 </div>
               )}
@@ -347,7 +349,7 @@ export function ExpertPanelView({
               {/* Transcript (live or persisted) */}
               {displayRounds.length > 0 && panel && (
                 <section className="flex flex-col gap-2">
-                  <SectionHeader title="辩论记录" />
+                  <SectionHeader title={t('panel.section.transcript')} />
                   <PanelTranscript
                     rounds={displayRounds}
                     members={panel.members}
@@ -358,7 +360,7 @@ export function ExpertPanelView({
 
               {running && (
                 <p className="text-sm text-ink-muted italic">
-                  {phase || '辩论进行中…'}
+                  {phase || t('panel.debatingFallback')}
                 </p>
               )}
 
@@ -383,8 +385,8 @@ export function ExpertPanelView({
                       }
                     >
                       {merging
-                        ? '📄 归纳进文档（Sonnet 整理中，约 30 秒，请等待预览…）'
-                        : '📄 归纳进文档'}
+                        ? t('panel.mergeBtnBusy')
+                        : t('panel.mergeBtn')}
                     </button>
                     <ReplaceDocButton
                       busy={busy || merging}
@@ -392,12 +394,12 @@ export function ExpertPanelView({
                     />
                     {!merging && (
                       <span className="text-[11px] text-ink-muted">
-                        归纳 = Sonnet 整理成一节追加；替换 = 原文直接覆盖全文
+                        {t('panel.mergeHint')}
                       </span>
                     )}
                     {merging && (
                       <span className="text-[11px] text-ink-muted">
-                        整理完成后会弹出可编辑预览，请勿离开本页
+                        {t('panel.mergeBusyHint')}
                       </span>
                     )}
                   </div>
@@ -412,7 +414,7 @@ export function ExpertPanelView({
                   <div className="flex flex-col gap-2">
                     {panel.status === 'rejected_by_user' && (
                       <p className="text-xs text-ink-muted">
-                        你拒绝了上一次的结论。可以让同一组专家重新辩论一轮。
+                        {t('panel.rejectedHint')}
                       </p>
                     )}
                     <div className="flex items-center gap-3 flex-wrap">
@@ -427,7 +429,7 @@ export function ExpertPanelView({
                         disabled={busy}
                         className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
                       >
-                        重新辩论
+                        {t('panel.rerun')}
                       </button>
                     </div>
                   </div>
@@ -471,6 +473,7 @@ function ReplaceDocButton({
   busy: boolean;
   onConfirm: () => void;
 }) {
+  const { t } = useT();
   const [pending, setPending] = useState(false);
   const timerRef = useRef<number | null>(null);
 
@@ -500,7 +503,7 @@ function ReplaceDocButton({
       type="button"
       onClick={handleClick}
       disabled={busy}
-      title="不走 AI 改写，把 Local Max 原文直接覆盖文档"
+      title={t('panel.replaceTip')}
       className={
         'px-3 py-1.5 text-xs font-medium rounded-md border transition disabled:opacity-40 ' +
         (pending
@@ -508,7 +511,7 @@ function ReplaceDocButton({
           : 'border-border text-ink-muted hover:border-accent hover:text-accent')
       }
     >
-      {pending ? '⚠️ 会清掉当前文档内容，再点确认' : '📋 直接替换文档'}
+      {pending ? t('panel.replaceConfirm') : t('panel.replaceBtn')}
     </button>
   );
 }
@@ -525,19 +528,20 @@ function RoundCapSelector({
   onChange: (n: number) => void;
   disabled?: boolean;
 }) {
+  const { t } = useT();
   return (
     <label className="flex items-center gap-1.5 text-xs text-ink-muted">
-      轮数上限
+      {t('panel.roundCap.label')}
       <select
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(Number(e.target.value))}
         className="rounded border border-border bg-surface px-1.5 py-1 text-xs text-ink disabled:opacity-50"
-        title="辩论最多跑多少轮（不含主持人综合）。越高越深入，但 token / 时间成本越大；提前收敛会自动停。"
+        title={t('panel.roundCap.tip')}
       >
         {ROUND_CAP_OPTIONS.map((n) => (
           <option key={n} value={n}>
-            {n} 轮
+            {t('panel.roundCap.n', { n: String(n) })}
           </option>
         ))}
       </select>
@@ -565,13 +569,11 @@ function buildScopedFraming(
   const levers = seed.levers.map((l) => `- ${l}`).join('\n');
   return {
     question:
-      '这是一次"复用适配"后的聚焦辩论：已有一个可复用的方案骨架（见背景，视为基本确定）。' +
-      '请**只就以下因新语境产生的差异点**做判断与决策，不要重新论证已确定的骨架：\n' +
-      diffs,
+      tPure('panel.scoped.questionHead') + '\n' + diffs,
     context:
-      `原始问题：${originalQuestion}\n\n` +
-      `【已确定的方案骨架（来自历史案例复用，作为前提，不要推翻）】\n${seed.inheritedStructure}\n\n` +
-      `【已适配到新语境的关键杠杆】\n${levers || '（无）'}`,
+      `${tPure('panel.scoped.originalQ')}${originalQuestion}\n\n` +
+      `${tPure('panel.scoped.skeletonHead')}\n${seed.inheritedStructure}\n\n` +
+      `${tPure('panel.scoped.leversHead')}\n${levers || tPure('case.md.none')}`,
   };
 }
 
@@ -586,19 +588,20 @@ function ScopedFormCTA({
   phase: string;
   onForm: () => void;
 }) {
+  const { t } = useT();
   return (
     <div className="rounded-lg border border-accent/30 bg-accent-soft p-5 flex flex-col gap-3">
       <div>
         <p className="text-sm font-medium text-ink">
-          来自复用适配 · 专家组只就差异点辩论
+          {t('panel.scoped.ctaTitle')}
         </p>
         <p className="text-xs text-ink-muted mt-1 leading-relaxed">
-          已有一个可复用的方案骨架被视为前提，专家组**不会从头辩论**，只聚焦下面这些因新语境产生的差异点：
+          {t('panel.scoped.ctaDesc')}
         </p>
       </div>
       <div className="rounded-md border border-border bg-surface p-3">
         <p className="text-[11px] font-semibold text-ink-muted mb-1">
-          已确定的方案骨架
+          {t('panel.scoped.skeletonLabel')}
         </p>
         <p className="text-xs text-ink leading-relaxed">
           {seed.inheritedStructure}
@@ -606,7 +609,7 @@ function ScopedFormCTA({
       </div>
       <div>
         <p className="text-[11px] font-semibold text-ink-muted mb-1">
-          只辩论这些差异点
+          {t('panel.scoped.diffsLabel')}
         </p>
         <ul className="list-disc pl-5 flex flex-col gap-0.5">
           {seed.rediscussDirections.map((d, i) => (
@@ -622,7 +625,7 @@ function ScopedFormCTA({
         disabled={busy}
         className="self-start px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
       >
-        {busy ? phase || '进行中…' : '组建专家组并就差异辩论'}
+        {busy ? phase || t('panel.working') : t('panel.scoped.ctaBtn')}
       </button>
     </div>
   );
@@ -637,14 +640,13 @@ function EmptyState({
   phase: string;
   onForm: () => void;
 }) {
+  const { t } = useT();
   return (
     <div className="rounded-lg border border-accent/30 bg-accent-soft p-5 flex flex-col gap-3">
       <div>
-        <p className="text-sm font-medium text-ink">组建专家组深挖这个方向</p>
+        <p className="text-sm font-medium text-ink">{t('panel.empty.title')}</p>
         <p className="text-xs text-ink-muted mt-1 leading-relaxed">
-          AI 会针对这个方向组建 3–5 位互补的专家（含一位必备的「魔鬼代言人」），
-          跑「独立首发 → 交叉质疑 → 修正立场 → 主持人综合」四轮结构化辩论，
-          收敛出一个 Local Maximum 结论供你采纳。
+          {t('panel.empty.desc')}
         </p>
       </div>
       <button
@@ -653,7 +655,7 @@ function EmptyState({
         disabled={busy}
         className="self-start px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
       >
-        {busy ? phase || '组建中…' : '组建专家组'}
+        {busy ? phase || t('panel.empty.formingFallback') : t('panel.empty.ctaBtn')}
       </button>
     </div>
   );

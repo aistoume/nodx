@@ -1,4 +1,5 @@
 import type { PersonaRole } from '@nodx/models';
+import { t } from '../../i18n/index.js';
 
 /**
  * Display metadata for the five panel roles (PRD §3.14). Colours reuse the
@@ -16,39 +17,41 @@ export interface RoleStyle {
   accent: string;
 }
 
-const STYLES: Record<PersonaRole, RoleStyle> = {
+const STYLES: Record<PersonaRole, Omit<RoleStyle, 'label'> & { labelKey: string }> = {
   proposer: {
     emoji: '🔵',
-    label: '正方主推',
+    labelKey: 'roles.proposer',
     badge: 'bg-note-blue border-note-blue-edge/40 text-blue-800',
     accent: 'border-l-note-blue-edge',
   },
   critic: {
     emoji: '🔴',
-    label: '魔鬼代言人',
+    labelKey: 'roles.critic',
     badge: 'bg-red-50 border-red-300 text-red-700',
     accent: 'border-l-red-400',
   },
   practitioner: {
     emoji: '🟢',
-    label: '实操经验',
+    labelKey: 'roles.practitioner',
     badge: 'bg-note-green border-note-green-edge/40 text-green-800',
     accent: 'border-l-note-green-edge',
   },
   constraint: {
     emoji: '🟡',
-    label: '外部约束',
+    labelKey: 'roles.constraint',
     badge: 'bg-note-yellow border-note-yellow-edge/50 text-amber-800',
     accent: 'border-l-note-yellow-edge',
   },
   user_proxy: {
     emoji: '🟣',
-    label: '用户自带',
+    labelKey: 'roles.user_proxy',
     badge: 'bg-note-purple border-note-purple-edge/40 text-purple-800',
     accent: 'border-l-note-purple-edge',
   },
 };
 
 export function roleStyle(role: PersonaRole): RoleStyle {
-  return STYLES[role];
+  const s = STYLES[role];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return { emoji: s.emoji, badge: s.badge, accent: s.accent, label: t(s.labelKey as any) };
 }

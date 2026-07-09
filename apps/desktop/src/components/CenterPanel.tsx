@@ -27,6 +27,7 @@ import { ExpertPanelView } from './panel/ExpertPanelView.js';
 import { onTopicOpened, type RecapOutput } from '../ai/replay.js';
 import { SpawnChildButton } from './SpawnChildButton.js';
 import { SurveyCard } from './SurveyCard.js';
+import { useT } from '../i18n/index.js';
 
 interface CenterPanelProps {
   topic: Topic | null;
@@ -41,13 +42,14 @@ export function CenterPanel({
   onMutated,
   onSelectTopic,
 }: CenterPanelProps) {
+  const { t } = useT();
   if (!topic) {
     return (
       <main className="flex items-center justify-center text-ink-muted">
         <div className="text-center max-w-sm">
-          <p className="text-sm">从左栏选择一个对话开始</p>
+          <p className="text-sm">{t('center.empty.pick')}</p>
           <p className="text-xs mt-2 opacity-70">
-            或新建一个：输入模糊问题，AI 会先弹 Survey 拆维度，然后生成思考文档
+            {t('center.empty.hint')}
           </p>
         </div>
       </main>
@@ -75,6 +77,7 @@ function Conversation({
   onMutated: () => void;
   onSelectTopic: (id: string) => void;
 }) {
+  const { t } = useT();
   // Center surface: the per-topic thinking document vs the expert-panel
   // debate. They coexist on the same topic; the user toggles between them.
   const [centerMode, setCenterMode] = useState<'doc' | 'panel'>('doc');
@@ -168,7 +171,7 @@ function Conversation({
       if (topic.parentId) {
         // Child topic — focused doc, no Survey.
         setAiThinking(true);
-        setAiPhase('围绕子话题生成思考文档…');
+        setAiPhase(t('center.phase.docForSub'));
         try {
           const parentDoc = await getDocument(topic.parentId);
           const parentText = parentDoc ? stripHtml(parentDoc.content) : '';
@@ -203,7 +206,7 @@ function Conversation({
    *  effect and the manual 「生成 Survey」 button (canvas topics). */
   const runSurvey = useCallback(async () => {
     setAiThinking(true);
-    setAiPhase('生成 Survey…');
+    setAiPhase(t('center.phase.survey'));
     try {
       const survey = await generateSurvey(topic.title);
       await createSurveyMessage(topic.id, survey.factors);
@@ -238,7 +241,7 @@ function Conversation({
       .slice(2, 8)}`;
     data.factors = [
       ...data.factors,
-      { id: newId, title, hint: '用户自定义' },
+      { id: newId, title, hint: t('center.factor.customHint') },
     ];
     await updateMessageContent(surveyMessage.id, JSON.stringify(data));
     await refreshAll();
@@ -267,7 +270,7 @@ function Conversation({
       // additional Sonnet calls behind decompose+doc and instantly
       // blow Anthropic's rate limit. Each child's focused doc fires
       // lazily the first time the user enters that child topic.
-      setAiPhase(`派生 ${selectedFactors.length} 个子话题…`);
+      setAiPhase(t('center.phase.spawn', { n: selectedFactors.length }));
       for (const factor of selectedFactors) {
         await createTopic({
           title: factor.title,
@@ -275,13 +278,13 @@ function Conversation({
         });
       }
 
-      setAiPhase('第一性原理拆解…');
+      setAiPhase(t('center.phase.decompose'));
       const decomposed = await decomposeSelected(
         topic.title,
         selectedFactors.map((f) => f.title),
       );
 
-      setAiPhase('生成思考文档…');
+      setAiPhase(t('center.phase.doc'));
       const doc = await generateInitialDocument({
         question: topic.title,
         selectedFactors: selectedFactors.map((f) => f.title),
@@ -311,7 +314,7 @@ function Conversation({
       setMessages(fresh);
       onMutated();
       if (!isAiConfigured()) {
-        setChatError('AI 网关未配置，跳过 AI 回复。');
+        setChatError(t('center.ai.notConfigured'));
         return;
       }
       setChatThinking(true);
@@ -396,15 +399,15 @@ function Conversation({
       <header className="border-b border-border px-8 py-4 bg-surface shrink-0">
         <div className="max-w-3xl mx-auto">
           <p className="text-[11px] uppercase tracking-wider text-ink-muted">
-            {topic.parentId ? '子话题' : '起步'}
+            {topic.parentId ? t('center.badge.subtopic') : t('center.badge.root')}
           </p>
           <h1 className="text-xl font-semibold leading-tight mt-0.5">
             {topic.title}
           </h1>
           <p className="text-xs text-ink-muted mt-2">
             {topic.parentId
-              ? 'AI 正基于父话题上下文生成聚焦文档（不会再做 Survey）。'
-              : '选完关注维度后，AI 会生成完整的思考文档替换这里。'}
+              ? t('center.headline.focus')
+              : t('center.headline.survey')}
           </p>
         </div>
       </header>
@@ -418,37 +421,36 @@ function Conversation({
           )}
 
           {loading && !aiThinking && (
-            <p className="text-sm text-ink-muted italic">加载中…</p>
+            <p className="text-sm text-ink-muted italic">{t('center.loading')}</p>
           )}
 
           {!loading && !surveyMsg && !aiThinking && !aiError && (
             topic.parentId ? (
               <p className="text-sm text-ink-muted italic">
-                稍等，AI 正在围绕子话题写文档…
+                {t('center.canvas.pending')}
               </p>
             ) : isCanvasTopic(topic.id) ? (
               <div className="flex flex-col gap-3">
                 <p className="text-sm text-ink-muted leading-relaxed">
-                  这是一块空白画布。你可以在「网络图」上加载素材、连线、综合；
-                  想让 AI 从这个主题正式起步时，点下面按钮跑一次 Survey。
+                  {t('center.canvas.emptyBoard')}
                 </p>
                 <button
                   type="button"
                   onClick={handleManualSurvey}
                   className="self-start px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition"
                 >
-                  ▶ 生成 Survey（AI 拆维度）
+                  {t('center.canvas.startSurvey')}
                 </button>
               </div>
             ) : (
               <p className="text-sm text-ink-muted italic">
-                等待 AI 生成 Survey…（如果一直没出现，检查 worker 是否在跑）
+                {t('center.canvas.waitSurvey')}
               </p>
             )
           )}
 
           {aiThinking && (
-            <PendingBubble label={aiPhase || 'AI 思考中…'} />
+            <PendingBubble label={aiPhase || t('center.ai.thinking')} />
           )}
 
           {surveyMsg && (
@@ -462,7 +464,7 @@ function Conversation({
                 }
               />
               {decomposingFor === surveyMsg.id && (
-                <PendingBubble label={aiPhase || 'AI 生成中…'} />
+                <PendingBubble label={aiPhase || t('center.ai.generating')} />
               )}
             </ul>
           )}
@@ -470,7 +472,7 @@ function Conversation({
           {aiError && (
             <div className="mt-3 bg-red-50 border border-red-200 rounded p-2 flex items-start gap-2">
               <pre className="flex-1 text-xs text-red-700 whitespace-pre-wrap break-all">
-                AI 调用失败: {aiError}
+                {t('center.ai.callFailed', { msg: aiError })}
               </pre>
               <button
                 type="button"
@@ -486,7 +488,7 @@ function Conversation({
                 disabled={aiThinking || decomposingFor !== null}
                 className="shrink-0 px-2.5 py-1 text-xs font-medium rounded border border-red-300 text-red-700 hover:bg-red-100 disabled:opacity-50 transition"
               >
-                重试
+                {t('center.retry')}
               </button>
             </div>
           )}
@@ -526,6 +528,7 @@ function CenterModeTabs({
   mode: 'doc' | 'panel';
   onChange: (m: 'doc' | 'panel') => void;
 }) {
+  const { t } = useT();
   const tab = (key: 'doc' | 'panel', label: string) => (
     <button
       type="button"
@@ -543,8 +546,8 @@ function CenterModeTabs({
   return (
     <div className="shrink-0 border-b border-border bg-surface px-8 py-2">
       <div className="max-w-3xl mx-auto flex items-center gap-1">
-        {tab('doc', '📄 文档')}
-        {tab('panel', '🎙 专家组')}
+        {tab('doc', t('center.tab.doc'))}
+        {tab('panel', t('center.tab.panel'))}
       </div>
     </div>
   );

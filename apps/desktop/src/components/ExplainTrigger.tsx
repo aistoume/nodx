@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { explainSelection } from '../ai/explain.js';
 import { createComment, formatExplanationContent } from '../db/comments.js';
+import { useT } from '../i18n/index.js';
 
 interface ExplainTriggerProps {
   /** Currently-selected topic. Trigger is inert when null. */
@@ -28,6 +29,7 @@ const MIN_SELECTION_LENGTH = 2;
  * window, so a single global trigger is the natural model.
  */
 export function ExplainTrigger({ topicId, onCreated }: ExplainTriggerProps) {
+  const { t } = useT();
   const [pos, setPos] = useState<SelectionPos | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,12 +138,12 @@ export function ExplainTrigger({ topicId, onCreated }: ExplainTriggerProps) {
         {pending ? (
           <>
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-white/70 animate-pulse" />
-            <span>解释中…</span>
+            <span>{t('explainTrigger.explaining')}</span>
           </>
         ) : (
           <>
-            <span>解释</span>
-            <span className="opacity-70 text-[10px]">↪ 右栏</span>
+            <span>{t('explainTrigger.label')}</span>
+            <span className="opacity-70 text-[10px]">{t('explainTrigger.jump')}</span>
           </>
         )}
       </button>

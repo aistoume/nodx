@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Message } from '@nodx/models';
+import { useT } from '../i18n/index.js';
 
 /**
  * Shared chat-thread + composer used by both pre-doc and doc-mode views.
@@ -21,6 +22,7 @@ export function ChatThread({
   error,
   showHeader = true,
 }: ChatThreadProps) {
+  const { t } = useT();
   const anchorRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     anchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -32,7 +34,7 @@ export function ChatThread({
     <section className="mt-10 pt-6 border-t border-border">
       {showHeader && (
         <div className="text-[11px] uppercase tracking-wider text-ink-muted font-medium mb-3">
-          追问 · 文档之外的对话
+          {t('chat.followupHeader')}
         </div>
       )}
       <ul className="flex flex-col gap-3">
@@ -70,6 +72,7 @@ function ChatBubble({ message }: { message: Message }) {
 }
 
 function ChatThinkingBubble() {
+  const { t } = useT();
   return (
     <li className="flex justify-start">
       <div className="rounded-lg px-3.5 py-2.5 bg-surface border border-border text-ink-muted text-xs flex items-center gap-2">
@@ -78,7 +81,7 @@ function ChatThinkingBubble() {
           <Dot delay="0.15s" />
           <Dot delay="0.3s" />
         </span>
-        <span>AI 思考中…</span>
+        <span>{t('chat.aiThinking')}</span>
       </div>
     </li>
   );
@@ -111,6 +114,7 @@ export function ChatComposer({
   seedDraft,
   seedNonce,
 }: ChatComposerProps) {
+  const { t } = useT();
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -153,8 +157,8 @@ export function ChatComposer({
             }}
             placeholder={
               disabled
-                ? 'AI 思考中…'
-                : '继续追问 / 让 AI 帮你想下一步…  Cmd/Ctrl + Enter 发送'
+                ? t('chat.aiThinking')
+                : t('chat.placeholder')
             }
             disabled={blocked}
             rows={2}
@@ -166,7 +170,7 @@ export function ChatComposer({
             disabled={blocked || !draft.trim()}
             className="px-4 py-2 text-sm font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition shrink-0"
           >
-            {submitting ? '…' : '发送'}
+            {submitting ? '…' : t('chat.send')}
           </button>
         </div>
       </div>

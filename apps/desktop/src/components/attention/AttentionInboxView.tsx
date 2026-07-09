@@ -20,13 +20,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { Attention, AttentionSource } from '@nodx/models';
+import { isImageAttention } from '@nodx/models';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import {
   deleteAttention,
   listAttentions,
   setExplanation,
   updateTags,
 } from '../../db/attentions.js';
-import { explainSelection } from '../../ai/explain.js';
+import { explainImage, explainSelection } from '../../ai/explain.js';
 import { useT } from '../../i18n/index.js';
 
 interface Props {
@@ -238,12 +240,13 @@ function AttentionCard({
     setAiLoading(true);
     setAiError(null);
     try {
-      // Pass sourceTitle as context so the model knows roughly where the
-      // snippet came from (helps disambiguate jargon between domains).
-      const r = await explainSelection(
-        attention.text,
-        attention.sourceTitle || undefined,
-      );
+      // Image captures go through Sonnet vision; text captures stay on
+      // the cheaper Haiku text-only path. sourceTitle rides along as
+      // context either way — helps the model disambiguate jargon.
+      const ctx = attention.sourceTitle || undefined;
+      const r = isImageAttention(attention) && attention.imagePath
+        ? await explainImage(attention.imagePath, ctx)
+        : await explainSelection(attention.text, ctx);
       await setExplanation(attention.id, r.explanation);
       onChanged();
     } catch (err) {
@@ -316,9 +319,9 @@ function AttentionCard({
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span
             className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-300"
-            title="素材 · 灵感（可从网络图「加载素材」拉到画布上）"
+            title={t('attention.materialTip')}
           >
-            💡 素材·灵感
+            {t('attention.materialBadge')}
           </span>
           {attention.kind === 'quick' && (
             <span
@@ -336,10 +339,22 @@ function AttentionCard({
         </div>
       </div>
 
-      {/* ── Snippet ─────────────────────────────────────────────── */}
-      <blockquote className="border-l-[3px] border-accent/30 pl-3 pr-1 py-0.5 text-[14px] text-ink leading-relaxed whitespace-pre-wrap mb-3">
-        {attention.text}
-      </blockquote>
+      {/* ── Image thumbnail (v14 image captures) ────────────────── */}
+      {isImageAttention(attention) && attention.imagePath && (
+        <AttentionImage
+          path={attention.imagePath}
+          alt={attention.text || attention.sourceTitle || t('attention.imageAlt')}
+          width={attention.imageWidth}
+          height={attention.imageHeight}
+        />
+      )}
+
+      {/* ── Snippet (skipped when image-only capture has empty text) ── */}
+      {attention.text.trim().length > 0 && (
+        <blockquote className="border-l-[3px] border-accent/30 pl-3 pr-1 py-0.5 text-[14px] text-ink leading-relaxed whitespace-pre-wrap mb-3">
+          {attention.text}
+        </blockquote>
+      )}
 
       {/* ── Explanation ─────────────────────────────────────────── */}
       {editingExpl ? (
@@ -361,7 +376,7 @@ function AttentionCard({
                 onChanged();
               }}
             >
-              保存
+              {t('common.save')}
             </button>
             <button
               type="button"
@@ -371,7 +386,7 @@ function AttentionCard({
                 setExplInput(attention.explanation ?? '');
               }}
             >
-              取消
+              {t('common.cancel')}
             </button>
           </div>
         </div>
@@ -382,13 +397,13 @@ function AttentionCard({
       ) : aiLoading ? (
         <div className="mb-3 flex items-center gap-2 text-[12px] text-ink-muted bg-canvas rounded-md px-3 py-2">
           <span className="inline-block w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          AI 正在解释这段「{truncate(attention.text, 40)}」…
+          {t('attention.aiExplaining', { snippet: truncate(attention.text, 40) })}
         </div>
       ) : aiError ? (
         <div className="mb-3 text-[12px] text-red-600 bg-red-50 rounded-md px-3 py-2 flex items-start gap-2">
           <span>⚠️</span>
           <div className="flex-1 min-w-0">
-            <div className="font-medium">AI 解释失败</div>
+            <div className="font-medium">{t('attention.aiFail')}</div>
             <div className="text-red-500 break-words">{aiError}</div>
           </div>
           <button
@@ -396,7 +411,7 @@ function AttentionCard({
             className="text-red-700 hover:text-red-900 font-medium underline shrink-0"
             onClick={() => void askAiExplain()}
           >
-            重试
+            {t('common.retry')}
           </button>
         </div>
       ) : (
@@ -406,17 +421,17 @@ function AttentionCard({
             onClick={() => void askAiExplain()}
             className="px-2.5 py-1 rounded-md bg-accent/10 text-accent hover:bg-accent/20 font-medium transition"
           >
-            ✨ 让 AI 解释
+            {t('attention.askAiBtn')}
           </button>
           <span className="text-ink-muted">
-            或
+            {t('attention.or')}
           </span>
           <button
             type="button"
             onClick={() => setEditingExpl(true)}
             className="px-2 py-1 rounded-md text-ink-muted hover:text-ink hover:bg-canvas"
           >
-            手动写解释
+            {t('attention.writeManually')}
           </button>
         </div>
       )}
@@ -428,7 +443,7 @@ function AttentionCard({
             type="text"
             value={tagInput}
             onChange={(e) => setTagInput(e.currentTarget.value)}
-            placeholder="逗号分隔，如：AI 产品, 竞品调研"
+            placeholder={t('attention.tagsPlaceholder')}
             className="w-full text-xs border border-border rounded-md p-1.5 focus:outline-none focus:border-accent"
             autoFocus
           />
@@ -446,7 +461,7 @@ function AttentionCard({
                 onChanged();
               }}
             >
-              保存
+              {t('common.save')}
             </button>
             <button
               type="button"
@@ -456,7 +471,7 @@ function AttentionCard({
                 setTagInput(attention.tags.join(', '));
               }}
             >
-              取消
+              {t('common.cancel')}
             </button>
           </div>
         </div>
@@ -505,9 +520,9 @@ function AttentionCard({
               disabled={aiLoading}
               className="px-2 py-1 rounded-md text-accent hover:bg-accent/10 disabled:opacity-50"
               onClick={() => void askAiExplain()}
-              title="让 Haiku 模型补一段 50–150 字的解释"
+              title={t('attention.askAiTip')}
             >
-              {aiLoading ? '✨ AI 中…' : '✨ AI 解释'}
+              {aiLoading ? t('attention.askAiBusy') : t('attention.askAiShort')}
             </button>
           )}
           {!editingTags && (
@@ -544,6 +559,55 @@ function AttentionCard({
 function truncate(s: string, n: number): string {
   if (s.length <= n) return s;
   return s.slice(0, n) + '…';
+}
+
+/**
+ * Renders an image captured via Lens's marquee flow. The image lives on disk
+ * (`~/Library/Application Support/app.nodx.desktop/media/…`); we convert the
+ * filesystem path to Tauri's `asset://` URL so the webview can load it
+ * without a round-trip through the sandbox.
+ *
+ * Aspect ratio: constrained to `max-h-72` so a portrait screenshot doesn't
+ * eat the whole card. Click-to-expand: opens the same `asset://` URL in a
+ * new window (Tauri's inline preview).
+ */
+function AttentionImage({
+  path,
+  alt,
+  width,
+  height,
+}: {
+  path: string;
+  alt: string;
+  width?: number;
+  height?: number;
+}) {
+  const src = convertFileSrc(path);
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return (
+      <div className="mb-3 rounded-md border border-dashed border-border bg-canvas px-3 py-2 text-[11px] text-ink-muted">
+        {alt}
+      </div>
+    );
+  }
+  return (
+    <a
+      href={src}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block mb-3 rounded-md overflow-hidden bg-canvas border border-border hover:border-accent/50 transition"
+    >
+      <img
+        src={src}
+        alt={alt}
+        {...(width ? { width } : {})}
+        {...(height ? { height } : {})}
+        onError={() => setBroken(true)}
+        className="max-h-72 w-auto max-w-full object-contain mx-auto"
+      />
+    </a>
+  );
 }
 
 function safeHostname(url: string): string | null {

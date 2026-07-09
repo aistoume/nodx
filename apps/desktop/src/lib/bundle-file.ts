@@ -4,8 +4,7 @@
 
 import { save, open } from '@tauri-apps/plugin-dialog';
 import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
-
-const NODX_FILTER = { name: 'nodx 数据包', extensions: ['nodx'] };
+import { t } from '../i18n/index.js';
 
 /**
  * Prompt for a save location and write the bundle there.
@@ -16,9 +15,9 @@ export async function saveBundleFile(
   text: string,
 ): Promise<string | null> {
   const path = await save({
-    title: '导出 nodx 数据包',
+    title: t('bundle.exportDialogTitle'),
     defaultPath: defaultName,
-    filters: [NODX_FILTER],
+    filters: [{ name: t('bundle.filterName'), extensions: ['nodx'] }],
   });
   if (!path) return null;
   await writeTextFile(path, text);
@@ -34,10 +33,10 @@ export async function openBundleFile(): Promise<{
   text: string;
 } | null> {
   const selected = await open({
-    title: '导入 nodx 数据包',
+    title: t('bundle.importDialogTitle'),
     multiple: false,
     directory: false,
-    filters: [{ name: 'nodx 数据包', extensions: ['nodx', 'json'] }],
+    filters: [{ name: t('bundle.filterName'), extensions: ['nodx', 'json'] }],
   });
   if (!selected || typeof selected !== 'string') return null;
   const text = await readTextFile(selected);
