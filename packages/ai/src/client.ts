@@ -29,6 +29,14 @@ export interface CompleteOptions<T> {
    * extra (~$0.05/call) and adds latency.
    */
   enableWebSearch?: boolean;
+  /**
+   * Optional Claude vision image content. When present, the gateway
+   * builds a `[{type:'image'}, {type:'text'}]` first-message so the
+   * model can see the image alongside the text prompt. `image_base64`
+   * is the raw base64 without a `data:` prefix.
+   */
+  imageBase64?: string;
+  imageMime?: string;
   /** Lets the caller cancel an in-flight request (e.g. unmounting a panel). */
   signal?: AbortSignal;
 }
@@ -152,6 +160,12 @@ async function completeOnce<T>(
         ? { temperature: opts.temperature }
         : {}),
       ...(opts.enableWebSearch ? { enable_web_search: true } : {}),
+      ...(opts.imageBase64
+        ? {
+            image_base64: opts.imageBase64,
+            image_mime: opts.imageMime ?? 'image/png',
+          }
+        : {}),
     }),
     signal: opts.signal,
   });
@@ -219,6 +233,9 @@ export interface CompleteTextOptions {
    * over-long reply from multiple max_tokens-bounded chunks.
    */
   assistantPrefill?: string;
+  /** Same as CompleteOptions — Claude vision inputs. */
+  imageBase64?: string;
+  imageMime?: string;
   signal?: AbortSignal;
 }
 
@@ -266,6 +283,12 @@ async function completeTextOnce(
       ...(opts.enableWebSearch ? { enable_web_search: true } : {}),
       ...(opts.assistantPrefill
         ? { assistant_prefill: opts.assistantPrefill }
+        : {}),
+      ...(opts.imageBase64
+        ? {
+            image_base64: opts.imageBase64,
+            image_mime: opts.imageMime ?? 'image/png',
+          }
         : {}),
     }),
     signal: opts.signal,

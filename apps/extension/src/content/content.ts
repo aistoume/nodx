@@ -18,6 +18,46 @@
 import { getSettings } from '../shared/settings.js';
 import { setLocale, t } from '../shared/i18n.js';
 import { attemptSave, openDownloadPage } from '../shared/save-hook.js';
+import { installMarqueeListener } from './marquee.js';
+import { installHighlightsLayer } from './highlights-layer.js';
+import { showRadialMenu, TEXT_OPTIONS, type RadialChoice } from './radial-menu.js';
+
+/**
+ * Swallow "Extension context invalidated" globally (v0.8.3).
+ *
+ * When the user reloads the extension in chrome://extensions, existing
+ * content scripts are orphaned — they keep running but any chrome.* API
+ * call (chrome.storage.local.set, chrome.runtime.sendMessage, etc.)
+ * throws that specific error. The old script can't recover; the user
+ * just needs to refresh the tab to pick up the fresh injection.
+ *
+ * The error itself is harmless (the save / explain flows always finish
+ * their user-visible side effects BEFORE the storage-touching cleanup
+ * that fails), but Chrome surfaces it as a bright red uncaught rejection
+ * on chrome://extensions which looks alarming. Filter it here.
+ */
+window.addEventListener('unhandledrejection', (event) => {
+  const msg = String(
+    (event.reason as { message?: string })?.message ?? event.reason ?? '',
+  );
+  if (msg.includes('Extension context invalidated')) {
+    event.preventDefault();
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[nodx Lens] extension was reloaded; refresh this tab to reactivate.',
+    );
+  }
+});
+
+// Marquee-screenshot listener (v0.6.0). Registers a chrome.runtime.onMessage
+// handler for BEGIN_MARQUEE — no side effects until the popup / service
+// worker actually asks us to enter capture mode.
+installMarqueeListener();
+
+// Persistent yellow-box highlights (v0.7.0). Reads chrome.storage,
+// re-draws every saved highlight for the current URL, and listens for
+// updates so cross-tab edits stay in sync.
+installHighlightsLayer();
 
 const HIDE_DELAY_MS = 300;
 const SELECTION_DEBOUNCE_MS = 120;
@@ -255,8 +295,13 @@ function showTrigger(rect: DOMRect, selectedText: string, range: Range) {
 
   explainBtn.addEventListener('click', (e) => {
     e.stopPropagation();
+    const r = explainBtn.getBoundingClientRect();
+    const mx = r.left + r.width / 2;
+    const my = r.top + r.height / 2;
     hideTrigger();
-    openPanelForNewSelection(selectedText, range);
+    void showRadialMenu(mx, my, TEXT_OPTIONS).then((choice) =>
+      handleTextChoice(choice, selectedText, range),
+    );
   });
 }
 
@@ -315,13 +360,44 @@ function createPanelAt(top: number, left: number, deepened: boolean): HTMLDivEle
   return panel;
 }
 
-function openPanelForNewSelection(selectedText: string, range: Range) {
+function openPanelForNewSelection(
+  selectedText: string,
+  range: Range,
+  mode: 'short' | 'deep' = 'short',
+) {
   const rects = range.getClientRects();
   if (rects.length === 0) return;
   const firstRect = rects[0];
-  const panel = createPanelAt(firstRect.bottom + 8, firstRect.left, false);
+  const panel = createPanelAt(firstRect.bottom + 8, firstRect.left, mode === 'deep');
   wirePanelClicks(panel, selectedText, range);
-  startStream(panel, selectedText, 'short', range);
+  startStream(panel, selectedText, mode, range);
+}
+
+/**
+ * Route a text-selection radial pick (📖 解释 / 📚 深入 / 🔎 搜索 / 📋 复制).
+ */
+function handleTextChoice(choice: RadialChoice, text: string, range: Range): void {
+  switch (choice) {
+    case 'txt-explain':
+      openPanelForNewSelection(text, range, 'short');
+      break;
+    case 'txt-deepen':
+      openPanelForNewSelection(text, range, 'deep');
+      break;
+    case 'txt-search':
+      window.open(
+        `https://www.google.com/search?q=${encodeURIComponent(text)}`,
+        '_blank',
+        'noopener,noreferrer',
+      );
+      break;
+    case 'txt-copy':
+      void navigator.clipboard.writeText(text);
+      break;
+    default:
+      // 'cancel' or an image-only choice — nothing to do here.
+      break;
+  }
 }
 
 function openPanelForAnnotation(ann: Annotation) {

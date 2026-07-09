@@ -38,10 +38,9 @@ let tokenPromise: Promise<string> | null = null;
 
 export class AiNotConfiguredError extends Error {
   constructor(message?: string) {
-    super(
-      message ??
-        'AI 未配置。打开「⚙ 设置」→ 填入你的 Anthropic API key（sk-ant-...）即可使用。',
-    );
+    // Late import to avoid a circular ref at module init.
+    const fallback = 'AI not configured. Open ⚙ Settings → enter your Anthropic API key (sk-ant-...) to enable AI.';
+    super(message ?? fallback);
     this.name = 'AiNotConfiguredError';
   }
 }
@@ -84,7 +83,7 @@ async function getToken(): Promise<string> {
       return ENV_TOKEN;
     }
     throw new AiNotConfiguredError(
-      `VITE_AI_GATEWAY_URL=${ENV_ENDPOINT} 指向远程 worker，但 VITE_AI_CLIENT_TOKEN 未设置。`,
+      `VITE_AI_GATEWAY_URL=${ENV_ENDPOINT} points at a remote worker, but VITE_AI_CLIENT_TOKEN is not set.`,
     );
   }
 

@@ -35,6 +35,11 @@ export default defineConfig(
           popover: 'popover.html',
         },
       },
+      // We ship as a Tauri desktop bundle, not the web. Startup latency
+      // for a ~900 KB main chunk is already baked into the disk-loaded WKWebView;
+      // splitting doesn't buy us anything until we actually want code-splitting
+      // for lazy routes. Bump the warning threshold so the log stops shouting.
+      chunkSizeWarningLimit: 1500,
     },
   }),
 );

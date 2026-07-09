@@ -15,6 +15,8 @@ import {
   DEFAULT_BUDGET_USD,
   DEFAULT_DEPTH_LIMIT,
 } from '../../db/auto-recursion.js';
+import { useT, t as tPure } from '../../i18n/index.js';
+import type { StringKey } from '../../i18n/index.js';
 
 interface AutoRecursionModalProps {
   topic: Topic;
@@ -26,20 +28,20 @@ interface AutoRecursionModalProps {
 
 type Stage = 'config' | 'running' | 'plan' | 'stopConfirm' | 'done' | 'error';
 
-const STATUS_LABELS: Record<AutoRecursionRun['status'], string> = {
-  running: '运行中',
-  paused_by_user: '⏸ 已由你暂停',
-  completed: '✅ 已完成',
-  budget_exhausted: '💸 预算耗尽，已停',
-  depth_exhausted: '🪜 深度耗尽，已停',
-  hit_real_world_block: '🌍 需要真实世界数据，已诚实停止',
+const STATUS_LABEL_KEY: Record<AutoRecursionRun['status'], StringKey> = {
+  running: 'recur.status.running',
+  paused_by_user: 'recur.status.paused',
+  completed: 'recur.status.completed',
+  budget_exhausted: 'recur.status.budget',
+  depth_exhausted: 'recur.status.depth',
+  hit_real_world_block: 'recur.status.realWorld',
 };
 
-const PLAN_STATUS_LABELS: Record<string, string> = {
-  atomic_complete: '✅ 已够原子',
-  needs_deepening: '🔁 还需深挖',
-  needs_real_world_data: '🌍 需真实世界数据',
-  multi_path_choice: '🔀 多路径需择一',
+const PLAN_STATUS_LABEL_KEY: Record<string, StringKey> = {
+  atomic_complete: 'recur.planStatus.atomic',
+  needs_deepening: 'recur.planStatus.deeper',
+  needs_real_world_data: 'recur.planStatus.realWorld',
+  multi_path_choice: 'recur.planStatus.multi',
 };
 
 /**
@@ -53,6 +55,7 @@ export function AutoRecursionModal({
   onClose,
   onMutated,
 }: AutoRecursionModalProps) {
+  const { t } = useT();
   const [stage, setStage] = useState<Stage>('config');
   const [mode, setMode] = useState<'auto_step' | 'pilot' | 'auto_run'>(
     'auto_step',
@@ -145,7 +148,7 @@ export function AutoRecursionModal({
     stopResolverRef.current = null;
     setStopView(null);
     setStage('running');
-    setPhase(save ? '保存记录到节点…' : '收尾中…');
+    setPhase(save ? t('recur.phase.saveToNode') : t('recur.phase.finalize'));
   };
 
   const closable = stage === 'config' || stage === 'done' || stage === 'error';
@@ -160,14 +163,17 @@ export function AutoRecursionModal({
         className="bg-surface rounded-lg shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
       >
         <header className="px-6 py-3 border-b border-border flex items-center gap-2 shrink-0">
-          <span className="text-sm font-semibold text-ink">🤖 自动递进</span>
+          <span className="text-sm font-semibold text-ink">{t('recur.title')}</span>
           <span className="text-[11px] text-ink-muted truncate">
             {topic.title}
           </span>
           <div className="ml-auto flex items-center gap-3">
             {run && (
               <span className="text-[11px] text-ink-muted">
-                已花费 ${run.totalSpentUsd.toFixed(3)} / ${run.budgetUsd}
+                {t('recur.spent', {
+                  spent: run.totalSpentUsd.toFixed(3),
+                  budget: String(run.budgetUsd),
+                })}
               </span>
             )}
             {closable ? (
@@ -176,11 +182,11 @@ export function AutoRecursionModal({
                 onClick={onClose}
                 className="px-2.5 py-1 text-xs text-ink-muted hover:text-ink"
               >
-                关闭
+                {t('recur.close')}
               </button>
             ) : (
               <span className="text-[11px] text-ink-muted">
-                运行中 · 每层结束会暂停等你确认
+                {t('recur.runningHint')}
               </span>
             )}
           </div>
@@ -216,7 +222,7 @@ export function AutoRecursionModal({
                   />
                 ))}
               </span>
-              <span className="text-xs">{phase || '准备中…'}</span>
+              <span className="text-xs">{phase || t('recur.preparing')}</span>
             </div>
           )}
 
@@ -284,11 +290,11 @@ function ConfigForm({
   confirmAutoRun: boolean;
   onStart: () => void;
 }) {
+  const { t } = useT();
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs text-ink-muted leading-relaxed">
-        项目经理（PM）将评估已采纳的结论"够不够原子"，并按可行性推荐下一层子话题。
-        每层结束都会弹出路径预览等你确认——方向始终由你掌舵。
+        {t('recur.intro')}
       </p>
 
       <div className="flex flex-col gap-2">
@@ -296,41 +302,42 @@ function ConfigForm({
           selected={mode === 'auto_step'}
           onSelect={() => onMode('auto_step')}
           emoji="🟢"
-          name="Auto-Step（推荐）"
-          desc="自动 spawn 推荐子话题并跑专家组；每层结束等你确认再继续"
+          name={t('recur.mode.auto_step.name')}
+          desc={t('recur.mode.auto_step.desc')}
         />
         <ModeOption
           selected={mode === 'pilot'}
           onSelect={() => onMode('pilot')}
           emoji="🔵"
-          name="Pilot"
-          desc="PM 只出方案，你挑 1–N 个子话题 spawn，不自动跑专家组"
+          name={t('recur.mode.pilot.name')}
+          desc={t('recur.mode.pilot.desc')}
         />
         <ModeOption
           selected={mode === 'auto_run'}
           onSelect={() => onMode('auto_run')}
           emoji="🟡"
-          name="Auto-Run（全自动）"
-          desc="沿 topPick 全自动递归到底；每层弹 3 秒预览可「打回上一层」换候选，否则自动放行。仅在原子 / 预算 / 深度 / 真实数据缺口时停"
+          name={t('recur.mode.auto_run.name')}
+          desc={t('recur.mode.auto_run.desc')}
         />
       </div>
 
       {mode === 'auto_run' && confirmAutoRun && (
         <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
           <p className="text-xs font-medium text-amber-900">
-            ⚠️ 确认开启全自动推进？
+            {t('recur.confirm.title')}
           </p>
           <p className="text-[11px] text-amber-800 mt-1 leading-relaxed">
-            Auto-Run 会沿推荐路径自动 spawn 子话题、自动跑专家组、自动采纳，**不再每层等你确认**——
-            只在到达原子 / 撞预算 ${budgetUsd} / 撞深度 {depthLimit} 层 / 缺真实数据时停。
-            每层仍有 3 秒窗口可「打回上一层」或暂停。再点一次「开始」即开始。
+            {t('recur.confirm.desc', {
+              budget: String(budgetUsd),
+              depth: String(depthLimit),
+            })}
           </p>
         </div>
       )}
 
       <div className="flex items-center gap-4 flex-wrap">
         <label className="flex items-center gap-1.5 text-xs text-ink-muted">
-          预算上限 $
+          {t('recur.budgetLabel')}
           <input
             type="number"
             min={0.5}
@@ -341,7 +348,7 @@ function ConfigForm({
           />
         </label>
         <label className="flex items-center gap-1.5 text-xs text-ink-muted">
-          深度上限
+          {t('recur.depthLabel')}
           <select
             value={depthLimit}
             onChange={(e) => onDepth(Number(e.target.value))}
@@ -349,7 +356,7 @@ function ConfigForm({
           >
             {[1, 2, 3, 4, 5, 6].map((n) => (
               <option key={n} value={n}>
-                {n} 层
+                {t('recur.depthN', { n: String(n) })}
               </option>
             ))}
           </select>
@@ -358,7 +365,7 @@ function ConfigForm({
 
       <label
         className="flex items-start gap-2 text-xs text-ink cursor-pointer"
-        title="PM 判定缺真实数据时，先用网络搜索逐条核实——公开可查的（市场价格/监管时限/供应商能力）补齐后继续推进，确实查不到的才停止并登记卡点"
+        title={t('recur.webResearch.tip')}
       >
         <input
           type="checkbox"
@@ -367,9 +374,9 @@ function ConfigForm({
           className="mt-0.5"
         />
         <span>
-          🌐 遇到「需真实世界数据」时先网络搜索核实
+          {t('recur.webResearch.label')}
           <span className="block text-[11px] text-ink-muted">
-            公开可查的缺口自动补齐后继续；确实查不到才停止（推理记录与卡点都会留在节点上）
+            {t('recur.webResearch.desc')}
           </span>
         </span>
       </label>
@@ -380,8 +387,8 @@ function ConfigForm({
         className="self-start px-4 py-2 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition"
       >
         {mode === 'auto_run' && confirmAutoRun
-          ? '✅ 确认，开始全自动推进'
-          : '🚀 开始推进'}
+          ? t('recur.startConfirm')
+          : t('recur.startBtn')}
       </button>
     </div>
   );
@@ -441,6 +448,7 @@ function PathPreview({
   onToggle: (t: string) => void;
   onDecide: (d: LayerDecision) => void;
 }) {
+  const { t } = useT();
   const { plan, chain, depth, spentUsd, mode, canRollback, excludedTitles } =
     view;
   const excluded = new Set(excludedTitles);
@@ -473,10 +481,13 @@ function PathPreview({
       {/* 推理链快照 */}
       <div className="rounded-md border border-accent/30 bg-accent-soft px-3 py-2">
         <p className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">
-          路径预览 · 第 {depth} 层 · 已花费 ${spentUsd.toFixed(3)}
+          {t('recur.previewHeader', {
+            depth: String(depth),
+            spent: spentUsd.toFixed(3),
+          })}
           {mode === 'auto_run' && (
             <span className="ml-2 text-amber-700">
-              ⏱ {secondsLeft}s 后自动推进
+              {t('recur.autoRunCountdown', { s: String(secondsLeft) })}
             </span>
           )}
         </p>
@@ -494,17 +505,19 @@ function PathPreview({
 
       <div className="flex items-center gap-2 text-xs">
         <span className="px-1.5 py-0.5 rounded-full bg-surface border border-border font-medium text-ink">
-          {PLAN_STATUS_LABELS[plan.status] ?? plan.status}
+          {PLAN_STATUS_LABEL_KEY[plan.status]
+            ? t(PLAN_STATUS_LABEL_KEY[plan.status]!)
+            : plan.status}
         </span>
         <span className="text-ink-muted">
-          原子度 {Math.round(plan.atomicityScore * 100)}%
+          {t('recur.atomicity', { pct: String(Math.round(plan.atomicityScore * 100)) })}
         </span>
       </div>
 
       {plan.whatsMissing.length > 0 && (
         <div>
           <p className="text-[11px] font-semibold text-ink-muted mb-1">
-            还缺什么才算原子
+            {t('recur.whatsMissing')}
           </p>
           <ul className="list-disc pl-5 flex flex-col gap-0.5">
             {plan.whatsMissing.map((w, i) => (
@@ -518,8 +531,8 @@ function PathPreview({
 
       <div>
         <p className="text-[11px] font-semibold text-ink-muted mb-1.5">
-          候选子话题（按可行性降序）
-          {mode === 'pilot' ? ' · 勾选要 spawn 的' : ' · 点选要推进的'}
+          {t('recur.candidates')}
+          {mode === 'pilot' ? t('recur.candidatesPilot') : t('recur.candidatesPick')}
         </p>
         <div className="flex flex-col gap-1.5">
           {plan.childCandidates.map((c) => (
@@ -541,14 +554,14 @@ function PathPreview({
         </div>
         {excluded.size > 0 && (
           <p className="text-[11px] text-ink-muted mt-1">
-            灰色项是已打回的候选，本层不再重复推进。
+            {t('recur.excludedHint')}
           </p>
         )}
       </div>
 
       {plan.topPickReasoning && (
         <p className="text-[11px] text-ink-muted leading-relaxed">
-          <span className="font-semibold">PM 推荐理由：</span>
+          <span className="font-semibold">{t('recur.reasonLabel')}</span>
           {plan.topPickReasoning}
         </p>
       )}
@@ -561,7 +574,7 @@ function PathPreview({
             onClick={() => onDecide({ kind: 'spawn_selected', titles: [...checked] })}
             className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
           >
-            spawn 选中的 {checked.size} 个子话题
+            {t('recur.spawnN', { n: String(checked.size) })}
           </button>
         ) : (
           <button
@@ -572,17 +585,17 @@ function PathPreview({
             }
             className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
           >
-            {mode === 'auto_run' ? '▶ 立即推进' : '▶ 推进：spawn 并跑专家组'}
+            {mode === 'auto_run' ? t('recur.advanceNow') : t('recur.advanceAndRun')}
           </button>
         )}
         {canRollback && (
           <button
             type="button"
             onClick={() => onDecide({ kind: 'rollback' })}
-            title="撤销刚 spawn 的这层，回到上一层挑别的候选"
+            title={t('recur.rollbackTip')}
             className="px-2.5 py-1 text-xs font-medium rounded border border-amber-300 text-amber-800 hover:bg-amber-50 transition"
           >
-            ↩ 打回上一层
+            {t('recur.rollback')}
           </button>
         )}
         <button
@@ -590,18 +603,18 @@ function PathPreview({
           onClick={() => onDecide({ kind: 'stop' })}
           className="px-2.5 py-1 text-xs font-medium rounded border border-border text-ink-muted hover:text-ink hover:border-ink-muted transition"
         >
-          ⏹ {mode === 'auto_run' ? '暂停' : '停在这里'}
+          {mode === 'auto_run' ? t('recur.pauseBtn') : t('recur.stopBtn')}
         </button>
       </div>
     </div>
   );
 }
 
-const ACTION_LABELS: Record<ChildCandidate['recommendedAction'], string> = {
-  spawn_and_run: '🟢 深挖',
-  spawn_only: '🔵 仅建话题',
-  skip: '⚪ 可跳过',
-  flag_as_real_world_action: '🌍 外部行动',
+const ACTION_LABEL_KEY: Record<ChildCandidate['recommendedAction'], StringKey> = {
+  spawn_and_run: 'recur.action.spawnAndRun',
+  spawn_only: 'recur.action.spawnOnly',
+  skip: 'recur.action.skip',
+  flag_as_real_world_action: 'recur.action.realWorld',
 };
 
 function CandidateRow({
@@ -617,6 +630,7 @@ function CandidateRow({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const { t } = useT();
   const pct = Math.round(c.feasibilityScore * 100);
   return (
     <button
@@ -642,7 +656,7 @@ function CandidateRow({
           )}
         </span>
         <span className="text-[11px] text-ink-muted shrink-0">
-          {ACTION_LABELS[c.recommendedAction]}
+          {t(ACTION_LABEL_KEY[c.recommendedAction])}
         </span>
         <span className="text-[11px] font-semibold text-accent shrink-0">
           {pct}
@@ -656,12 +670,12 @@ function CandidateRow({
       </div>
       {(c.sourceOpenQuestion || c.sourceOptionChoice) && (
         <p className="mt-1 text-[11px] text-ink-muted truncate">
-          源自：{c.sourceOpenQuestion ?? c.sourceOptionChoice}
+          {t('recur.sourceLabel')}{c.sourceOpenQuestion ?? c.sourceOptionChoice}
         </p>
       )}
       {c.breakdown.dependencies.length > 0 && (
         <p className="mt-0.5 text-[11px] text-ink-muted truncate">
-          依赖：{c.breakdown.dependencies.join('；')}
+          {t('recur.depsLabel')}{c.breakdown.dependencies.join(tPure('recur.depsSep'))}
         </p>
       )}
     </button>
@@ -677,33 +691,36 @@ function StopConfirm({
   view: StopRecordView;
   onDecide: (save: boolean) => void;
 }) {
+  const { t } = useT();
   const { plan, stopStatus, depth, blockers, hasResearch, topic } = view;
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-md border border-accent/30 bg-accent-soft px-3 py-2">
         <p className="text-sm font-medium text-ink">
-          {STATUS_LABELS[stopStatus]}
+          {t(STATUS_LABEL_KEY[stopStatus])}
         </p>
         <p className="text-xs text-ink-muted mt-0.5">
-          第 {depth} 层 ·「{topic.title}」
+          {t('recur.stop.depthLine', { depth: String(depth), title: topic.title })}
         </p>
       </div>
 
       <div>
         <p className="text-xs text-ink leading-relaxed">
-          是否把这一层的推理记录保存到该节点？保存内容：
+          {t('recur.stop.question')}
         </p>
         <ul className="list-disc pl-5 mt-1.5 flex flex-col gap-0.5 text-xs text-ink leading-relaxed">
           <li>
-            思考文档追加「🤖 PM 评估」一节（状态 / 原子度{' '}
-            {Math.round(plan.atomicityScore * 100)}% /{' '}
-            {plan.whatsMissing.length} 条缺口 / {plan.childCandidates.length}{' '}
-            个候选排名{hasResearch ? ' / 🌐 网络搜索发现全文' : ''}）
+            {t('recur.stop.docSummary', {
+              pct: String(Math.round(plan.atomicityScore * 100)),
+              gaps: String(plan.whatsMissing.length),
+              cands: String(plan.childCandidates.length),
+              research: hasResearch ? t('recur.stop.researchTag') : '',
+            })}
           </li>
-          <li>推理路径（reasoningTrace）追加一行摘要</li>
+          <li>{t('recur.stop.traceLine')}</li>
           {stopStatus === 'hit_real_world_block' && blockers.length > 0 && (
             <li>
-              登记 {blockers.length} 个 📍卡点（右栏红卡 + 全局角标）：
+              {t('recur.stop.blockersHead', { n: String(blockers.length) })}
               <ul className="list-[circle] pl-4 mt-0.5">
                 {blockers.slice(0, 3).map((b, i) => (
                   <li key={i} className="text-ink-muted truncate">
@@ -711,14 +728,14 @@ function StopConfirm({
                   </li>
                 ))}
                 {blockers.length > 3 && (
-                  <li className="text-ink-muted">… 共 {blockers.length} 条</li>
+                  <li className="text-ink-muted">{t('recur.stop.blockersMore', { n: String(blockers.length) })}</li>
                 )}
               </ul>
             </li>
           )}
         </ul>
         <p className="text-[11px] text-ink-muted mt-2">
-          不保存也不会丢数据——PM 计划仍留在数据库（next_move_plans），只是不写入节点的文档 / 推理路径 / 卡点。
+          {t('recur.stop.noLoss')}
         </p>
       </div>
 
@@ -728,14 +745,14 @@ function StopConfirm({
           onClick={() => onDecide(true)}
           className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition"
         >
-          💾 保存到节点
+          {t('recur.stop.saveBtn')}
         </button>
         <button
           type="button"
           onClick={() => onDecide(false)}
           className="px-2.5 py-1 text-xs font-medium rounded border border-border text-ink-muted hover:text-ink hover:border-ink-muted transition"
         >
-          不保存
+          {t('recur.stop.discardBtn')}
         </button>
       </div>
     </div>
@@ -745,17 +762,18 @@ function StopConfirm({
 /* ── terminal report ────────────────────────────────────── */
 
 function RunSummary({ run }: { run: AutoRecursionRun }) {
+  const { t } = useT();
   return (
     <div className="rounded-md border border-border p-4 flex flex-col gap-2">
       <p className="text-sm font-medium text-ink">
-        {STATUS_LABELS[run.status]}
+        {t(STATUS_LABEL_KEY[run.status])}
       </p>
       <div className="text-xs text-ink-muted flex flex-col gap-0.5">
-        <span>实际花费：${run.totalSpentUsd.toFixed(3)}（上限 ${run.budgetUsd}）</span>
-        <span>最深到达：第 {run.maxDepthReached} 层（上限 {run.depthLimit} 层）</span>
-        <span>新建子话题：{run.spawnedTopicIds.length} 个（见左栏对话列表）</span>
+        <span>{t('recur.summary.spent', { spent: run.totalSpentUsd.toFixed(3), budget: String(run.budgetUsd) })}</span>
+        <span>{t('recur.summary.depth', { depth: String(run.maxDepthReached), limit: String(run.depthLimit) })}</span>
+        <span>{t('recur.summary.spawned', { n: String(run.spawnedTopicIds.length) })}</span>
         {run.interruptions.length > 0 && (
-          <span>你的干预：{run.interruptions.length} 次</span>
+          <span>{t('recur.summary.interruptions', { n: String(run.interruptions.length) })}</span>
         )}
       </div>
     </div>

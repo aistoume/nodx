@@ -7,6 +7,7 @@ import {
 import type { Comment, Topic } from '@nodx/models';
 import { deleteComment, parseQuotedContent } from '../db/comments.js';
 import { useAnchorPositions } from '../lib/anchor-layout.js';
+import { useT } from '../i18n/index.js';
 
 interface RightPanelProps {
   topic: Topic | null;
@@ -18,6 +19,7 @@ const CARD_GAP = 6;
 const FALLBACK_CARD_HEIGHT = 32;
 
 export function RightPanel({ topic, comments, onMutated }: RightPanelProps) {
+  const { t } = useT();
   const anchorPositions = useAnchorPositions();
   const anchorZoneRef = useRef<HTMLDivElement | null>(null);
   const [zoneTop, setZoneTop] = useState(0);
@@ -82,7 +84,7 @@ export function RightPanel({ topic, comments, onMutated }: RightPanelProps) {
     <aside className="border-l border-border bg-surface flex flex-col h-full overflow-hidden">
       <div className="px-4 pt-4 pb-2 flex items-baseline justify-between shrink-0">
         <SectionTitle>
-          备注{topic && comments.length > 0 ? ` (${comments.length})` : ''}
+          {t('right.title')}{topic && comments.length > 0 ? ` (${comments.length})` : ''}
         </SectionTitle>
       </div>
 
@@ -130,13 +132,16 @@ export function RightPanel({ topic, comments, onMutated }: RightPanelProps) {
           {showLegend && <Legend />}
           {topic && comments.length === 0 && (
             <p className="text-xs text-ink-muted leading-relaxed">
-              选中文档中的文字 → 浮出菜单 → <em>解释</em> /{' '}
-              <em>便签</em> / <em>深化</em>。新增的备注会跟着选中位置上下移动。
+              {t('right.emptyHint', {
+                explain: t('right.type.explain'),
+                sticky: t('right.type.sticky'),
+                deepen: t('right.legend.deepen'),
+              })}
             </p>
           )}
           {unanchored.length > 0 && (
             <>
-              <SectionTitle>未锚定 ({unanchored.length})</SectionTitle>
+              <SectionTitle>{t('right.section.unanchored')} ({unanchored.length})</SectionTitle>
               <ul className="flex flex-col gap-2">
                 {unanchored.map((c) => (
                   <CommentCard
@@ -164,6 +169,7 @@ function CommentCard({
   comment: Comment;
   onDelete: () => void | Promise<void>;
 }) {
+  const { t } = useT();
   const [expanded, setExpanded] = useState(false);
   const palette = TYPE_PALETTE[comment.type];
   const { quote, body } =
@@ -190,9 +196,9 @@ function CommentCard({
         <span
           className={`w-1.5 h-1.5 rounded-full shrink-0 ${palette.dot}`}
         />
-        <span className="flex-1 truncate text-ink">{oneLine || '(空)'}</span>
+        <span className="flex-1 truncate text-ink">{oneLine || '(∅)'}</span>
         <span className="text-[10px] text-ink-muted shrink-0 opacity-60 group-hover:opacity-100 transition">
-          {expanded ? '收起' : '展开'}
+          {expanded ? t('common.collapse') : t('common.expand')}
         </span>
       </button>
 
@@ -200,7 +206,7 @@ function CommentCard({
         <div className="px-2.5 pb-2 pt-1 border-t border-current/10 leading-relaxed">
           <div className="flex items-baseline gap-2 mb-1">
             <span className={'px-1.5 py-0.5 rounded text-[10px] ' + palette.chip}>
-              {TYPE_LABEL[comment.type]}
+              {t(TYPE_LABEL_KEY[comment.type])}
             </span>
             <span className="text-[10px] text-ink-muted">
               {new Date(comment.createdAt).toLocaleString()}
@@ -211,10 +217,10 @@ function CommentCard({
                 e.stopPropagation();
                 void onDelete();
               }}
-              title="删除"
+              title={t('right.action.deleteTitle')}
               className="ml-auto text-[10px] text-ink-muted hover:text-red-600"
             >
-              删除
+              {t('right.action.deleteLabel')}
             </button>
           </div>
           {quote && (
@@ -238,13 +244,14 @@ function SectionTitle({ children }: { children: ReactNode }) {
 }
 
 function Legend() {
+  const { t } = useT();
   return (
     <ul className="flex flex-col gap-2 text-xs">
-      <LegendRow color="bg-note-yellow border-note-yellow-edge" label="便签 — 自由想法" />
-      <LegendRow color="bg-note-blue border-note-blue-edge" label="解释 — AI 名词解释" />
-      <LegendRow color="bg-note-green border-note-green-edge" label="原子动作 — 谁/做什么/何时/产出" />
-      <LegendRow color="bg-note-purple border-note-purple-edge" label="引用 — @ 跨对话" />
-      <LegendRow color="bg-red-50 border-red-400" label="卡点 — 我卡在这里了" />
+      <LegendRow color="bg-note-yellow border-note-yellow-edge" label={t('right.legend.sticky')} />
+      <LegendRow color="bg-note-blue border-note-blue-edge" label={t('right.legend.explain')} />
+      <LegendRow color="bg-note-green border-note-green-edge" label={t('right.legend.atomic')} />
+      <LegendRow color="bg-note-purple border-note-purple-edge" label={t('right.legend.quote')} />
+      <LegendRow color="bg-red-50 border-red-400" label={t('right.legend.block')} />
     </ul>
   );
 }
@@ -291,10 +298,12 @@ const TYPE_PALETTE = {
   { container: string; chip: string; dot: string }
 >;
 
-const TYPE_LABEL: Record<Comment['type'], string> = {
-  note: '便签',
-  explanation: '解释',
-  atomic: '原子动作',
-  reference: '引用',
-  open_question: '卡点',
+import type { StringKey } from '../i18n/index.js';
+
+const TYPE_LABEL_KEY: Record<Comment['type'], StringKey> = {
+  note: 'right.type.sticky',
+  explanation: 'right.type.explain',
+  atomic: 'right.type.atomic',
+  reference: 'right.type.quote',
+  open_question: 'right.type.block',
 };

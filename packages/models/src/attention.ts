@@ -30,8 +30,12 @@ export type AttentionSource = z.infer<typeof AttentionSourceSchema>;
 
 export const AttentionSchema = z.object({
   id: IdSchema,
-  /** The highlighted text the user saved. */
-  text: z.string().min(1, 'attention text must not be empty'),
+  /**
+   * The highlighted text the user saved. May be an empty string ONLY when
+   * `imagePath` is set (an image-only capture) — the DB layer enforces this
+   * invariant. For text-only or explain captures, must be non-empty.
+   */
+  text: z.string(),
   /** AI explanation. Optional — bare 'quick' captures have none. */
   explanation: z.string().optional(),
   /** Source page / document URL. */
@@ -49,9 +53,34 @@ export const AttentionSchema = z.object({
    * resulting topic id is stored here. Null/undefined = still in inbox.
    */
   promotedToTopicId: IdSchema.optional(),
+  /**
+   * ── Image capture (v14+) ───────────────────────────────────────────
+   *
+   * When set, the attention represents a screenshot/image the user framed
+   * from the source page. The image bytes live in the app-data `media/`
+   * folder; `imagePath` is a filesystem path (not a URL). Frontend reads
+   * it via Tauri's `convertFileSrc` to render a thumbnail.
+   *
+   * `text` MAY be empty for image-only captures (user just clipped a
+   * region with no text). `explanation` still applies — AI vision fills
+   * it if the user clicks "explain this image".
+   */
+  imagePath: z.string().optional(),
+  imageMime: z.string().optional(),
+  imageWidth: z.number().int().positive().optional(),
+  imageHeight: z.number().int().positive().optional(),
   /** When the snippet was captured on the source side (Lens). */
   capturedAt: TimestampSchema,
   /** When the row was inserted into nodx's DB. */
   ingestedAt: TimestampSchema,
 });
 export type Attention = z.infer<typeof AttentionSchema>;
+
+/**
+ * True for image-carrying attentions — a screenshot / clipped region from
+ * the source page. Text-only attentions return false. Used by the UI to
+ * pick the image-card renderer vs. the text-card renderer.
+ */
+export function isImageAttention(a: Attention): boolean {
+  return typeof a.imagePath === 'string' && a.imagePath.length > 0;
+}

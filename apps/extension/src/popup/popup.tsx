@@ -12,6 +12,8 @@ import { setLocale, t } from '../shared/i18n.js';
 function App() {
   const [records, setRecords] = useState<ExplanationRecord[]>([]);
   const [ready, setReady] = useState(false);
+  const [captureBusy, setCaptureBusy] = useState(false);
+  const [captureMsg, setCaptureMsg] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -22,6 +24,30 @@ function App() {
     })();
   }, []);
 
+  const startCapture = async () => {
+    setCaptureBusy(true);
+    setCaptureMsg(null);
+    try {
+      // Ask the service worker to grab the visible tab and forward it to
+      // the tab's content script for marquee selection.
+      const res = (await chrome.runtime.sendMessage({ type: 'START_CAPTURE' })) as {
+        ok: boolean;
+        error?: string;
+      };
+      if (res?.ok) {
+        // Close the popup so the overlay is unobstructed; the rest of
+        // the flow lives in the content script.
+        window.close();
+      } else {
+        setCaptureMsg(res?.error ?? 'Capture failed to start.');
+      }
+    } catch (e) {
+      setCaptureMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCaptureBusy(false);
+    }
+  };
+
   if (!ready) return <div className="popup"><div className="empty">…</div></div>;
 
   return (
@@ -31,6 +57,17 @@ function App() {
         <button className="link" onClick={() => chrome.runtime.openOptionsPage()}>
           {t('settingsLink')}
         </button>
+      </div>
+
+      <div className="capture-row">
+        <button
+          className="capture-btn"
+          disabled={captureBusy}
+          onClick={() => void startCapture()}
+        >
+          📸 {captureBusy ? 'Starting…' : 'Screenshot region → nodx'}
+        </button>
+        {captureMsg && <div className="capture-msg">{captureMsg}</div>}
       </div>
 
       {records.length === 0 ? (

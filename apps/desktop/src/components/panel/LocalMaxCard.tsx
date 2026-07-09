@@ -1,5 +1,6 @@
 import type { LocalMaximumResult } from '@nodx/models';
 import { markdownToHtml, markdownToInlineHtml } from '../../lib/markdown.js';
+import { useT } from '../../i18n/index.js';
 
 interface LocalMaxCardProps {
   result: LocalMaximumResult;
@@ -27,6 +28,7 @@ export function LocalMaxCard({
   onReject,
   onAcceptAndRecurse,
 }: LocalMaxCardProps) {
+  const { t } = useT();
   const accepted = result.acceptedByUser;
   const confidencePct = Math.round(result.confidence * 100);
   return (
@@ -36,11 +38,11 @@ export function LocalMaxCard({
           Local Maximum
         </span>
         <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-surface border border-accent/30 text-accent">
-          把握 {confidencePct}%
+          {t('lm.confidence', { pct: String(confidencePct) })}
         </span>
         {accepted && (
           <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-note-green border border-note-green-edge/40 text-green-800">
-            已采纳
+            {t('lm.accepted')}
           </span>
         )}
       </div>
@@ -51,7 +53,7 @@ export function LocalMaxCard({
       />
 
       {result.consensus.length > 0 && (
-        <Section title="共识">
+        <Section title={t('lm.consensus')}>
           <ul className="list-disc pl-5 flex flex-col gap-0.5">
             {result.consensus.map((c, i) => (
               <li key={i} className="text-xs text-ink leading-relaxed">
@@ -63,7 +65,7 @@ export function LocalMaxCard({
       )}
 
       {result.divergence.length > 0 && (
-        <Section title="仍存分歧">
+        <Section title={t('lm.divergence')}>
           <ul className="flex flex-col gap-1.5">
             {result.divergence.map((d, i) => (
               <li key={i} className="text-xs leading-relaxed">
@@ -81,7 +83,7 @@ export function LocalMaxCard({
       )}
 
       {result.openQuestions.length > 0 && (
-        <Section title="开放问题（卡点）">
+        <Section title={t('lm.openQuestions')}>
           <ul className="list-disc pl-5 flex flex-col gap-0.5">
             {result.openQuestions.map((q, i) => (
               <li key={i} className="text-xs text-ink leading-relaxed">
@@ -100,17 +102,17 @@ export function LocalMaxCard({
             disabled={busy}
             className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-40 transition"
           >
-            采纳为方向结论
+            {t('lm.acceptBtn')}
           </button>
           {onAcceptAndRecurse && (
             <button
               type="button"
               onClick={onAcceptAndRecurse}
               disabled={busy}
-              title="采纳后由项目经理 PM 评估是否够原子，按可行性自动推进下一层（每层等你确认）"
+              title={t('lm.acceptAndRunTip')}
               className="px-3 py-1.5 text-xs font-medium rounded-md border border-accent text-accent hover:bg-accent hover:text-white disabled:opacity-40 transition"
             >
-              🚀 采纳并推进
+              {t('lm.acceptAndRunBtn')}
             </button>
           )}
           <button
@@ -119,7 +121,7 @@ export function LocalMaxCard({
             disabled={busy}
             className="px-2.5 py-1 text-xs font-medium rounded border border-border text-ink-muted hover:text-ink hover:border-ink-muted disabled:opacity-40 transition"
           >
-            拒绝
+            {t('lm.rejectBtn')}
           </button>
         </div>
       )}
@@ -130,10 +132,10 @@ export function LocalMaxCard({
             type="button"
             onClick={onAcceptAndRecurse}
             disabled={busy}
-            title="由项目经理 PM 评估是否够原子，按可行性自动推进下一层（每层等你确认）"
+            title={t('lm.autoRunTip')}
             className="px-3 py-1.5 text-xs font-medium rounded-md border border-accent text-accent hover:bg-accent hover:text-white disabled:opacity-40 transition"
           >
-            🚀 自动推进
+            {t('lm.autoRunBtn')}
           </button>
         </div>
       )}

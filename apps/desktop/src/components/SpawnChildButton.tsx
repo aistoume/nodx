@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createTopic } from '../db/topics.js';
+import { useT } from '../i18n/index.js';
 
 interface SpawnChildButtonProps {
   parentTopicId: string;
@@ -17,6 +18,7 @@ export function SpawnChildButton({
   onCreated,
   disabled,
 }: SpawnChildButtonProps) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -54,10 +56,10 @@ export function SpawnChildButton({
         onClick={() => setOpen(true)}
         disabled={disabled}
         className="self-start text-xs text-ink-muted hover:text-accent transition disabled:opacity-50 inline-flex items-center gap-1"
-        title="基于这个话题派生一个更深入的子话题"
+        title={t('spawn.tip')}
       >
         <span className="text-[14px] leading-none">↳</span>
-        <span>派生子话题</span>
+        <span>{t('spawn.btn')}</span>
       </button>
     );
   }
@@ -65,7 +67,7 @@ export function SpawnChildButton({
   return (
     <div className="flex items-center gap-2 bg-canvas border border-border rounded-md px-2 py-1.5">
       <span className="text-[10px] uppercase tracking-wider text-ink-muted shrink-0">
-        子话题
+        {t('spawn.label')}
       </span>
       <input
         autoFocus
@@ -82,7 +84,7 @@ export function SpawnChildButton({
           }
         }}
         disabled={submitting}
-        placeholder="深入哪个角度？"
+        placeholder={t('spawn.placeholder')}
         maxLength={80}
         className="flex-1 min-w-0 px-2 py-1 text-sm border border-transparent rounded focus:outline-none focus:border-accent bg-surface"
       />
@@ -92,7 +94,7 @@ export function SpawnChildButton({
         disabled={!title.trim() || submitting}
         className="px-2.5 py-1 text-xs font-medium rounded bg-accent text-white hover:opacity-90 disabled:opacity-40 transition shrink-0"
       >
-        {submitting ? '创建中…' : '创建'}
+        {submitting ? t('spawn.creating') : t('spawn.create')}
       </button>
       <button
         type="button"
@@ -100,11 +102,11 @@ export function SpawnChildButton({
         disabled={submitting}
         className="text-xs text-ink-muted hover:text-ink shrink-0"
       >
-        取消
+        {t('common.cancel')}
       </button>
       {error && (
         <span className="text-xs text-red-600 shrink-0 ml-1" title={error}>
-          失败
+          {t('common.failed')}
         </span>
       )}
     </div>

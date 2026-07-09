@@ -32,10 +32,12 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use serde::Serialize;
+use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
+use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 use subtle::ConstantTimeEq;
+use tauri::{AppHandle, Emitter};
 use tower_http::cors::{Any, CorsLayer};
 
 pub use keychain::Provider;
@@ -86,6 +88,9 @@ struct GatewayState {
     /// Which backend services /v1/complete. Mutable so the user can switch
     /// from Settings UI without restarting nodx.
     mode: Arc<RwLock<AiMode>>,
+    /// Set once at spawn() so image-capture handlers can emit Tauri events
+    /// back to the frontend. None until the app hands us its handle.
+    app_handle: Arc<RwLock<Option<AppHandle>>>,
 }
 
 impl GatewayState {
@@ -97,6 +102,7 @@ impl GatewayState {
                 .expect("reqwest client build"),
             client_token: Arc::new(RwLock::new(String::new())),
             mode: Arc::new(RwLock::new(load_mode_from_disk())),
+            app_handle: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -119,6 +125,16 @@ impl GatewayState {
             *w = mode;
             persist_mode_to_disk(mode);
         }
+    }
+
+    fn set_app_handle(&self, handle: AppHandle) {
+        if let Ok(mut w) = self.app_handle.write() {
+            *w = Some(handle);
+        }
+    }
+
+    fn app_handle(&self) -> Option<AppHandle> {
+        self.app_handle.read().ok().and_then(|g| g.clone())
     }
 }
 
@@ -214,7 +230,10 @@ pub fn parse_mode(s: &str) -> Option<AiMode> {
 /// Spawning a plain OS thread and building our own runtime inside that
 /// thread avoids the issue entirely — the gateway is fully isolated from
 /// Tauri's runtime lifecycle.
-pub fn spawn(port: u16) {
+pub fn spawn(port: u16, app_handle: AppHandle) {
+    // Stash the handle so the /v1/capture-image handler can emit
+    // frontend events after writing the image to disk.
+    state().set_app_handle(app_handle);
     let app = build_app(state().clone());
     let addr: SocketAddr = ([127, 0, 0, 1], port).into();
 
@@ -258,6 +277,13 @@ fn build_app(state: GatewayState) -> Router {
         .route("/health", get(health))
         .route("/v1/complete", post(complete))
         .route("/v1/embed", post(embed))
+        .route("/v1/capture-image", post(capture_image))
+        .layer(
+            // Body size limit tuned for image captures — screenshots up to
+            // ~10 MB after base64 encoding go through comfortably (a raw
+            // 4K PNG rarely exceeds 5 MB, and base64 adds ~33 %).
+            axum::extract::DefaultBodyLimit::max(16 * 1024 * 1024),
+        )
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
@@ -461,4 +487,215 @@ async fn embed(
             error_response(status, e.message).into_response()
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /v1/capture-image  —  Chrome extension → nodx image handoff
+//
+// The extension marquee-selects a region on the page, captures the
+// visible tab, crops the image, then POSTs it here as base64. We write
+// the bytes to `<app_data>/media/{uuid}.png` and emit a
+// `nodx://capture` Tauri event so the frontend's existing capture
+// pipeline picks it up (same code path as text captures).
+//
+// ── Why no Bearer auth on this endpoint ─────────────────────────────
+// Every other route requires the per-launch random token because they
+// either (a) burn Anthropic / Gemini API-key quota or (b) return data
+// derived from the user's keychain. This endpoint neither reads keys
+// nor spends money — it just writes bytes into the app-data folder and
+// emits an event. It's also bound to 127.0.0.1 only.
+//
+// The Chrome extension has no way to learn the per-launch token
+// (that's owned by the desktop frontend), and adding a "get me the
+// token" flow would create a way bigger attack surface than dropping
+// auth here. So we treat this endpoint like a local drop box.
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+struct CaptureImageRequest {
+    /// Base64-encoded image bytes.
+    #[serde(rename = "imageBase64")]
+    image_base64: String,
+    #[serde(default = "default_mime")]
+    #[serde(rename = "imageMime")]
+    image_mime: String,
+    #[serde(default)]
+    #[serde(rename = "imageWidth")]
+    image_width: Option<u32>,
+    #[serde(default)]
+    #[serde(rename = "imageHeight")]
+    image_height: Option<u32>,
+    #[serde(default)]
+    text: String,
+    #[serde(default)]
+    #[serde(rename = "sourceUrl")]
+    source_url: String,
+    #[serde(default)]
+    #[serde(rename = "sourceTitle")]
+    source_title: String,
+    #[serde(default)]
+    #[serde(rename = "capturedAt")]
+    captured_at: i64,
+}
+
+fn default_mime() -> String {
+    "image/png".to_string()
+}
+
+/// Payload emitted to the frontend after the image lands on disk. Shape is
+/// deliberately close to the text CapturePayload in lib.rs so the frontend
+/// can dispatch on the presence of `imagePath` inside the same listener.
+#[derive(Debug, Clone, Serialize)]
+struct CaptureImagePayload {
+    id: String,
+    text: String,
+    #[serde(rename = "sourceUrl")]
+    source_url: String,
+    #[serde(rename = "sourceTitle")]
+    source_title: String,
+    #[serde(rename = "sourceKind")]
+    source_kind: String,
+    kind: String,
+    #[serde(rename = "capturedAt")]
+    captured_at: i64,
+    #[serde(rename = "imagePath")]
+    image_path: String,
+    #[serde(rename = "imageMime")]
+    image_mime: String,
+    #[serde(rename = "imageWidth")]
+    image_width: Option<u32>,
+    #[serde(rename = "imageHeight")]
+    image_height: Option<u32>,
+}
+
+fn media_dir() -> Option<std::path::PathBuf> {
+    let base = directories_next_data_dir()?;
+    let media = base.join("media");
+    std::fs::create_dir_all(&media).ok()?;
+    Some(media)
+}
+
+fn extension_for(mime: &str) -> &'static str {
+    match mime.to_ascii_lowercase().as_str() {
+        "image/jpeg" | "image/jpg" => "jpg",
+        "image/webp" => "webp",
+        "image/gif" => "gif",
+        _ => "png",
+    }
+}
+
+async fn capture_image(
+    State(st): State<GatewayState>,
+    Json(req): Json<CaptureImageRequest>,
+) -> impl IntoResponse {
+    // Basic sanity — reject empty payloads early so we don't create
+    // zero-byte files under media/.
+    if req.image_base64.is_empty() {
+        return error_response(StatusCode::BAD_REQUEST, "imageBase64 must not be empty")
+            .into_response();
+    }
+    // Some encoders prefix `data:image/png;base64,` — strip it so we
+    // don't feed the base64 decoder garbage.
+    let raw_b64 = req
+        .image_base64
+        .split_once(',')
+        .map(|(_, rest)| rest)
+        .unwrap_or(&req.image_base64);
+
+    let bytes = match B64.decode(raw_b64.trim()) {
+        Ok(b) => b,
+        Err(e) => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                format!("invalid base64: {}", e),
+            )
+            .into_response();
+        }
+    };
+    if bytes.len() < 32 {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "image body too small to be a real image",
+        )
+        .into_response();
+    }
+
+    let media = match media_dir() {
+        Some(p) => p,
+        None => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "could not resolve nodx media dir",
+            )
+            .into_response();
+        }
+    };
+
+    let id = format!("att_{}", uuid::Uuid::new_v4().simple());
+    let ext = extension_for(&req.image_mime);
+    let file_name = format!("{}.{}", id, ext);
+    let path = media.join(&file_name);
+
+    if let Err(e) = std::fs::write(&path, &bytes) {
+        return error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("write media file: {}", e),
+        )
+        .into_response();
+    }
+
+    let image_path = path.to_string_lossy().to_string();
+    let captured_at = if req.captured_at > 0 {
+        req.captured_at
+    } else {
+        // Milliseconds since epoch, matching the shape the frontend uses.
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0)
+    };
+
+    let source_kind = if req.source_url.starts_with("http") {
+        "lens-chrome"
+    } else if req.source_url.is_empty() {
+        "manual"
+    } else {
+        "manual"
+    }
+    .to_string();
+
+    let payload = CaptureImagePayload {
+        id: id.clone(),
+        text: req.text,
+        source_url: req.source_url,
+        source_title: req.source_title,
+        source_kind,
+        kind: "quick".to_string(),
+        captured_at,
+        image_path: image_path.clone(),
+        image_mime: req.image_mime,
+        image_width: req.image_width,
+        image_height: req.image_height,
+    };
+
+    // Fire the same event name text captures use — the frontend already
+    // listens for "nodx://capture" and dispatches on the payload shape.
+    if let Some(handle) = st.app_handle() {
+        if let Err(e) = handle.emit("nodx://capture", &payload) {
+            // Not fatal: the file is on disk, the caller can retry the
+            // emit path or rescan the folder. Log + soldier on.
+            log::warn!("emit nodx://capture image payload failed: {}", e);
+        }
+    } else {
+        log::warn!("capture-image: no AppHandle stored, cannot notify frontend");
+    }
+
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "id": id,
+            "imagePath": image_path,
+        })),
+    )
+        .into_response()
 }

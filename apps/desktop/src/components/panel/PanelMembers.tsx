@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ExpertAgent } from '@nodx/models';
 import { roleStyle } from './roles.js';
+import { useT } from '../../i18n/index.js';
 
 interface PanelMembersProps {
   members: ExpertAgent[];
@@ -22,6 +23,7 @@ export function PanelMembers({ members }: PanelMembersProps) {
 }
 
 function MemberCard({ member }: { member: ExpertAgent }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const style = roleStyle(member.role);
   return (
@@ -42,7 +44,7 @@ function MemberCard({ member }: { member: ExpertAgent }) {
           onClick={() => setOpen((v) => !v)}
           className="ml-auto text-[11px] text-ink-muted hover:text-accent transition"
         >
-          {open ? '收起设定' : '查看设定'}
+          {open ? t('members.collapse') : t('members.expand')}
         </button>
       </div>
       {open && (

@@ -15,13 +15,38 @@ export type ChunkCallback = (text: string) => void;
 // Anthropic — SSE stream of content_block_delta events
 // ============================================================================
 
+export interface AnthropicImageInput {
+  /** Base64-encoded bytes, no `data:` prefix. */
+  base64: string;
+  /** MIME type — `image/png`, `image/jpeg`, etc. */
+  mime: string;
+}
+
 export async function callAnthropic(
   apiKey: string,
   model: string,
   prompt: string,
   onChunk: ChunkCallback,
   signal?: AbortSignal,
+  image?: AnthropicImageInput,
 ): Promise<string> {
+  // When an image is present, the user message becomes a multi-part
+  // content array (image then text) — same shape the desktop gateway
+  // builds in ai_gateway/anthropic.rs.
+  const userContent: unknown = image
+    ? [
+        {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: image.mime,
+            data: image.base64,
+          },
+        },
+        { type: 'text', text: prompt },
+      ]
+    : prompt;
+
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     signal,
@@ -35,7 +60,7 @@ export async function callAnthropic(
       model,
       max_tokens: 800,
       stream: true,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: userContent }],
     }),
   });
 
@@ -203,4 +228,70 @@ function safeParse<T>(s: string): T | null {
   } catch {
     return null;
   }
+}
+
+// ============================================================================
+// Google Gemini — image generation (non-streaming :generateContent).
+//   Used by the "🎨 generate" radial action: Sonnet writes an image prompt,
+//   then a Gemini image model (gemini-2.5-flash-image = Nano Banana, or
+//   gemini-3-pro-image) renders it and returns inline base64 bytes.
+//   This is a SEPARATE key from the main text provider — Anthropic can't
+//   generate images, so image-gen always needs a Google AI key.
+// ============================================================================
+
+export interface GeneratedImage {
+  /** Full `data:<mime>;base64,<...>` URL, ready to drop into an <img>. */
+  dataUrl: string;
+  mime: string;
+}
+
+export async function generateGeminiImage(
+  apiKey: string,
+  model: string,
+  prompt: string,
+  signal?: AbortSignal,
+): Promise<GeneratedImage> {
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}` +
+    `:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    signal,
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => '');
+    throw new Error(`Google image ${res.status}: ${errBody.slice(0, 200)}`);
+  }
+
+  const json = safeParse<{
+    candidates?: {
+      content?: {
+        parts?: { text?: string; inlineData?: { mimeType?: string; data?: string } }[];
+      };
+    }[];
+    promptFeedback?: { blockReason?: string };
+  }>(await res.text());
+
+  const parts = json?.candidates?.[0]?.content?.parts ?? [];
+  const imgPart = parts.find((p) => p?.inlineData?.data);
+  if (imgPart?.inlineData?.data) {
+    const mime = imgPart.inlineData.mimeType ?? 'image/png';
+    return { dataUrl: `data:${mime};base64,${imgPart.inlineData.data}`, mime };
+  }
+
+  const txt = parts.find((p) => p?.text)?.text;
+  const block = json?.promptFeedback?.blockReason;
+  throw new Error(
+    block
+      ? `Gemini 拒绝生成（${block}）`
+      : txt
+        ? `Gemini 没返回图片：${txt.slice(0, 150)}`
+        : 'Gemini 没返回图片数据',
+  );
 }

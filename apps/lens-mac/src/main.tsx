@@ -164,7 +164,7 @@ function SettingsView({ settings, onSave, onClose }: {
   useEffect(() => { setDraft(settings); }, [settings]);
 
   const modelOptions: Record<Provider, string[]> = {
-    anthropic: ['claude-haiku-4-5', 'claude-sonnet-4-6'],
+    anthropic: ['claude-haiku-4-5', 'claude-sonnet-5'],
     openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-5'],
     google: ['gemini-2.5-flash', 'gemini-2.5-pro'],
   };

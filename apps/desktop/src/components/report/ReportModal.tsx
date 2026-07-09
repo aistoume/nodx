@@ -3,6 +3,7 @@ import {
   generateDecisionReport,
   type DecisionReport,
 } from '../../ai/report.js';
+import { useT } from '../../i18n/index.js';
 
 interface ReportModalProps {
   topicId: string;
@@ -15,6 +16,7 @@ interface ReportModalProps {
  * "复制 Markdown" export (MVP).
  */
 export function ReportModal({ topicId, onClose }: ReportModalProps) {
+  const { t } = useT();
   const [report, setReport] = useState<DecisionReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -40,7 +42,7 @@ export function ReportModal({ topicId, onClose }: ReportModalProps) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      setError('复制失败，可手动选中下方 Markdown。');
+      setError(t('report.copyFail'));
     }
   };
 
@@ -54,7 +56,7 @@ export function ReportModal({ topicId, onClose }: ReportModalProps) {
         className="bg-surface rounded-lg shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
       >
         <header className="px-6 py-3 border-b border-border flex items-center gap-2 shrink-0">
-          <span className="text-sm font-semibold text-ink">📄 决策汇报</span>
+          <span className="text-sm font-semibold text-ink">{t('report.title')}</span>
           {report && (
             <span className="text-[11px] text-ink-muted truncate">
               {report.rootQuestion}
@@ -67,7 +69,7 @@ export function ReportModal({ topicId, onClose }: ReportModalProps) {
                 onClick={copy}
                 className="px-2.5 py-1 text-xs font-medium rounded border border-accent text-accent hover:bg-accent hover:text-white transition"
               >
-                {copied ? '已复制 ✓' : '复制 Markdown'}
+                {copied ? t('report.copied') : t('report.copyBtn')}
               </button>
             )}
             <button
@@ -75,7 +77,7 @@ export function ReportModal({ topicId, onClose }: ReportModalProps) {
               onClick={onClose}
               className="px-2.5 py-1 text-xs text-ink-muted hover:text-ink"
             >
-              关闭
+              {t('picker.close')}
             </button>
           </div>
         </header>
@@ -101,30 +103,30 @@ export function ReportModal({ topicId, onClose }: ReportModalProps) {
                 ))}
               </span>
               <span className="text-xs">
-                扫描子树 + 生成汇报中（Sonnet，约 1 分钟）…
+                {t('report.busy')}
               </span>
             </div>
           )}
 
           {report && (
             <div className="flex flex-col gap-5">
-              <Section title="决策摘要">
+              <Section title={t('report.summary')}>
                 <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap">
                   {report.report.summary}
                 </p>
               </Section>
 
-              <Section title="行动清单">
+              <Section title={t('report.actionItems')}>
                 {report.report.actionItems.length === 0 ? (
-                  <p className="text-xs text-ink-muted">（暂无）</p>
+                  <p className="text-xs text-ink-muted">{t('report.none')}</p>
                 ) : (
                   <table className="w-full text-xs border-collapse">
                     <thead>
                       <tr className="text-ink-muted">
-                        <Th>谁</Th>
-                        <Th>做什么</Th>
-                        <Th>何时</Th>
-                        <Th>产出</Th>
+                        <Th>{t('report.who')}</Th>
+                        <Th>{t('report.what')}</Th>
+                        <Th>{t('report.when')}</Th>
+                        <Th>{t('report.deliverable')}</Th>
                       </tr>
                     </thead>
                     <tbody>
@@ -141,9 +143,9 @@ export function ReportModal({ topicId, onClose }: ReportModalProps) {
                 )}
               </Section>
 
-              <Section title="未解问题">
+              <Section title={t('report.openQuestions')}>
                 {report.report.openQuestions.length === 0 ? (
-                  <p className="text-xs text-ink-muted">（暂无）</p>
+                  <p className="text-xs text-ink-muted">{t('report.none')}</p>
                 ) : (
                   <ul className="list-disc pl-5 flex flex-col gap-0.5">
                     {report.report.openQuestions.map((q, i) => (

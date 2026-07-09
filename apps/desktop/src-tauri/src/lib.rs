@@ -126,6 +126,59 @@ fn ai_gateway_token() -> String {
     ai_gateway::current_client_token()
 }
 
+/// Read a media file from `<app_data>/media/` and return it base64-encoded.
+///
+/// Used by the vision "explain this image" path — the frontend has an
+/// attention row with `imagePath` (an absolute filesystem path) but the
+/// webview can't turn that into raw bytes without a full FS read scope.
+/// This command returns just what we need: the base64 payload plus the
+/// detected MIME (from the extension), ready to hand to the gateway.
+///
+/// Safety: refuses paths outside the app-data media dir so a spoofed
+/// attention row can't be used to exfiltrate arbitrary files.
+#[tauri::command]
+fn read_media_file(path: String) -> Result<(String, String), String> {
+    use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
+    let target = std::path::PathBuf::from(&path);
+
+    // Resolve app-data media dir the same way the gateway does.
+    let media_dir = if cfg!(target_os = "macos") {
+        std::env::var_os("HOME")
+            .map(|h| std::path::PathBuf::from(h)
+                .join("Library")
+                .join("Application Support")
+                .join("app.nodx.desktop")
+                .join("media"))
+    } else if cfg!(target_os = "windows") {
+        std::env::var_os("APPDATA")
+            .map(|a| std::path::PathBuf::from(a).join("app.nodx.desktop").join("media"))
+    } else {
+        std::env::var_os("HOME")
+            .map(|h| std::path::PathBuf::from(h).join(".local").join("share").join("app.nodx.desktop").join("media"))
+    };
+    let media_dir = media_dir.ok_or_else(|| "cannot resolve nodx media dir".to_string())?;
+
+    // Canonicalise both sides so symlinks / .. tricks can't escape.
+    let media_canon = std::fs::canonicalize(&media_dir).map_err(|e| format!("media dir: {}", e))?;
+    let target_canon = std::fs::canonicalize(&target).map_err(|e| format!("target: {}", e))?;
+    if !target_canon.starts_with(&media_canon) {
+        return Err("path escapes media dir".to_string());
+    }
+
+    let bytes = std::fs::read(&target_canon).map_err(|e| format!("read: {}", e))?;
+    let encoded = B64.encode(&bytes);
+
+    let mime = match target_canon.extension().and_then(|s| s.to_str()).unwrap_or("").to_ascii_lowercase().as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "webp" => "image/webp",
+        "gif" => "image/gif",
+        _ => "image/png",
+    }
+    .to_string();
+
+    Ok((encoded, mime))
+}
+
 /// Get the current AI mode as a string ("api_key" | "cli").
 #[tauri::command]
 fn ai_mode_get() -> String {
@@ -243,6 +296,7 @@ pub fn run() {
             capture_has_permission,
             capture_open_permission_settings,
             capture_is_hotkey_active,
+            read_media_file,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -262,11 +316,15 @@ pub fn run() {
             // NOT bring down the whole app — the UI can still load, the user
             // just sees a "AI gateway unavailable" message when they trigger
             // an AI action (and the log will explain why).
-            let _ = std::panic::catch_unwind(|| {
+            let gw_app_handle = app.handle().clone();
+            // AssertUnwindSafe: AppHandle isn't UnwindSafe by default but
+            // panics inside gateway spawn are logged in a background thread
+            // and can't leave dangling references in this closure.
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
                 let token = random_token();
                 ai_gateway::set_client_token(token);
-                ai_gateway::spawn(8787);
-            })
+                ai_gateway::spawn(8787, gw_app_handle);
+            }))
             .map_err(|e| {
                 log::error!(
                     "ai gateway init panicked: {:?}",

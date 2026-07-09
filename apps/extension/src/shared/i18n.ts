@@ -54,6 +54,8 @@ const STRINGS = {
     selectionTo: '字至',
     selectionSuffix: '字',
     savedAt: '已保存',
+    imageGenSection: '图片生成（🎨 生成）',
+    imageGenHelp: 'Sonnet 看截图写 prompt，再用 Google Gemini 出图。需单独的 Google AI key（aistudio.google.com 免费获取）。',
 
     // Popup
     popupTitle: 'nodx Lens',
@@ -106,6 +108,8 @@ const STRINGS = {
     selectionTo: 'to',
     selectionSuffix: 'chars',
     savedAt: 'Saved',
+    imageGenSection: 'Image generation (🎨 Generate)',
+    imageGenHelp: 'Sonnet writes a prompt from your screenshot, then Google Gemini renders it. Needs a separate Google AI key (free at aistudio.google.com).',
 
     // Popup
     popupTitle: 'nodx Lens',

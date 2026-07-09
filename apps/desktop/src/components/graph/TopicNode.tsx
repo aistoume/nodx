@@ -14,6 +14,8 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { TopicNodeKind, TopicStatus } from '@nodx/models';
+import { useT } from '../../i18n/index.js';
+import type { StringKey } from '../../i18n/index.js';
 
 export interface TopicNodeData extends Record<string, unknown> {
   title: string;
@@ -37,28 +39,28 @@ export interface TopicNodeData extends Record<string, unknown> {
 
 const STATUS_META: Record<
   TopicStatus,
-  { label: string; dot: string; ring: string; tint: string }
+  { labelKey: StringKey; dot: string; ring: string; tint: string }
 > = {
   exploring: {
-    label: '探索中',
+    labelKey: 'graph.status.exploring',
     dot: 'bg-blue-400',
     ring: 'shadow-[0_0_0_2px_rgba(59,130,246,0.35)]',
     tint: 'from-blue-500/15 to-blue-500/0',
   },
   summarized: {
-    label: '已收束',
+    labelKey: 'graph.status.summarized',
     dot: 'bg-purple-400',
     ring: 'shadow-[0_0_0_2px_rgba(168,85,247,0.35)]',
     tint: 'from-purple-500/15 to-purple-500/0',
   },
   atomic: {
-    label: '原子化',
+    labelKey: 'graph.status.atomic',
     dot: 'bg-emerald-400',
     ring: 'shadow-[0_0_0_2px_rgba(16,185,129,0.4)]',
     tint: 'from-emerald-500/20 to-emerald-500/0',
   },
   ghost: {
-    label: '草稿',
+    labelKey: 'graph.status.ghost',
     dot: 'bg-zinc-500',
     ring: '',
     tint: 'from-zinc-500/10 to-zinc-500/0',
@@ -66,9 +68,11 @@ const STATUS_META: Record<
 };
 
 function TopicNodeInner({ id, data }: NodeProps) {
+  const { t } = useT();
   const d = data as TopicNodeData;
   const isExec = d.nodeKind === 'execution';
   const meta = STATUS_META[d.status];
+  const statusLabel = t(meta.labelKey);
   // Execution nodes read as concrete "do this" cards — override to emerald.
   const ring = isExec
     ? 'shadow-[0_0_0_2px_rgba(16,185,129,0.45)]'
@@ -102,18 +106,18 @@ function TopicNodeInner({ id, data }: NodeProps) {
         {isExec ? (
           <span
             className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex-shrink-0"
-            title="执行节点 · 行动清单"
+            title={t('graph.execTip')}
           >
-            ▶ 执行
+            {t('graph.execBadge')}
           </span>
         ) : (
           <span
             className={'w-2 h-2 rounded-full flex-shrink-0 ' + meta.dot}
-            title={meta.label}
+            title={statusLabel}
           />
         )}
         {d.isPinned && (
-          <span className="text-amber-400 text-[10px]" title="已置顶">
+          <span className="text-amber-400 text-[10px]" title={t('graph.pinnedTip')}>
             📌
           </span>
         )}
@@ -126,7 +130,7 @@ function TopicNodeInner({ id, data }: NodeProps) {
         {d.hasOpenQuestions && (
           <span
             className="w-2 h-2 rounded-full bg-rose-500 animate-pulse flex-shrink-0"
-            title="有未解卡点"
+            title={t('graph.hasBlockersTip')}
           />
         )}
       </div>
@@ -142,7 +146,7 @@ function TopicNodeInner({ id, data }: NodeProps) {
           </div>
         ) : (
           <div className="text-[11px] text-zinc-500 italic leading-snug">
-            （尚无 AI 摘要 · 跑一次 Survey 后会自动生成）
+            {t('graph.noSummary')}
           </div>
         )}
       </div>
@@ -156,10 +160,10 @@ function TopicNodeInner({ id, data }: NodeProps) {
               e.stopPropagation();
               d.onSynthesize(id);
             }}
-            title="把连入这个节点的素材综合成一段思考，写进它的文档"
+            title={t('graph.synthesizeTip')}
             className="w-full text-[11px] font-medium rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 py-1 transition"
           >
-            🔗 综合 {d.linkedMaterialCount} 份素材
+            {t('graph.synthesizeBtn', { n: String(d.linkedMaterialCount) })}
           </button>
         </div>
       )}
@@ -168,14 +172,14 @@ function TopicNodeInner({ id, data }: NodeProps) {
       <div className="relative flex items-center gap-1.5 px-3 py-1.5 border-t border-zinc-700/60 text-[10px] text-zinc-400">
         <span
           className="px-1.5 py-0.5 rounded bg-zinc-800/80"
-          title={`当前状态：${meta.label}`}
+          title={t('graph.currentStatus', { s: statusLabel })}
         >
-          {meta.label}
+          {statusLabel}
         </span>
         {d.messageCount > 0 && (
           <span
             className="px-1.5 py-0.5 rounded bg-zinc-800/80 inline-flex items-center gap-1"
-            title={`这个话题里有 ${d.messageCount} 条对话消息`}
+            title={t('graph.msgCountTip', { n: String(d.messageCount) })}
           >
             <span aria-hidden>💬</span>
             <span>{d.messageCount}</span>
@@ -184,7 +188,7 @@ function TopicNodeInner({ id, data }: NodeProps) {
         {d.childCount > 0 && (
           <span
             className="px-1.5 py-0.5 rounded bg-zinc-800/80 inline-flex items-center gap-1"
-            title={`从这个话题"深入讨论"出 ${d.childCount} 个子话题`}
+            title={t('graph.childCountTip', { n: String(d.childCount) })}
           >
             <BranchIcon />
             <span>{d.childCount}</span>
@@ -193,13 +197,13 @@ function TopicNodeInner({ id, data }: NodeProps) {
         {d.isAutoRecursion && (
           <span
             className="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300"
-            title="由自动递进引擎（Auto-Recursion）生成的节点"
+            title={t('graph.autoRecurTip')}
           >
-            🤖 自动
+            {t('graph.autoRecurBadge')}
           </span>
         )}
         <span className="ml-auto text-zinc-500 opacity-0 group-hover:opacity-100 transition">
-          双击进入
+          {t('graph.dblClickEnter')}
         </span>
       </div>
 

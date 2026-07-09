@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "nodx Lens",
-  "version": "0.5.0",
-  "description": "Highlight any text on a webpage to get an inline AI explanation. Underlines stay — click them later to revisit.",
+  "version": "0.8.4",
+  "description": "Highlight text or marquee-select a region on any page → ask Sonnet about it in a side panel, keep the region marked, and (optionally) send it to nodx desktop.",
   "minimum_chrome_version": "120",
   "icons": {
     "16": "public/icons/icon-16.png",
@@ -11,8 +11,10 @@
     "128": "public/icons/icon-128.png"
   },
   "action": {
-    "default_popup": "src/popup/popup.html",
-    "default_title": "nodx Lens"
+    "default_title": "nodx Lens — open side panel"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel/sidepanel.html"
   },
   "options_ui": {
     "page": "src/options/options.html",
@@ -31,11 +33,26 @@
     }
   ],
   "permissions": [
-    "storage"
+    "storage",
+    "activeTab",
+    "sidePanel",
+    "scripting",
+    "clipboardWrite"
   ],
   "host_permissions": [
+    "<all_urls>",
     "https://api.anthropic.com/*",
     "https://api.openai.com/*",
-    "https://generativelanguage.googleapis.com/*"
-  ]
+    "https://generativelanguage.googleapis.com/*",
+    "http://127.0.0.1:8787/*"
+  ],
+  "commands": {
+    "capture_region": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "mac": "Alt+Shift+S"
+      },
+      "description": "Screenshot a region on this page and open the nodx side panel"
+    }
+  }
 }

@@ -541,6 +541,27 @@ const V13_SQL: &str = r#"
 ALTER TABLE topics ADD COLUMN node_kind TEXT NOT NULL DEFAULT 'thinking';
 "#;
 
+/// Schema v14 — image captures on attentions.
+///
+/// Lens can now marquee-select a region on a webpage and send the PNG bytes
+/// to nodx desktop via POST /v1/capture-image. The image is written to
+/// `<app_data>/media/{uuid}.png`; the attention row keeps the path (not
+/// the bytes) plus a bit of metadata for display.
+///
+/// All four columns are optional — text-only attentions leave them NULL.
+/// The `text` column is no longer NOT NULL in practice: image-only
+/// captures write an empty string. SQLite has no easy way to relax
+/// NOT NULL after the fact without a full table copy, so we keep the
+/// NOT NULL constraint and let the DB layer coerce empty text to ''.
+const V14_SQL: &str = r#"
+ALTER TABLE attentions ADD COLUMN image_path   TEXT NULL;
+ALTER TABLE attentions ADD COLUMN image_mime   TEXT NULL;
+ALTER TABLE attentions ADD COLUMN image_width  INTEGER NULL;
+ALTER TABLE attentions ADD COLUMN image_height INTEGER NULL;
+CREATE INDEX idx_attentions_image ON attentions(image_path)
+    WHERE image_path IS NOT NULL;
+"#;
+
 pub fn all() -> Vec<Migration> {
     vec![
         Migration {
@@ -619,6 +640,12 @@ pub fn all() -> Vec<Migration> {
             version: 13,
             description: "topic_node_kind",
             sql: V13_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 14,
+            description: "attentions_image_columns",
+            sql: V14_SQL,
             kind: MigrationKind::Up,
         },
     ]

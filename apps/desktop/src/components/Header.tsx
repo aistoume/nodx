@@ -80,6 +80,7 @@ function OpenQuestionsBadge({
   items: OpenQuestionItem[];
   onJump: (topicId: string) => void;
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -100,7 +101,7 @@ function OpenQuestionsBadge({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        title="全局卡点清单"
+        title={t('header.blockers.tip')}
         className={
           'px-3 py-1.5 text-sm rounded-md border transition flex items-center gap-1.5 ' +
           (count > 0
@@ -108,7 +109,7 @@ function OpenQuestionsBadge({
             : 'border-border bg-surface text-ink-muted hover:bg-canvas hover:text-ink')
         }
       >
-        <span>📍 卡点</span>
+        <span>{t('header.blockers.label')}</span>
         {count > 0 && (
           <span className="min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[10px] flex items-center justify-center">
             {count}
@@ -120,7 +121,7 @@ function OpenQuestionsBadge({
         <div className="absolute right-0 top-full mt-1 w-80 max-h-96 overflow-y-auto bg-surface border border-border rounded-md shadow-lg z-50 p-1">
           {count === 0 ? (
             <p className="text-xs text-ink-muted p-3 text-center">
-              暂无未解决的卡点。选中文字 →「📍 卡点」可标记。
+              {t('header.blockers.empty')}
             </p>
           ) : (
             <ul className="flex flex-col">

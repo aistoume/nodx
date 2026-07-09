@@ -28,6 +28,7 @@ import { upsertDocument } from '../db/documents.js';
 import { createTopic } from '../db/topics.js';
 import { extractExecutionPlan, executionToMarkdown } from '../ai/execution.js';
 import { MergePreviewModal } from './panel/MergePreviewModal.js';
+import { useT } from '../i18n/index.js';
 import {
   createAiMessage,
   createUserMessage,
@@ -83,6 +84,7 @@ export function DocumentView({
   replayCard,
   onDismissReplay,
 }: DocumentViewProps) {
+  const { t } = useT();
   // Composer seed for "重新推理" (replay card → draft 卡点).
   const [composerSeed, setComposerSeed] = useState('');
   const [seedNonce, setSeedNonce] = useState(0);
@@ -112,7 +114,7 @@ export function DocumentView({
 
   const handleConfirmSplit = async (markdown: string) => {
     const child = await createTopic({
-      title: execTitle || `执行：${topic.title}`,
+      title: execTitle || t('doc.exec.titleFallback', { t: topic.title }),
       parentId: topic.id,
       status: 'atomic',
       nodeKind: 'execution',
@@ -131,10 +133,10 @@ export function DocumentView({
       const path = await saveBundleFile(`${safeFileName(topic.title)}.nodx`, json);
       if (!path) return; // user cancelled the save dialog
       const count = JSON.parse(json).tables.topics.length as number;
-      setExportMsg(`已导出 ${count} 个话题节点 → ${path}`);
+      setExportMsg(t('doc.exportedMsg', { n: String(count), path }));
       window.setTimeout(() => setExportMsg(null), 6000);
     } catch (e) {
-      setExportMsg(`导出失败：${e instanceof Error ? e.message : String(e)}`);
+      setExportMsg(t('doc.exportFailMsg', { err: e instanceof Error ? e.message : String(e) }));
     } finally {
       setExporting(false);
     }
@@ -374,7 +376,7 @@ export function DocumentView({
       onMutated();
       if (!isAiConfigured()) {
         setChatError(
-          'AI 网关未配置，跳过 AI 回复。',
+          t('doc.aiSkipped'),
         );
         return;
       }
@@ -527,7 +529,7 @@ export function DocumentView({
 
   const submitRefineQuestion = async (question: string) => {
     if (!editor || !pendingSelection) return;
-    const q = question.trim() || '请帮我深化这一段。';
+    const q = question.trim() || t('doc.deepen.fallbackQ');
     setProposing(true);
     setError(null);
     try {
@@ -587,7 +589,7 @@ export function DocumentView({
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-[11px] uppercase tracking-wider text-ink-muted">
-                思考文档{topic.parentId ? ' · 子' : ''}
+                {t('doc.headerBadge')}{topic.parentId ? t('doc.subSuffix') : ''}
               </p>
               <h1 className="text-xl font-semibold leading-tight mt-0.5">
                 {topic.title}
@@ -599,28 +601,28 @@ export function DocumentView({
                   type="button"
                   onClick={handleSplitExecution}
                   disabled={splitting}
-                  title="把这个思考节点里的具体执行方案抽取出来，生成一个「执行」子节点（谁/做什么/何时/产出的行动清单）"
+                  title={t('doc.toolbar.extractExecTitle')}
                   className="px-3 py-1.5 text-xs font-medium rounded-md border border-emerald-500 text-emerald-600 hover:bg-emerald-500 hover:text-white transition disabled:opacity-50"
                 >
-                  {splitting ? '抽取执行方案…（约 30s）' : '▶ 拆出执行'}
+                  {splitting ? t('doc.exec.splitting') : t('doc.exec.splitBtn')}
                 </button>
               )}
               <button
                 type="button"
                 onClick={handleExportBundle}
                 disabled={exporting}
-                title="把这个话题及其所有子话题的全部数据与关系原封不动导出为 .nodx 文件，可在其他电脑上加载"
+                title={t('doc.toolbar.exportBundleTitle')}
                 className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-ink-muted hover:border-accent hover:text-accent transition disabled:opacity-50"
               >
-                {exporting ? '导出中…' : '⬇ 导出 .nodx'}
+                {exporting ? t('doc.exportBusy') : t('doc.exportBtn')}
               </button>
               <button
                 type="button"
                 onClick={() => setShowReport(true)}
-                title="扫描这个话题及其所有子话题，生成给老板看的决策汇报"
+                title={t('doc.toolbar.exportReportTitle')}
                 className="px-3 py-1.5 text-xs font-medium rounded-md border border-accent text-accent hover:bg-accent hover:text-white transition"
               >
-                📄 产出决策汇报
+                {t('doc.reportBtn')}
               </button>
             </div>
           </div>
@@ -628,8 +630,8 @@ export function DocumentView({
             <p className="mt-2 text-xs text-accent">{exportMsg}</p>
           )}
           <p className="mt-2 text-xs text-ink-muted">
-            可直接编辑。选中文字后选择 <em>解释</em> / <em>便签</em> /{' '}
-            <em>深化</em> / <em>📍卡点</em>。
+            {t('doc.editHint.prefix')} <em>{t('doc.editHint.explain')}</em> / <em>{t('doc.editHint.sticky')}</em> /{' '}
+            <em>{t('doc.editHint.deepen')}</em> / <em>{t('doc.editHint.block')}</em>.
           </p>
         </div>
       </header>
@@ -640,10 +642,10 @@ export function DocumentView({
       {execPreview !== null && (
         <MergePreviewModal
           initialMarkdown={execPreview}
-          title="▶ 拆出执行 · 预览可编辑"
-          hint="确认后会新建一个「执行」子节点，把这份行动清单作为它的文档"
-          confirmLabel="创建执行节点"
-          busyLabel="创建中…"
+          title={t('doc.exec.previewTitle')}
+          hint={t('doc.exec.previewHint')}
+          confirmLabel={t('doc.exec.confirm')}
+          busyLabel={t('doc.exec.creating')}
           onConfirm={(md) => void handleConfirmSplit(md)}
           onClose={() => setExecPreview(null)}
         />
@@ -658,9 +660,9 @@ export function DocumentView({
                 onDismiss={onDismissReplay}
                 onReplay={() => {
                   const draft =
-                    '我上次卡在：\n' +
+                    t('doc.replay.draftPrefix') + '\n' +
                     replayCard.stuckPoints.map((s) => `- ${s}`).join('\n') +
-                    '\n\n让我们重新展开：';
+                    '\n\n' + t('doc.replay.draftSuffix');
                   setComposerSeed(draft);
                   setSeedNonce((n) => n + 1);
                 }}
@@ -779,6 +781,7 @@ function SelectionMenu({
   onRefine: () => void;
   onStuck: () => void;
 }) {
+  const { t } = useT();
   const left = clamp(x, 8, window.innerWidth - 340);
   const top = clamp(y, 8, window.innerHeight - 60);
   return (
@@ -790,30 +793,30 @@ function SelectionMenu({
       <MenuButton
         onClick={onExplain}
         loading={explaining}
-        loadingLabel="解释中…"
-        idleLabel="解释"
-        hint="蓝色备注"
+        loadingLabel={t('doc.toolbar.explain.loading')}
+        idleLabel={t('doc.toolbar.explain.idle')}
+        hint={t('doc.toolbar.explain.hint')}
         accent="blue"
       />
       <span className="w-px bg-border" />
       <MenuButton
         onClick={onNote}
-        idleLabel="便签"
-        hint="黄色备注"
+        idleLabel={t('doc.toolbar.sticky.idle')}
+        hint={t('doc.toolbar.sticky.hint')}
         accent="yellow"
       />
       <span className="w-px bg-border" />
       <MenuButton
         onClick={onRefine}
-        idleLabel="深化"
-        hint="AI 改写"
+        idleLabel={t('doc.toolbar.deepen.idle')}
+        hint={t('doc.toolbar.deepen.hint')}
         accent="accent"
       />
       <span className="w-px bg-border" />
       <MenuButton
         onClick={onStuck}
-        idleLabel="📍 卡点"
-        hint="我卡在这里了"
+        idleLabel={t('doc.toolbar.block.idle')}
+        hint={t('doc.toolbar.block.hint')}
         accent="red"
       />
     </div>
@@ -864,26 +867,26 @@ function MenuButton({
 const POPOVER_THEME = {
   note: {
     card: 'bg-note-yellow border-note-yellow-edge/60',
-    label: '便签',
+    labelKey: 'doc.popover.note.label' as const,
     labelText: 'text-yellow-800',
     quote: 'text-yellow-900/70 border-yellow-700/30',
     field: 'border-yellow-700/30 focus:border-yellow-700/60',
     cancel: 'text-yellow-900/70 hover:text-yellow-900',
     submit: 'bg-yellow-700',
-    submitLabel: '保存便签  ⌘↵',
-    placeholder: '记下你对这段的想法…',
+    submitLabelKey: 'doc.popover.note.submit' as const,
+    placeholderKey: 'doc.popover.note.placeholder' as const,
     allowEmpty: false,
   },
   stuck: {
     card: 'bg-red-50 border-red-300',
-    label: '📍 卡点',
+    labelKey: 'doc.popover.stuck.label' as const,
     labelText: 'text-red-700',
     quote: 'text-red-900/70 border-red-300',
     field: 'border-red-300 focus:border-red-400',
     cancel: 'text-red-900/70 hover:text-red-900',
     submit: 'bg-red-600',
-    submitLabel: '标记卡点  ⌘↵',
-    placeholder: '卡在什么？（缺数据 / 缺判断 / 缺共识…，可留空）',
+    submitLabelKey: 'doc.popover.stuck.submit' as const,
+    placeholderKey: 'doc.popover.stuck.placeholder' as const,
     allowEmpty: true,
   },
 } as const;
@@ -903,11 +906,12 @@ function NotePopover({
   onCancel: () => void;
   variant?: 'note' | 'stuck';
 }) {
-  const t = POPOVER_THEME[variant];
+  const { t } = useT();
+  const theme = POPOVER_THEME[variant];
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const canSubmit = (t.allowEmpty || !!text.trim()) && !saving;
+  const canSubmit = (theme.allowEmpty || !!text.trim()) && !saving;
   const submit = async () => {
     if (!canSubmit) return;
     setSaving(true);
@@ -924,15 +928,15 @@ function NotePopover({
     <div
       style={{ position: 'fixed', left, top, zIndex: 60, width: 360 }}
       onMouseDown={(e) => e.stopPropagation()}
-      className={`border rounded-lg shadow-xl p-3 flex flex-col gap-2 ${t.card}`}
+      className={`border rounded-lg shadow-xl p-3 flex flex-col gap-2 ${theme.card}`}
     >
       <div
-        className={`text-[11px] uppercase tracking-wider font-semibold ${t.labelText}`}
+        className={`text-[11px] uppercase tracking-wider font-semibold ${theme.labelText}`}
       >
-        {t.label}
+        {t(theme.labelKey)}
       </div>
       <blockquote
-        className={`text-xs italic border-l-2 pl-2 max-h-20 overflow-y-auto ${t.quote}`}
+        className={`text-xs italic border-l-2 pl-2 max-h-20 overflow-y-auto ${theme.quote}`}
       >
         {selection}
       </blockquote>
@@ -949,27 +953,27 @@ function NotePopover({
             onCancel();
           }
         }}
-        placeholder={t.placeholder}
+        placeholder={t(theme.placeholderKey)}
         rows={3}
         disabled={saving}
-        className={`resize-none px-2 py-1.5 text-sm border rounded-md bg-white/80 focus:outline-none transition font-sans ${t.field}`}
+        className={`resize-none px-2 py-1.5 text-sm border rounded-md bg-white/80 focus:outline-none transition font-sans ${theme.field}`}
       />
       <div className="flex justify-end gap-2">
         <button
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className={`px-3 py-1 text-xs ${t.cancel}`}
+          className={`px-3 py-1 text-xs ${theme.cancel}`}
         >
-          返回
+          {t('doc.popover.back')}
         </button>
         <button
           type="button"
           onClick={() => void submit()}
           disabled={!canSubmit}
-          className={`px-3 py-1 text-xs font-medium rounded-md text-white hover:opacity-90 disabled:opacity-50 transition ${t.submit}`}
+          className={`px-3 py-1 text-xs font-medium rounded-md text-white hover:opacity-90 disabled:opacity-50 transition ${theme.submit}`}
         >
-          {saving ? '保存中…' : t.submitLabel}
+          {saving ? t('doc.popover.saving') : t(theme.submitLabelKey)}
         </button>
       </div>
     </div>
@@ -991,6 +995,7 @@ function AskPopover({
   onCancel: () => void;
   submitting: boolean;
 }) {
+  const { t } = useT();
   const [question, setQuestion] = useState('');
 
   const submit = () => {
@@ -1006,7 +1011,7 @@ function AskPopover({
       className="bg-surface border border-border rounded-lg shadow-xl p-3 flex flex-col gap-2"
     >
       <div className="text-[11px] uppercase tracking-wider text-ink-muted">
-        深化思考
+        {t('doc.deepen.title')}
       </div>
       <blockquote className="text-xs text-ink-muted italic border-l-2 border-border pl-2 max-h-20 overflow-y-auto">
         {selection}
@@ -1024,7 +1029,7 @@ function AskPopover({
             onCancel();
           }
         }}
-        placeholder="想问什么？（留空 = 帮我深化这段）"
+        placeholder={t('doc.deepen.placeholder')}
         rows={3}
         disabled={submitting}
         className="resize-none px-2 py-1.5 text-sm border border-border rounded-md bg-canvas focus:outline-none focus:border-accent focus:bg-surface transition font-sans"
@@ -1036,7 +1041,7 @@ function AskPopover({
           disabled={submitting}
           className="px-3 py-1 text-xs text-ink-muted hover:text-ink"
         >
-          返回
+          {t('doc.popover.back')}
         </button>
         <button
           type="button"
@@ -1044,7 +1049,7 @@ function AskPopover({
           disabled={submitting}
           className="px-3 py-1 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-50 transition"
         >
-          {submitting ? '思考中…' : '提交  ⌘↵'}
+          {submitting ? t('doc.deepen.thinking') : t('doc.deepen.submit')}
         </button>
       </div>
     </div>
@@ -1064,6 +1069,7 @@ function ProposalCard({
   onAccept: () => void | Promise<void>;
   onReject: () => void;
 }) {
+  const { t } = useT();
   return (
     <div
       style={{ position: 'fixed', right: 24, bottom: 24, zIndex: 60, width: 460 }}
@@ -1071,14 +1077,14 @@ function ProposalCard({
     >
       <header className="flex items-baseline justify-between gap-2">
         <span className="text-[11px] uppercase tracking-wider text-accent font-semibold">
-          AI 建议替换
+          {t('doc.proposal.title')}
         </span>
-        <span className="text-[10px] text-ink-muted">问：{question}</span>
+        <span className="text-[10px] text-ink-muted">{t('doc.proposal.qLabel', { q: question })}</span>
       </header>
 
       <section className="text-xs">
         <div className="text-[10px] uppercase tracking-wider text-ink-muted mb-1">
-          原文
+          {t('doc.proposal.original')}
         </div>
         <blockquote className="line-through text-ink-muted bg-red-50/30 border-l-2 border-red-200 pl-2 py-1 rounded-sm whitespace-pre-wrap">
           {original}
@@ -1087,7 +1093,7 @@ function ProposalCard({
 
       <section className="text-xs">
         <div className="text-[10px] uppercase tracking-wider text-ink-muted mb-1">
-          AI 改写
+          {t('doc.proposal.rewrite')}
         </div>
         <div
           className="prose-doc text-sm bg-green-50/40 border-l-2 border-green-300 pl-3 py-1.5 rounded-sm"
@@ -1101,14 +1107,14 @@ function ProposalCard({
           onClick={onReject}
           className="px-3 py-1.5 text-xs text-ink-muted border border-border rounded-md hover:bg-canvas"
         >
-          拒绝
+          {t('doc.proposal.reject')}
         </button>
         <button
           type="button"
           onClick={() => void onAccept()}
           className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition"
         >
-          接受替换
+          {t('doc.proposal.accept')}
         </button>
       </footer>
     </div>
