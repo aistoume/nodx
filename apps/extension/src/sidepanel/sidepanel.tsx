@@ -18,10 +18,12 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { getSettings } from '../shared/settings.js';
 import {
   appendQA,
+  deleteAction,
   deleteHighlight,
   listForUrl,
   normalizeUrl,
   subscribe,
+  subscribeActions,
   updateQA,
   updateHighlight,
   type Highlight,
@@ -48,8 +50,10 @@ async function currentActiveTab(): Promise<ActiveTabState | null> {
 function App() {
   const [tab, setTab] = useState<ActiveTabState | null>(null);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [actions, setActions] = useState<Highlight[]>([]);
   const [syncToNodx, setSyncToNodx] = useState(true);
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [showAllActions, setShowAllActions] = useState(false);
   const cardsRef = useRef<Record<string, HTMLDivElement | null>>({});
 
   // ── Bootstrap: read current tab + sync flag, load highlights. ─────
@@ -78,6 +82,9 @@ function App() {
     const unsub = subscribe(tab.url, (hs) => setHighlights(hs));
     return unsub;
   }, [tab?.url]);
+
+  // ── Global action log (search / shopping / generate) — shown on every page. ─
+  useEffect(() => subscribeActions(setActions), []);
 
   // ── Handle URL changes within the same panel session. ─────────────
   useEffect(() => {
@@ -180,6 +187,7 @@ function App() {
       </header>
 
       <div class="panel-body">
+        {/* 本页的框选卡置顶 —— 与正在看的页面最相关；全局动作记录在下方。 */}
         {highlights.length === 0 ? (
           <div class="empty">
             <p style={{ fontSize: '13px', color: '#666' }}>
@@ -226,6 +234,106 @@ function App() {
             />
           ))
         )}
+
+        {actions.length > 0 && (
+          <div class="actions-log" style={{ marginTop: '12px' }}>
+            <div
+              style={{
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#6b7280',
+                margin: '2px 2px 6px',
+              }}
+            >
+              🕘 搜索 / 购物 / 生成记录（{actions.length}）
+            </div>
+            {(showAllActions ? actions : actions.slice(0, 3)).map((a) => (
+              <ActionCard
+                key={a.id}
+                item={a}
+                onDelete={() => void deleteAction(a.id)}
+              />
+            ))}
+            {actions.length > 3 && (
+              <button
+                class="action-btn"
+                style={{ width: '100%', marginTop: '4px' }}
+                onClick={() => setShowAllActions((v) => !v)}
+              >
+                {showAllActions ? '收起' : `展开全部（${actions.length} 条）`}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ActionCard({
+  item,
+  onDelete,
+}: {
+  item: Highlight;
+  onDelete: () => void;
+}) {
+  const a = item.action;
+  if (!a) return null;
+  const badge =
+    a.kind === 'search'
+      ? '🔍 搜索'
+      : a.kind === 'shopping'
+        ? '🛒 购物'
+        : a.kind === 'save'
+          ? '💡 保存'
+          : '🎨 生成';
+  const openUrl = () => {
+    if (a.url) chrome.tabs.create({ url: a.url });
+  };
+  return (
+    <div class="card">
+      <img
+        src={item.thumbnailDataUrl}
+        alt=""
+        class="card-thumb"
+        onClick={openUrl}
+        title={a.url ? '点击重新打开' : '生成的图片'}
+      />
+      <div class="card-meta">
+        <span>{new Date(item.createdAt).toLocaleString()}</span>
+        <span class="badge">{badge}</span>
+        <button
+          class="del"
+          title="删除这条记录"
+          style={{ marginLeft: 'auto' }}
+          onClick={onDelete}
+        >
+          ✕
+        </button>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          flexWrap: 'wrap',
+          fontSize: '12px',
+          margin: '2px 0 4px',
+        }}
+      >
+        <span style={{ color: '#6b7280' }}>{a.label}</span>
+        {a.query && (
+          <span style={{ color: '#111827', fontWeight: 600 }}>「{a.query}」</span>
+        )}
+        {a.url && (
+          <button
+            class="settings-link"
+            style={{ marginLeft: 'auto', fontSize: '11px' }}
+            onClick={openUrl}
+          >
+            ↗ 重新打开
+          </button>
+        )}
       </div>
     </div>
   );
@@ -253,6 +361,17 @@ function HighlightCard({
 
   const url = highlight.url;
   const id = highlight.id;
+  const action = highlight.action;
+  const actionBadge =
+    action?.kind === 'search'
+      ? '🔍 搜索'
+      : action?.kind === 'shopping'
+        ? '🛒 购物'
+        : action?.kind === 'generate'
+          ? '🎨 生成'
+          : action?.kind === 'save'
+            ? '💡 保存'
+            : null;
 
   const submit = useCallback(async () => {
     const q = question.trim();
@@ -314,11 +433,22 @@ function HighlightCard({
         src={highlight.thumbnailDataUrl}
         alt="Screenshot"
         class="card-thumb"
-        onClick={() => scrollPageToRegion(highlight)}
-        title="Click to scroll page to this region"
+        onClick={() => {
+          if (action?.url) chrome.tabs.create({ url: action.url });
+          else if (!action) scrollPageToRegion(highlight);
+          // Generated image: already shown inline; nothing to navigate to.
+        }}
+        title={
+          action?.url
+            ? '点击重新打开'
+            : action
+              ? '生成的图片'
+              : 'Click to scroll page to this region'
+        }
       />
       <div class="card-meta">
         <span>{new Date(highlight.createdAt).toLocaleString()}</span>
+        {actionBadge && <span class="badge">{actionBadge}</span>}
         <span class={`badge ${highlight.syncedToNodx ? 'synced' : ''}`}>
           {highlight.syncedToNodx ? '✓ nodx' : '💡 Lens'}
         </span>
@@ -343,6 +473,35 @@ function HighlightCard({
           ✕
         </button>
       </div>
+
+      {action && (action.kind === 'search' || action.kind === 'shopping') && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            flexWrap: 'wrap',
+            fontSize: '12px',
+            margin: '2px 0 6px',
+          }}
+        >
+          <span style={{ color: '#6b7280' }}>{action.label}</span>
+          {action.query && (
+            <span style={{ color: '#111827', fontWeight: 600 }}>
+              「{action.query}」
+            </span>
+          )}
+          {action.url && (
+            <button
+              class="settings-link"
+              style={{ marginLeft: 'auto', fontSize: '11px' }}
+              onClick={() => action.url && chrome.tabs.create({ url: action.url })}
+            >
+              ↗ 重新打开
+            </button>
+          )}
+        </div>
+      )}
 
       {highlight.qa.length > 0 && (
         <div class="qa-list">

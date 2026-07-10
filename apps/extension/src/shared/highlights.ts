@@ -42,6 +42,19 @@ export interface HighlightQA {
   error?: string;
 }
 
+export type HighlightActionKind = 'search' | 'shopping' | 'generate' | 'save';
+
+export interface HighlightAction {
+  /** Which action produced this record. */
+  kind: HighlightActionKind;
+  /** Short human label, e.g. '以图搜索 · 图片' / 'Google Shopping' / 'Amazon' / '生成图片'. */
+  label: string;
+  /** Query Sonnet derived (search / shopping), if any. */
+  query?: string;
+  /** Result page to re-open (search / shopping). Generate has none. */
+  url?: string;
+}
+
 export interface Highlight {
   id: string;
   url: string;
@@ -65,6 +78,20 @@ export interface Highlight {
    * NOT draw a yellow box for it.
    */
   generated?: boolean;
+  /**
+   * Present when this card LOGS a search / shopping / generate action
+   * rather than anchoring a page annotation. The highlight layer draws no
+   * page box for it; the side panel renders it as an action card with a
+   * re-open link so the user can repeat or re-view it later.
+   */
+  action?: HighlightAction;
+  /**
+   * Follow-up actions performed ON this page box after it was created
+   * (click a box → radial menu → search / shopping / generate). Each run
+   * also logs a card in the global action list; this array is what the
+   * box's corner chip summarises so one region never grows a second box.
+   */
+  actions?: HighlightAction[];
 }
 
 const STORAGE_PREFIX = 'nodx.highlights.';
@@ -186,6 +213,66 @@ export async function updateQA(
   if (!q) return;
   Object.assign(q, patch);
   await writeBucket(url, bucket);
+}
+
+/**
+ * Log a follow-up action performed on an existing page box (click box →
+ * radial menu → search / shopping / generate). The box's chip re-renders
+ * via the storage subscription.
+ */
+export async function appendHighlightAction(
+  url: string,
+  highlightId: string,
+  action: HighlightAction,
+): Promise<void> {
+  const bucket = await readBucket(url);
+  const h = bucket.highlights.find((x) => x.id === highlightId);
+  if (!h) return;
+  h.actions = [...(h.actions ?? []), action];
+  await writeBucket(url, bucket);
+}
+
+/**
+ * ─── Global action log ────────────────────────────────────────────────
+ * Search / shopping / generate records are NOT tied to a page bucket:
+ * a search opens a NEW tab, and the side panel follows the active tab, so
+ * a per-URL record would be invisible on the results page. Instead they
+ * live in one flat, page-independent list shown on every page.
+ */
+const ACTIONS_KEY = 'nodx.actions';
+const ACTIONS_CAP = 100;
+
+export async function listActions(): Promise<Highlight[]> {
+  const raw = await chrome.storage.local.get(ACTIONS_KEY);
+  const value = raw[ACTIONS_KEY] as Highlight[] | undefined;
+  return Array.isArray(value) ? value : [];
+}
+
+export async function addAction(h: Highlight): Promise<void> {
+  const list = await listActions();
+  list.unshift(h);
+  if (list.length > ACTIONS_CAP) list.length = ACTIONS_CAP;
+  await chrome.storage.local.set({ [ACTIONS_KEY]: list });
+}
+
+export async function deleteAction(id: string): Promise<void> {
+  const list = await listActions();
+  await chrome.storage.local.set({ [ACTIONS_KEY]: list.filter((x) => x.id !== id) });
+}
+
+/** Subscribe to the global action log — fires on add/delete. */
+export function subscribeActions(cb: (list: Highlight[]) => void): () => void {
+  void listActions().then(cb);
+  const listener = (
+    changes: Record<string, chrome.storage.StorageChange>,
+    area: chrome.storage.AreaName,
+  ) => {
+    if (area !== 'local' || !changes[ACTIONS_KEY]) return;
+    const next = changes[ACTIONS_KEY].newValue as Highlight[] | undefined;
+    cb(Array.isArray(next) ? next : []);
+  };
+  chrome.storage.onChanged.addListener(listener);
+  return () => chrome.storage.onChanged.removeListener(listener);
 }
 
 /** Subscribe to any bucket for the given URL — fires on add/update/delete. */

@@ -78,6 +78,12 @@ export function installHighlightsLayer(): void {
     renderAll(layer, highlights);
   });
 
+  // Our boxes sit at a near-max z-index so they stay visible over normal
+  // page content — but that also makes them float ON TOP of a site's own
+  // modal/lightbox (e.g. Google Images' preview panel), covering it. Hide
+  // the whole layer whenever a modal is on screen, restore it when gone.
+  installModalGuard(layer);
+
   // Scroll: keep the layer aligned by translating it against scrollY.
   const onScroll = () => {
     layer.style.transform = `translate3d(0, ${-window.scrollY}px, 0)`;
@@ -137,10 +143,20 @@ export async function syncHighlightsFromStorage(): Promise<void> {
  * Idempotent: if the same id is already drawn, no-op.
  */
 export function drawHighlight(h: Highlight): void {
-  if (h.generated) return; // generated images have no page region → no box
+  if (!hasPageRegion(h)) return;
   const layer = ensureLayer();
   if (layer.querySelector(`[data-highlight-id="${h.id}"]`)) return;
   layer.appendChild(makeBox(h));
+}
+
+/**
+ * A record gets a page box iff it carries a real capture region. Text-only
+ * records (text generate) and legacy region-less action logs have zero size
+ * and draw nothing; marquee captures — including search / shopping /
+ * generate actions — mark where on the page they came from.
+ */
+function hasPageRegion(h: Highlight): boolean {
+  return h.region.width > 0 && h.region.height > 0;
 }
 
 async function refresh(layer: HTMLDivElement): Promise<void> {
@@ -153,9 +169,49 @@ function renderAll(layer: HTMLDivElement, highlights: Highlight[]): void {
   // practice) so a full swap is fine and simpler than diffing.
   layer.textContent = '';
   for (const h of highlights) {
-    if (h.generated) continue; // no page box for generated images
+    if (!hasPageRegion(h)) continue;
     layer.appendChild(makeBox(h));
   }
+}
+
+/**
+ * Hide the highlights layer while a modal / lightbox is on screen, so our
+ * near-max-z boxes don't paint over it, and restore it when the modal
+ * closes. Detection uses the common modal-semantics selectors — `dialog[open]`,
+ * `[aria-modal="true"]`, and reasonably-sized non-hidden `[role="dialog"]`
+ * elements (Google Images' preview panel is one). A debounced
+ * MutationObserver keeps it in sync as the page mutates.
+ */
+function installModalGuard(layer: HTMLDivElement): void {
+  const isModalPresent = (): boolean => {
+    if (document.querySelector('dialog[open], [aria-modal="true"]')) return true;
+    const dialogs = document.querySelectorAll<HTMLElement>('[role="dialog"]');
+    for (const d of dialogs) {
+      if (d.getAttribute('aria-hidden') === 'true') continue;
+      const r = d.getBoundingClientRect();
+      if (r.width > 200 && r.height > 200) return true; // a real overlay
+    }
+    return false;
+  };
+
+  let raf = 0;
+  const apply = () => {
+    raf = 0;
+    layer.style.display = isModalPresent() ? 'none' : '';
+  };
+  const schedule = () => {
+    if (raf) return;
+    raf = requestAnimationFrame(apply);
+  };
+
+  const observer = new MutationObserver(schedule);
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['role', 'aria-modal', 'aria-hidden', 'open'],
+  });
+  apply(); // initial state
 }
 
 function ensureLayer(): HTMLDivElement {
@@ -177,6 +233,19 @@ function ensureLayer(): HTMLDivElement {
   return el;
 }
 
+/**
+ * Optional hook installed by the marquee module: clicking a box re-opens
+ * the radial menu so the user can run MORE actions on the same capture
+ * (search / shopping / generate / explain) without drawing a second box.
+ * When unset, a box click falls back to just opening the side panel.
+ */
+type BoxMenuHandler = (h: Highlight, center: { x: number; y: number }) => void;
+let boxMenuHandler: BoxMenuHandler | null = null;
+
+export function setBoxMenuHandler(handler: BoxMenuHandler): void {
+  boxMenuHandler = handler;
+}
+
 function makeBox(h: Highlight): HTMLDivElement {
   const box = document.createElement('div');
   box.className = BOX_CLASS;
@@ -195,10 +264,24 @@ function makeBox(h: Highlight): HTMLDivElement {
     transition: 'background 0.15s',
   } as CSSStyleDeclaration);
 
-  // Small chip in the top-right corner: N messages + open indicator.
+  // Small chip in the top-right corner summarising what this capture
+  // became: 💬 N for Q&A turns, one emoji per distinct follow-up action,
+  // 📌 for a plain save. Clicking the chip opens the side panel (the box
+  // body itself re-opens the action menu).
   const chip = document.createElement('div');
-  const qaCount = h.qa.length;
-  chip.textContent = qaCount > 0 ? `💬 ${qaCount}` : '📌';
+  const ACTION_EMOJI: Record<string, string> = {
+    search: '🔎',
+    shopping: '🛒',
+    generate: '🎨',
+  };
+  const parts: string[] = [];
+  if (h.qa.length > 0) parts.push(`💬 ${h.qa.length}`);
+  const allActions = [...(h.action ? [h.action] : []), ...(h.actions ?? [])];
+  for (const kind of new Set(allActions.map((a) => a.kind))) {
+    parts.push(ACTION_EMOJI[kind] ?? '');
+  }
+  chip.textContent = parts.length > 0 ? parts.join(' ') : '📌';
+  chip.title = 'nodx 侧栏';
   Object.assign(chip.style, {
     position: 'absolute',
     top: '-10px',
@@ -212,11 +295,21 @@ function makeBox(h: Highlight): HTMLDivElement {
     fontWeight: '600',
     letterSpacing: '0.02em',
     boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
-    pointerEvents: 'none',
+    pointerEvents: 'auto',
+    cursor: 'pointer',
   } as CSSStyleDeclaration);
+  chip.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    chrome.runtime.sendMessage({
+      type: 'OPEN_SIDE_PANEL',
+      highlightId: h.id,
+    });
+  });
   box.appendChild(chip);
 
-  // Hover: darken; click: open side panel focused on this highlight.
+  // Hover: darken; click: re-open the action menu on this box (fallback:
+  // side panel when no handler is installed).
   box.addEventListener('mouseenter', () => {
     box.style.background = 'rgba(245, 158, 11, 0.20)';
   });
@@ -226,10 +319,18 @@ function makeBox(h: Highlight): HTMLDivElement {
   box.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    chrome.runtime.sendMessage({
-      type: 'OPEN_SIDE_PANEL',
-      highlightId: h.id,
-    });
+    if (boxMenuHandler) {
+      // Center of the box in viewport coords (region is document coords).
+      boxMenuHandler(h, {
+        x: h.region.x + h.region.width / 2 - window.scrollX,
+        y: h.region.y + h.region.height / 2 - window.scrollY,
+      });
+    } else {
+      chrome.runtime.sendMessage({
+        type: 'OPEN_SIDE_PANEL',
+        highlightId: h.id,
+      });
+    }
   });
 
   return box;

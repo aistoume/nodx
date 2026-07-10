@@ -17,13 +17,21 @@
 
 import { cropDataUrl, postCaptureToNodx } from '../shared/capture.js';
 import {
+  addAction,
   addHighlight,
+  appendHighlightAction,
   appendQA,
   type Highlight,
+  type HighlightAction,
+  type HighlightActionKind,
   updateHighlight,
   updateQA,
 } from '../shared/highlights.js';
-import { drawHighlight, syncHighlightsFromStorage } from './highlights-layer.js';
+import {
+  drawHighlight,
+  setBoxMenuHandler,
+  syncHighlightsFromStorage,
+} from './highlights-layer.js';
 import { showRadialMenu } from './radial-menu.js';
 import { showHandoffModal } from './handoff-modal.js';
 import {
@@ -50,6 +58,15 @@ interface MarqueeRect {
 
 /** Install the marquee runtime once. Idempotent. */
 export function installMarqueeListener(): void {
+  // Clicking an existing page box re-opens the radial menu for THAT
+  // capture — more actions, same box, no duplicates.
+  setBoxMenuHandler((h, center) => {
+    void reactivateBox(h, center).catch((e) => {
+      console.error('[nodx Lens] box menu failed:', e);
+      showToast(`操作失败: ${e instanceof Error ? e.message : e}`);
+    });
+  });
+
   chrome.runtime.onMessage.addListener((msg: StartMessage, _sender, sendResponse) => {
     if (msg?.type !== 'BEGIN_MARQUEE') return false;
     if (document.getElementById(OVERLAY_ID)) {
@@ -180,18 +197,15 @@ async function handleCrop(
         break;
       case 'shopping-google':
         // 购物二级·Google Shopping：AI 认图 → Shopping(udm=28)。
-        runShopping(cropped.dataUrl, 'google');
+        runShopping(cropped.dataUrl, 'google', rect);
         break;
       case 'shopping-amazon':
         // 购物二级·Amazon：AI 认图 → amazon.com/s?k=。
-        runShopping(cropped.dataUrl, 'amazon');
+        runShopping(cropped.dataUrl, 'amazon', rect);
         break;
       case 'generate': {
-        // Sonnet writes a subject description from the screenshot; we then
-        // ask the image model for ONE image laid out as a 2×2 grid — four
-        // quadrants, SAME subject, four different styles (one is a real,
-        // buyable product shot). The model does the whole layout in a
-        // single call — we do NOT render four images and stitch them.
+        // Sonnet writes a subject description from the screenshot; the
+        // shared generator then turns that subject into the 2×2 grid image.
         const busy = showToast(
           'Sonnet 正在写生成 prompt… (15-40s)',
           { spinner: true, persistent: true },
@@ -199,23 +213,8 @@ async function handleCrop(
         let base = '';
         try {
           base = await generatePromptViaServiceWorker(cropped.dataUrl);
-          const gridPrompt = `Create ONE single image composed as a clean 2×2 grid of four equal quadrants. Each quadrant shows the SAME subject rendered in a different visual style. Keep the subject identical across all four quadrants.
-
-Subject: ${base}
-
-- Top-left quadrant: a realistic e-commerce PRODUCT PHOTOGRAPH of the subject as a physical, purchasable object on a plain seamless white studio background, soft even lighting, sharp focus, realistic materials.
-- Top-right quadrant: a hand-drawn ink-and-watercolour illustration.
-- Bottom-left quadrant: a polished 3D render with soft global illumination and subtle reflections.
-- Bottom-right quadrant: minimalist black line art on a plain white background, a few clean strokes, no shading.
-
-Lay the four quadrants out as an even, clearly separated 2×2 grid. Keep it a small, compact graphic.`;
-          busy.update('🎨 Gemini 出图中…（一张图·2×2 四格）');
-          const raw = await generateImageViaServiceWorker(gridPrompt);
-          // The user wants a small, low-res graphic — downscale before we
-          // show / save / store it (also keeps it small for chrome.storage).
-          const imageDataUrl = await downscaleDataUrl(raw, 640);
           busy.close();
-          showImageResultModal(imageDataUrl, gridPrompt);
+          await runGenerateFromSubject(base, rect);
         } catch (e) {
           busy.close();
           const msg = e instanceof Error ? e.message : String(e);
@@ -234,6 +233,65 @@ Lay the four quadrants out as an even, clearly separated 2×2 grid. Keep it a sm
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Shared image generation (used by both the marquee 🎨 spoke and the
+// text-selection 🎨 spoke — the only difference is where the subject
+// string comes from: Sonnet-认图 for images, the raw selection for text).
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Wrap a subject description in the 2×2-grid image-gen instruction. */
+function buildGridPrompt(subject: string): string {
+  return `Create ONE single image composed as a clean 2×2 grid of four equal quadrants. Each quadrant shows the SAME subject rendered in a different visual style. Keep the subject identical across all four quadrants.
+
+Subject: ${subject}
+
+- Top-left quadrant: a realistic e-commerce PRODUCT PHOTOGRAPH of the subject as a physical, purchasable object on a plain seamless white studio background, soft even lighting, sharp focus, realistic materials.
+- Top-right quadrant: a hand-drawn ink-and-watercolour illustration.
+- Bottom-left quadrant: a polished 3D render with soft global illumination and subtle reflections.
+- Bottom-right quadrant: minimalist black line art on a plain white background, a few clean strokes, no shading.
+
+Lay the four quadrants out as an even, clearly separated 2×2 grid. Keep it a small, compact graphic.`;
+}
+
+/**
+ * Turn a subject description into a downscaled 2×2 grid image, record it to
+ * the side-panel history, and show the result modal. Shared by the image
+ * and text 🎨 spokes. Throws on generation failure so callers can offer a
+ * fallback hand-off.
+ */
+export async function runGenerateFromSubject(
+  subject: string,
+  rect?: MarqueeRect,
+  onBox?: Highlight,
+): Promise<void> {
+  const busy = showToast('🎨 Gemini 出图中…（一张图·2×2 四格）', {
+    spinner: true,
+    persistent: true,
+  });
+  try {
+    const gridPrompt = buildGridPrompt(subject);
+    const raw = await generateImageViaServiceWorker(gridPrompt);
+    // The user wants a small, low-res graphic — downscale before we
+    // show / save / store it (also keeps it small for chrome.storage).
+    const imageDataUrl = await downscaleDataUrl(raw, 640);
+    busy.close();
+    // Auto-record so the generated image lives in the side-panel history
+    // even if the user closes the modal without saving. A marquee origin
+    // passes its crop rect so the page keeps a box where the subject was.
+    const genRecId = recordAction(
+      { kind: 'generate', label: '生成图片' },
+      imageDataUrl,
+      { width: 640, height: 640 },
+      { rect, onBox },
+    );
+    showToast('✓ 已记录到 nodx 侧栏');
+    showImageResultModal(imageDataUrl, gridPrompt, genRecId);
+  } catch (e) {
+    busy.close();
+    throw e;
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Shopping / Generate handoff modals (v0.8.2)
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -244,36 +302,168 @@ Lay the four quadrants out as an even, clearly separated 2×2 grid. Keep it a sm
  * still has user-activation (Chrome will silently drop it otherwise).
  */
 /**
+ * Log a search / shopping / generate action as a side-panel card so the
+ * user can re-open or re-view it later. Stored as a Highlight carrying an
+ * `action` field (the highlight layer draws no page box for it). Returns
+ * the new record id. The storage write is fire-and-forget; an open side
+ * panel on THIS page refreshes itself via its storage subscription.
+ */
+function recordAction(
+  action: HighlightAction,
+  thumbnailDataUrl: string,
+  dims: { width: number; height: number },
+  opts: { openPanel?: boolean; rect?: MarqueeRect; onBox?: Highlight } = {},
+): string {
+  // Re-running an action FROM an existing box: log the run on that box
+  // (chip updates via the storage subscription) instead of giving the new
+  // record its own region — one page area, one box, many actions.
+  if (opts.onBox) {
+    void appendHighlightAction(opts.onBox.url, opts.onBox.id, action).catch(
+      (e) => console.warn('[nodx Lens] appendHighlightAction failed:', e),
+    );
+  }
+  const id = crypto.randomUUID();
+  // When the action came from a fresh marquee crop, keep the capture
+  // region (document coords, like runSave) so the page shows a yellow box
+  // where the search / shopping / generate came from. Text-driven actions
+  // and box re-runs have no NEW page area — zero region, no box.
+  const region =
+    opts.rect && !opts.onBox
+      ? {
+          x: opts.rect.x + window.scrollX,
+          y: opts.rect.y + window.scrollY,
+          width: opts.rect.w,
+          height: opts.rect.h,
+          documentHeight: document.documentElement.scrollHeight,
+        }
+      : { x: 0, y: 0, width: 0, height: 0, documentHeight: 0 };
+  const highlight: Highlight = {
+    id,
+    url: location.href,
+    pageTitle: document.title,
+    createdAt: Date.now(),
+    region,
+    thumbnailDataUrl,
+    imageWidth: dims.width,
+    imageHeight: dims.height,
+    qa: [],
+    syncedToNodx: false,
+    action,
+  };
+  if (opts.rect && !opts.onBox) drawHighlight(highlight);
+  void addAction(highlight)
+    .then(() => {
+      // Only force the panel open when there's no new tab stealing focus
+      // (i.e. the generate flow). Search / shopping open their own tab, so
+      // we just persist and let an already-open panel refresh itself.
+      if (opts.openPanel) {
+        chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL', highlightId: id });
+      }
+    })
+    .catch((e) => console.warn('[nodx Lens] recordAction failed:', e));
+  return id;
+}
+
+/**
+ * Log a TEXT-driven action (text search / shopping / save-to-pool) as a
+ * side-panel card, mirroring what image actions get. Text has no crop, so
+ * the thumbnail is the snippet itself rendered onto a small canvas card.
+ */
+export function recordTextAction(action: HighlightAction, text: string): void {
+  recordAction(action, textThumbnail(text), { width: 320, height: 180 });
+}
+
+/** Render a text snippet as a small quote-card PNG data URL. */
+function textThumbnail(text: string): string {
+  const w = 320;
+  const h = 180;
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d');
+  if (!ctx) return '';
+  ctx.fillStyle = '#FFFBEB';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#D97706';
+  ctx.font = '700 34px Georgia, serif';
+  ctx.fillText('“', 14, 44);
+  ctx.fillStyle = '#1F2937';
+  ctx.font = '20px system-ui, -apple-system, "PingFang SC", sans-serif';
+  const maxW = w - 32;
+  const lines: string[] = [];
+  let line = '';
+  for (const ch of text.trim()) {
+    if (ctx.measureText(line + ch).width > maxW) {
+      lines.push(line);
+      line = ch;
+      if (lines.length === 4) break;
+    } else {
+      line += ch;
+    }
+  }
+  if (lines.length < 4 && line) lines.push(line);
+  else if (lines.length === 4) lines[3] = `${lines[3]!.slice(0, -1)}…`;
+  lines.forEach((l, i) => ctx.fillText(l, 16, 72 + i * 28));
+  return c.toDataURL('image/png');
+}
+
+/**
  * 放大镜·搜索：以图搜。框选区域下面若是网页真实 <img>，用它的 URL 直接开
  * Google Lens（视觉搜索）；否则让 Sonnet 认出主体、再用文字去 Google 图片
- * 搜（udm=2）兜底。
+ * 搜（udm=2）兜底。两条路径都会在侧栏留一条「搜索」记录，方便回看。
  */
-function runSearch(dataUrl: string, rect: MarqueeRect): void {
+function runSearch(dataUrl: string, rect: MarqueeRect, onBox?: Highlight): void {
   const imgSrc = findImageSrcAt(rect.x + rect.w / 2, rect.y + rect.h / 2);
   if (imgSrc) {
-    window.open(
-      `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(imgSrc)}`,
-      '_blank',
-      'noopener,noreferrer',
-    );
+    const lensUrl = `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(imgSrc)}`;
+    window.open(lensUrl, '_blank', 'noopener,noreferrer');
     showToast('已用原图打开 Google Lens（视觉搜索）');
+    recordAction(
+      { kind: 'search', label: '以图搜索 · Lens', url: lensUrl },
+      dataUrl,
+      { width: rect.w, height: rect.h },
+      { rect, onBox },
+    );
     return;
   }
-  aiSearchOpen(dataUrl, 'https://www.google.com/search?udm=2&q=', '已在 Google 图片搜');
+  aiSearchOpen(
+    dataUrl,
+    'https://www.google.com/search?udm=2&q=',
+    '已在 Google 图片搜',
+    rect,
+    { kind: 'search', label: '以图搜索 · 图片' },
+    onBox,
+  );
 }
 
 /**
  * 购物：Sonnet 认出商品 → 用关键词打开购物站（Google Shopping 或 Amazon）。
+ * 每次跳转都会在侧栏留一条「购物」记录，方便回看。
  */
-function runShopping(dataUrl: string, site: 'google' | 'amazon'): void {
+function runShopping(
+  dataUrl: string,
+  site: 'google' | 'amazon',
+  rect: MarqueeRect,
+  onBox?: Highlight,
+): void {
   if (site === 'google') {
     aiSearchOpen(
       dataUrl,
       'https://www.google.com/search?udm=28&q=',
       '已在 Google Shopping 搜',
+      rect,
+      { kind: 'shopping', label: 'Google Shopping' },
+      onBox,
     );
   } else {
-    aiSearchOpen(dataUrl, 'https://www.amazon.com/s?k=', '已在 Amazon 搜');
+    aiSearchOpen(
+      dataUrl,
+      'https://www.amazon.com/s?k=',
+      '已在 Amazon 搜',
+      rect,
+      { kind: 'shopping', label: 'Amazon' },
+      onBox,
+    );
   }
 }
 
@@ -282,7 +472,14 @@ function runShopping(dataUrl: string, site: 'google' | 'amazon'): void {
  * Sonnet name the image, then navigate the tab to `${urlPrefix}<query>`.
  * A post-await window.open would be blocked as a popup.
  */
-function aiSearchOpen(dataUrl: string, urlPrefix: string, okPrefix: string): void {
+function aiSearchOpen(
+  dataUrl: string,
+  urlPrefix: string,
+  okPrefix: string,
+  rect: MarqueeRect,
+  log: { kind: HighlightActionKind; label: string },
+  onBox?: Highlight,
+): void {
   const w = window.open('about:blank', '_blank');
   const busy = showToast('识别中… (3-8s)', { spinner: true, persistent: true });
   void (async () => {
@@ -293,6 +490,12 @@ function aiSearchOpen(dataUrl: string, urlPrefix: string, okPrefix: string): voi
       if (w) w.location.href = url;
       else window.open(url, '_blank', 'noopener,noreferrer');
       showToast(`${okPrefix}「${q}」`);
+      recordAction(
+        { kind: log.kind, label: log.label, query: q, url },
+        dataUrl,
+        { width: rect.w, height: rect.h },
+        { rect, onBox },
+      );
     } catch (e) {
       busy.close();
       if (w) w.close();
@@ -396,7 +599,11 @@ function showGenerateHandoff(dataUrl: string, prompt: string): void {
  * desktop) — unlike showHandoffModal, clicking an action does NOT close
  * the card, so the user can download AND send in one sitting.
  */
-function showImageResultModal(imageDataUrl: string, prompt: string): void {
+function showImageResultModal(
+  imageDataUrl: string,
+  prompt: string,
+  recordId?: string,
+): void {
   const MODAL_ID = '__nodx_image_result_modal__';
   document.getElementById(MODAL_ID)?.remove();
 
@@ -592,28 +799,14 @@ function showImageResultModal(imageDataUrl: string, prompt: string): void {
     }),
   );
   footer.appendChild(
-    mkBtn('💾 存到侧栏', false, async () => {
-      const highlight: Highlight = {
-        id: crypto.randomUUID(),
-        url: location.href,
-        pageTitle: document.title,
-        createdAt: Date.now(),
-        // Generated images have no page region — zeros + the `generated`
-        // flag tell the highlight layer to skip drawing a box.
-        region: { x: 0, y: 0, width: 0, height: 0, documentHeight: 0 },
-        thumbnailDataUrl: imageDataUrl,
-        imageWidth: img.naturalWidth || 0,
-        imageHeight: img.naturalHeight || 0,
-        qa: [],
-        syncedToNodx: false,
-        generated: true,
-      };
-      await addHighlight(highlight);
+    mkBtn('📂 在侧栏查看', false, () => {
+      // The image was auto-recorded when it was generated — just jump to
+      // the side panel (and highlight the record if we have its id).
       chrome.runtime.sendMessage({
         type: 'OPEN_SIDE_PANEL',
-        highlightId: highlight.id,
+        ...(recordId ? { highlightId: recordId } : {}),
       });
-      showToast('✓ 已存到 nodx Lens 侧栏');
+      showToast('已在 nodx Lens 侧栏');
     }),
   );
   footer.appendChild(mkBtn('关闭', false, close));
@@ -744,14 +937,101 @@ async function runExplain(
   };
   await addHighlight(highlight);
   drawHighlight(highlight);
+  await explainHighlight(highlight);
+}
 
-  // 2) Open side panel so user watches the streaming answer land.
+/**
+ * Box re-activation: clicking an existing page box re-opens the radial
+ * menu and runs the picked action against the box's ORIGINAL crop —
+ * explain appends to its Q&A thread, search / shopping / generate log onto
+ * the same box (chip updates), 保存 forwards to nodx desktop. No second
+ * box is ever drawn for the same region.
+ */
+async function reactivateBox(
+  h: Highlight,
+  center: { x: number; y: number },
+): Promise<void> {
+  const choice = await showRadialMenu(center.x, center.y);
+  if (choice === 'cancel') return;
+
+  // Viewport-space rect of the box — search needs it for elementFromPoint,
+  // records use its dims.
+  const rect: MarqueeRect = {
+    x: h.region.x - window.scrollX,
+    y: h.region.y - window.scrollY,
+    w: h.region.width,
+    h: h.region.height,
+  };
+  const dataUrl = h.thumbnailDataUrl;
+
+  switch (choice) {
+    case 'explain':
+      await explainHighlight(h);
+      break;
+    case 'search':
+      runSearch(dataUrl, rect, h);
+      break;
+    case 'shopping-google':
+      runShopping(dataUrl, 'google', rect, h);
+      break;
+    case 'shopping-amazon':
+      runShopping(dataUrl, 'amazon', rect, h);
+      break;
+    case 'generate': {
+      // The crop is already on hand — go straight to prompt-writing.
+      const busy = showToast('Sonnet 正在写生成 prompt… (15-40s)', {
+        spinner: true,
+        persistent: true,
+      });
+      let base = '';
+      try {
+        base = await generatePromptViaServiceWorker(dataUrl);
+        busy.close();
+        await runGenerateFromSubject(base, rect, h);
+      } catch (e) {
+        busy.close();
+        showToast(`生成失败: ${e instanceof Error ? e.message : e}`);
+        if (base) showGenerateHandoff(dataUrl, base);
+      }
+      break;
+    }
+    case 'save': {
+      // Already captured — 保存 on an existing box means "send to nodx".
+      if (h.syncedToNodx) {
+        showToast('✓ 已在 nodx 灵感池');
+      } else {
+        const busy = showToast('发送到 nodx…', { spinner: true, persistent: true });
+        await forwardToDesktop(h);
+        busy.close();
+        showToast('✓ 已发送到 nodx');
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+/**
+ * Ask Sonnet "what is this" about an EXISTING highlight and stream the
+ * answer into its QA thread. Used by the explain spoke on a fresh marquee
+ * (runExplain) and by re-running explain from a box's action menu — both
+ * append to the same card, so one region never spawns a duplicate.
+ */
+async function explainHighlight(highlight: Highlight): Promise<void> {
+  const cropped = {
+    dataUrl: highlight.thumbnailDataUrl,
+    width: highlight.imageWidth,
+    height: highlight.imageHeight,
+  };
+
+  // Open side panel so user watches the streaming answer land.
   chrome.runtime.sendMessage({
     type: 'OPEN_SIDE_PANEL',
     highlightId: highlight.id,
   });
 
-  // 3) Seed the auto-question in streaming state, then kick off Sonnet.
+  // Seed the auto-question in streaming state, then kick off Sonnet.
   const question = '这是什么？简洁回答（2–4 句），关键数字/文字精确引用。';
   const seed = await appendQA(highlight.url, highlight.id, question);
   if (!seed) return;
@@ -1012,7 +1292,7 @@ interface ToastHandle {
   close(): void;
 }
 
-function showToast(message: string, opts: ToastOptions = {}): ToastHandle {
+export function showToast(message: string, opts: ToastOptions = {}): ToastHandle {
   document.getElementById(TOAST_ID)?.remove();
   const t = document.createElement('div');
   t.id = TOAST_ID;
