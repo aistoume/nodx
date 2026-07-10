@@ -58,3 +58,9 @@ coverage/
 # Pitch deck build scripts — kept local, not on GitHub
 pitch/
 apps/extension/*.zip
+
+# Internal docs — live in the private repo (aistoume/nodx-private); local
+# files stay at these paths for tooling but are not published.
+/PRD.md
+/CLAUDE.md
+/docs/

@@ -14,7 +14,7 @@ The "chat" channel sits at the bottom of the document for free-form follow-up; t
 
 ## Status
 
-Post-M1, mid-M2 (per [`CLAUDE.md`](./CLAUDE.md) §9 — the authoritative feature ledger). Highlights:
+Post-M1, mid-M2. Highlights:
 
 - ✅ Tauri 2.11 desktop shell, SQLite with 14 migrations, in-proc Rust AI gateway (keychain-held keys, per-launch token)
 - ✅ Survey → first-principles decomposition → thinking document → annotations (four-color, anchored)
@@ -26,9 +26,9 @@ Post-M1, mid-M2 (per [`CLAUDE.md`](./CLAUDE.md) §9 — the authoritative featur
 - ✅ Decision-report export + `.nodx` data bundles (full-fidelity subtree transfer)
 - ✅ i18n (zh/en), ⌥+E system-wide capture, Windows CI
 - ✅ **nodx Lens** Chrome extension 0.9 (`apps/extension`): action wheel on text or region — explain / search / shop / generate, box-as-action-hub, side-panel history
-- ⏳ Auto-recursion Sprint C, drafts drawer, @-mentions UI; Safari + Android ports in planning (`docs/multiplatform-roadmap.md`)
+- ⏳ Auto-recursion Sprint C, drafts drawer, @-mentions UI; Safari + Android ports in planning
 
-Full roadmap and design rationale in [`PRD.md`](./PRD.md).
+Product spec and design docs are maintained in a private companion repo.
 
 ## Architecture
 
@@ -159,7 +159,7 @@ cd apps/desktop/src-tauri && cargo check
 | AI providers | Anthropic Sonnet 4.6 + Haiku 4.5 | structured reasoning + cheap hot-path |
 | Sync (future) | Yjs over WebSocket → Supabase Realtime | CRDT, mature React story |
 
-Full rationale in [`PRD.md`](./PRD.md) §5.
+Full rationale in the private product spec.
 
 ## Project layout
 
@@ -174,8 +174,6 @@ nodx/
 │   └── ai/                # Prompt templates + gateway client
 ├── workers/
 │   └── ai-gateway/        # Cloudflare Worker (Anthropic forwarder)
-├── CLAUDE.md              # Working context for AI pair-programmer
-├── PRD.md                 # Full product spec
 └── prototype.html         # M0 design prototype (D3-based)
 ```
 
