@@ -268,6 +268,16 @@ nodx/
   文档=清单；网络图 `TopicNode` 按 nodeKind 分支（执行=翠绿 + ▶执行 徽章）。
   `packages/ai/prompts/execution.ts` + `ai/execution.ts:extractExecutionPlan` +
   `db/topics.ts:setTopicNodeKind` —— 详见 **`docs/execution-nodes.md`**
+- ✅ **Opus 4.8 temperature 400 修复（2026-07-09，重要）**：核心 tier 换 opus-4-8 后
+  Anthropic 对带 `temperature` 的请求返 400「deprecated for this model」→ 全部核心调用
+  失败两天。双网关（in-proc `anthropic.rs` + `workers/ai-gateway`）改为收到该 400 剔参
+  重试一次（模型无关）；顺带修好错误透传（upstream error.message 直达 UI/日志）；worker
+  白名单补 opus-4-8。**新 AI 调用别硬塞 temperature 默认值**
+- ✅ **扩展 Lens 0.9.0**（2026-07-09）：框枢纽（点框重开四向菜单，动作记同一框，角标
+  💬N/🔎/🛒/🎨 汇总）+ 搜索/购物/生成留页面框 + 文字动作全记录（含 save 类型 + 文字引用卡
+  缩略图）+ 文字生图打下划线注解 + 侧栏重排（本页置顶/记录折叠）+ modal guard +
+  文字保存走 `/v1/capture-text` 直达运行中 app（桌面端点在 mod.rs）。商店包
+  `apps/extension/nodx-lens-0.9.0.zip`
 - ⏳ 自动递进 Sprint C：CBR 复用接入 + 清僵尸 run + PM eval 集（见 docs/auto-recursion.md §5）
 - ⏳ M1 收尾项：草稿区、@引用 UI（卡点/上次回顾/决策汇报/数据包导出/专家组归纳进文档已完成）
 
