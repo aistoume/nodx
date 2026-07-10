@@ -1,7 +1,9 @@
 package solutions.aicon.nodx
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
@@ -29,6 +31,12 @@ class MainActivity : AppCompatActivity() {
         getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     }
     private lateinit var keyInput: EditText
+
+    // Android 13+: without this the foreground-service notification is
+    // silently hidden (the service itself still runs). Result is not
+    // blocking — we just ask once on startup.
+    private val notifPermLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     private val projectionLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -60,10 +68,16 @@ class MainActivity : AppCompatActivity() {
         }
         root.addView(start)
         root.addView(TextView(this).apply {
-            text = "步骤：① 授予“显示在其他应用上层” ② 允许屏幕录制 → 悬浮球出现，点它截屏、框选、解释。"
+            text = "步骤：① 授予“显示在其他应用上层” ② 允许屏幕录制 → 悬浮球出现，点它截屏 → 框选 → 动作轮（🔍解释/搜索 · 💡保存 · 🛒购物 · 🎨生成）。"
             setPadding(0, 40, 0, 0)
         })
         setContentView(root)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     private fun ensureOverlayThenProjection() {

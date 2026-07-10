@@ -2,5 +2,5 @@
     <string name="app_name">nodx</string>
     <string name="channel_name">nodx 悬浮球</string>
     <string name="notif_title">nodx 已就绪</string>
-    <string name="notif_text">点悬浮球截屏 → 框选 → 解释</string>
+    <string name="notif_text">点悬浮球截屏 → 框选 → 动作轮</string>
 </resources>

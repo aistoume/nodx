@@ -16,12 +16,24 @@ object AnthropicClient {
     private val client = OkHttpClient.Builder().callTimeout(60, TimeUnit.SECONDS).build()
     private val JSON = "application/json".toMediaType()
 
-    fun explain(apiKey: String, imageBase64: String, model: String = "claude-haiku-4-5"): String {
+    fun explain(apiKey: String, imageBase64: String, model: String = "claude-haiku-4-5"): String =
+        visionCall(apiKey, model, imageBase64, "这是什么？简洁回答（2-4 句），关键数字/文字精确引用。")
+
+    /**
+     * Name the main object as a short search/shopping query — same prompt
+     * as the extension service worker's shoppingQueryFromImage.
+     */
+    fun identify(apiKey: String, imageBase64: String, model: String = "claude-haiku-4-5"): String =
+        visionCall(
+            apiKey, model, imageBase64,
+            "Identify the single product shown in this image. Reply with ONLY a concise shopping search query — brand + product name + key attribute (e.g. \"Seven Minerals aloe vera gel 12oz\"). 3-8 words, no punctuation, no quotes, no explanation. If it is not obviously a buyable product, still return the best short search term for the main object.",
+        ).trim().removeSurrounding("\"").removeSurrounding("'").replace(Regex("\\s+"), " ").trim()
+
+    private fun visionCall(apiKey: String, model: String, imageBase64: String, prompt: String): String {
         val content = JSONArray()
             .put(JSONObject().put("type", "image").put("source",
                 JSONObject().put("type", "base64").put("media_type", "image/png").put("data", imageBase64)))
-            .put(JSONObject().put("type", "text").put("text",
-                "这是什么？简洁回答（2-4 句），关键数字/文字精确引用。"))
+            .put(JSONObject().put("type", "text").put("text", prompt))
         val payload = JSONObject()
             .put("model", model)
             .put("max_tokens", 400)
