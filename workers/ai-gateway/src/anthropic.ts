@@ -82,23 +82,41 @@ export async function callAnthropic(
   if (params.system) body.system = params.system;
   if (params.enableWebSearch) body.tools = [WEB_SEARCH_TOOL];
 
-  const upstream = await fetch(ANTHROPIC_URL, {
-    method: 'POST',
-    headers: {
-      'x-api-key': params.apiKey,
-      'anthropic-version': ANTHROPIC_VERSION,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  const post = (payload: Record<string, unknown>) =>
+    fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: {
+        'x-api-key': params.apiKey,
+        'anthropic-version': ANTHROPIC_VERSION,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+  let upstream = await post(body);
 
   if (!upstream.ok) {
     const text = await upstream.text();
-    throw new AnthropicError(
-      upstream.status,
-      `anthropic ${upstream.status} ${upstream.statusText}`,
-      text,
-    );
+    // Newer models (Opus 4.8+) reject `temperature` outright. Strip it and
+    // retry once so one gateway works across model generations.
+    if (upstream.status === 400 && text.includes('`temperature` is deprecated')) {
+      delete body.temperature;
+      upstream = await post(body);
+      if (!upstream.ok) {
+        const retryText = await upstream.text();
+        throw new AnthropicError(
+          upstream.status,
+          `anthropic ${upstream.status} ${upstream.statusText}`,
+          retryText,
+        );
+      }
+    } else {
+      throw new AnthropicError(
+        upstream.status,
+        `anthropic ${upstream.status} ${upstream.statusText}`,
+        text,
+      );
+    }
   }
 
   if (!upstream.body) {

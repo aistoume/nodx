@@ -278,6 +278,7 @@ fn build_app(state: GatewayState) -> Router {
         .route("/v1/complete", post(complete))
         .route("/v1/embed", post(embed))
         .route("/v1/capture-image", post(capture_image))
+        .route("/v1/capture-text", post(capture_text))
         .layer(
             // Body size limit tuned for image captures — screenshots up to
             // ~10 MB after base64 encoding go through comfortably (a raw
@@ -401,7 +402,10 @@ async fn complete_via_api_key(
                 429 => StatusCode::TOO_MANY_REQUESTS,
                 _ => StatusCode::BAD_GATEWAY,
             };
-            error_response(status, e.message).into_response()
+            // Fold the upstream reason into the message so the UI shows the
+            // real cause (bad model, invalid param, …) not just "400".
+            log::error!("ai gateway: anthropic error: {}", e.detail());
+            error_response(status, e.detail()).into_response()
         }
     }
 }
@@ -549,6 +553,10 @@ fn default_mime() -> String {
 struct CaptureImagePayload {
     id: String,
     text: String,
+    /// Present only for text saves that carry an AI explanation. Omitted
+    /// from the JSON for image captures so their payload is unchanged.
+    #[serde(rename = "explanation", skip_serializing_if = "Option::is_none")]
+    explanation: Option<String>,
     #[serde(rename = "sourceUrl")]
     source_url: String,
     #[serde(rename = "sourceTitle")]
@@ -667,6 +675,7 @@ async fn capture_image(
     let payload = CaptureImagePayload {
         id: id.clone(),
         text: req.text,
+        explanation: None,
         source_url: req.source_url,
         source_title: req.source_title,
         source_kind,
@@ -698,4 +707,96 @@ async fn capture_image(
         })),
     )
         .into_response()
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// POST /v1/capture-text  —  Chrome extension → nodx text handoff.
+//
+// The text twin of capture-image: no image, just a snippet (+ optional AI
+// explanation). Emits the SAME `nodx://capture` event, so a text save lands
+// in the *running* app's 灵感池. The legacy `nodx://` URL scheme did the
+// same job but the OS routes it to whichever install registered the scheme
+// (often a stale one) — going through the local gateway hits this process.
+// ─────────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+struct CaptureTextRequest {
+    #[serde(default)]
+    text: String,
+    #[serde(default)]
+    explanation: Option<String>,
+    #[serde(default)]
+    #[serde(rename = "sourceUrl")]
+    source_url: String,
+    #[serde(default)]
+    #[serde(rename = "sourceTitle")]
+    source_title: String,
+    #[serde(default)]
+    #[serde(rename = "capturedAt")]
+    captured_at: i64,
+}
+
+async fn capture_text(
+    State(st): State<GatewayState>,
+    Json(req): Json<CaptureTextRequest>,
+) -> impl IntoResponse {
+    if req.text.trim().is_empty() {
+        return error_response(StatusCode::BAD_REQUEST, "text must not be empty")
+            .into_response();
+    }
+
+    let id = format!("att_{}", uuid::Uuid::new_v4().simple());
+    let captured_at = if req.captured_at > 0 {
+        req.captured_at
+    } else {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0)
+    };
+    let source_kind = if req.source_url.starts_with("http") {
+        "lens-chrome"
+    } else {
+        "manual"
+    }
+    .to_string();
+    // A snippet with an explanation is an "explain" capture; a bare snippet
+    // is a "quick" one — the two kinds the frontend already understands.
+    let explanation = req.explanation.filter(|s| !s.trim().is_empty());
+    let kind = if explanation.is_some() { "explain" } else { "quick" };
+
+    let payload = CaptureImagePayload {
+        id: id.clone(),
+        text: req.text,
+        explanation,
+        source_url: req.source_url,
+        source_title: req.source_title,
+        source_kind,
+        kind: kind.to_string(),
+        captured_at,
+        image_path: String::new(),
+        image_mime: String::new(),
+        image_width: None,
+        image_height: None,
+    };
+
+    match st.app_handle() {
+        Some(handle) => {
+            if let Err(e) = handle.emit("nodx://capture", &payload) {
+                log::warn!("emit nodx://capture text payload failed: {}", e);
+                return error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("emit failed: {}", e),
+                )
+                .into_response();
+            }
+        }
+        None => {
+            log::warn!("capture-text: no AppHandle stored, cannot notify frontend");
+            return error_response(StatusCode::SERVICE_UNAVAILABLE, "app not ready")
+                .into_response();
+        }
+    }
+
+    (StatusCode::OK, Json(serde_json::json!({ "id": id }))).into_response()
 }

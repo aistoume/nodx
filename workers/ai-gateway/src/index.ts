@@ -19,6 +19,8 @@ interface CompleteRequestBody {
 }
 
 const ALLOWED_MODELS = new Set([
+  // Core reasoning tier (MODELS.sonnet) since 2026-07-08.
+  'claude-opus-4-8',
   'claude-sonnet-5',
   'claude-haiku-4-5',
   // dated aliases — Anthropic publishes these alongside the bare names
