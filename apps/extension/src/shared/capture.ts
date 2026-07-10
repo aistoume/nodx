@@ -16,6 +16,7 @@
  */
 
 const NODX_ENDPOINT = 'http://127.0.0.1:8787/v1/capture-image';
+const NODX_TEXT_ENDPOINT = 'http://127.0.0.1:8787/v1/capture-text';
 
 export interface CaptureMeta {
   sourceUrl: string;
@@ -95,6 +96,56 @@ export async function postCaptureToNodx(
   } catch (e) {
     // fetch aborts / network refusals both land here. Both are consistent
     // with "nodx desktop isn't running" for our purposes.
+    return {
+      ok: false,
+      appMissing: true,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export interface TextCaptureMeta {
+  sourceUrl: string;
+  sourceTitle: string;
+  /** Optional AI explanation (set when saving from the explanation panel). */
+  explanation?: string;
+}
+
+/**
+ * POST a text snippet (+ optional explanation) to the *running* nodx
+ * desktop's in-proc gateway, landing it in the 灵感池. This is the text
+ * twin of {@link postCaptureToNodx} — we deliberately go through the local
+ * gateway rather than the `nodx://` URL scheme so the snippet reaches the
+ * process that's actually running, not whichever install the OS has
+ * registered for the scheme.
+ */
+export async function postTextToNodx(
+  text: string,
+  meta: TextCaptureMeta,
+): Promise<CaptureResult> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
+  try {
+    const res = await fetch(NODX_TEXT_ENDPOINT, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        text,
+        explanation: meta.explanation ?? '',
+        sourceUrl: meta.sourceUrl,
+        sourceTitle: meta.sourceTitle,
+        capturedAt: Date.now(),
+      }),
+    });
+    if (!res.ok) {
+      return { ok: false, error: `nodx returned HTTP ${res.status}` };
+    }
+    const j = (await res.json()) as { id?: string };
+    return { ok: true, id: j.id };
+  } catch (e) {
     return {
       ok: false,
       appMissing: true,

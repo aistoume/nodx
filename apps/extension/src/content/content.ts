@@ -17,8 +17,14 @@
 
 import { getSettings } from '../shared/settings.js';
 import { setLocale, t } from '../shared/i18n.js';
-import { attemptSave, openDownloadPage } from '../shared/save-hook.js';
-import { installMarqueeListener } from './marquee.js';
+import { openDownloadPage } from '../shared/save-hook.js';
+import { postTextToNodx } from '../shared/capture.js';
+import {
+  installMarqueeListener,
+  recordTextAction,
+  runGenerateFromSubject,
+  showToast,
+} from './marquee.js';
 import { installHighlightsLayer } from './highlights-layer.js';
 import { showRadialMenu, TEXT_OPTIONS, type RadialChoice } from './radial-menu.js';
 
@@ -374,7 +380,10 @@ function openPanelForNewSelection(
 }
 
 /**
- * Route a text-selection radial pick (📖 解释 / 📚 深入 / 🔎 搜索 / 📋 复制).
+ * Route a text-selection radial pick. The menu mirrors the image menu:
+ *   🔍 解释 / 搜索 · 💡 保存 · 🛒 Shopping / Amazon · 🎨 生成
+ * The selected text is the query/prompt, so no "identify" step is needed.
+ * (深入 / 复制 stay on the explanation panel's footer.)
  */
 function handleTextChoice(choice: RadialChoice, text: string, range: Range): void {
   switch (choice) {
@@ -384,12 +393,49 @@ function handleTextChoice(choice: RadialChoice, text: string, range: Range): voi
     case 'txt-deepen':
       openPanelForNewSelection(text, range, 'deep');
       break;
-    case 'txt-search':
-      window.open(
-        `https://www.google.com/search?q=${encodeURIComponent(text)}`,
-        '_blank',
-        'noopener,noreferrer',
+    case 'txt-search': {
+      const url = `https://www.google.com/search?q=${encodeURIComponent(text)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      recordTextAction(
+        { kind: 'search', label: '文字搜索 · Google', query: text, url },
+        text,
       );
+      break;
+    }
+    case 'txt-shopping-google': {
+      const url = `https://www.google.com/search?udm=28&q=${encodeURIComponent(text)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      recordTextAction(
+        { kind: 'shopping', label: 'Google Shopping', query: text, url },
+        text,
+      );
+      break;
+    }
+    case 'txt-shopping-amazon': {
+      const url = `https://www.amazon.com/s?k=${encodeURIComponent(text)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      recordTextAction(
+        { kind: 'shopping', label: 'Amazon', query: text, url },
+        text,
+      );
+      break;
+    }
+    case 'txt-save':
+      void saveTextToPool(text);
+      break;
+    case 'txt-generate':
+      // The selected text IS the subject — skip the image-认图 step. On
+      // success, underline the source text like an explain annotation so
+      // the page shows what was generated from (click → note, right-click
+      // → remove).
+      void runGenerateFromSubject(text)
+        .then(() => {
+          createAnnotation(text, t('generatedForText'), range);
+        })
+        .catch((e) => {
+          console.error('[nodx Lens] text generate failed:', e);
+          showToast(`生成失败: ${e instanceof Error ? e.message : e}`);
+        });
       break;
     case 'txt-copy':
       void navigator.clipboard.writeText(text);
@@ -397,6 +443,30 @@ function handleTextChoice(choice: RadialChoice, text: string, range: Range): voi
     default:
       // 'cancel' or an image-only choice — nothing to do here.
       break;
+  }
+}
+
+/**
+ * 💡 保存: hand the raw selection to the *running* nodx desktop's 灵感池 via
+ * the local gateway (NOT the `nodx://` scheme, which the OS may route to a
+ * stale install).
+ */
+async function saveTextToPool(text: string): Promise<void> {
+  const busy = showToast('保存到 nodx…', { spinner: true, persistent: true });
+  const outcome = await postTextToNodx(text, {
+    sourceUrl: location.href,
+    sourceTitle: document.title,
+  });
+  busy.close();
+  if (outcome.ok) {
+    showToast('✓ 已存入 nodx 灵感池');
+    // Mirror the save into the side-panel history so text saves are as
+    // traceable as image ones (desktop pool + a local record card).
+    recordTextAction({ kind: 'save', label: '存入灵感池', query: text }, text);
+  } else if (outcome.appMissing) {
+    showToast('nodx 桌面未运行，无法保存');
+  } else {
+    showToast(`保存失败: ${outcome.error ?? ''}`);
   }
 }
 
@@ -452,30 +522,25 @@ async function handleSaveExplanation(panel: HTMLDivElement, selectedText: string
   };
 
   setBtn(t('saveSending'), true);
-  const outcome = await attemptSave({
-    id: crypto.randomUUID(),
-    text: selectedText,
+  // Go through the running app's local gateway (same channel as image
+  // captures) rather than the `nodx://` scheme, so the snippet lands in the
+  // install that's actually open.
+  const outcome = await postTextToNodx(selectedText, {
     explanation,
     sourceUrl: location.href,
     sourceTitle: document.title,
-    capturedAt: Date.now(),
   });
 
-  if (outcome.kind === 'handoff') {
-    // Focus left the tab → local app got the payload. Just confirm.
+  if (outcome.ok) {
     setBtn(t('saveSuccess'), true);
     setTimeout(() => setBtn(t('saveExplain'), false), 2400);
     return;
   }
 
-  if (outcome.kind === 'error') {
-    setBtn(t('saveExplain'), false);
-    return;
-  }
-
-  // outcome.kind === 'app-missing' → show inline "get it" hint
+  // Not running / not installed → inline "get it" hint; any other error
+  // just reverts the button.
   setBtn(t('saveExplain'), false);
-  showAppMissingHint(footer);
+  if (outcome.appMissing) showAppMissingHint(footer);
 }
 
 /**

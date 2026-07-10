@@ -100,6 +100,12 @@ html, body, #root {
   flex-direction: column;
   gap: 10px;
 }
+/* Children keep their natural height and the body SCROLLS — never let
+   flex shrink cards into their overflow:hidden (that clips the meta row
+   with the ✕ delete button when many tall thumbnails stack up). */
+.panel-body > * {
+  flex-shrink: 0;
+}
 
 .empty {
   padding: 40px 20px;

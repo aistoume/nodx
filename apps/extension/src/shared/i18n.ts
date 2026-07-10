@@ -12,7 +12,7 @@ export type Locale = 'zh' | 'en';
 const STRINGS = {
   zh: {
     // Content script
-    triggerLabel: '🔍 解释',
+    triggerLabel: 'nodx',
     triggerExplainTitle: '让 AI 解释这段',
     panelTitle: 'nodx Lens · 解释',
     connecting: '连接中…',
@@ -30,6 +30,7 @@ const STRINGS = {
     extInvalidatedInline: '扩展上下文失效，请刷新本页。',
     extReloadedToast: '🔁 nodx Lens 已更新 · 请刷新本页继续使用',
     annotationTitle: '点击查看解释 · 右键删除',
+    generatedForText: '🎨 已为这段文字生成图片 — 打开侧栏「生成记录」查看或保存。',
 
     // Service worker
     missingApiKey: '请先在 Settings 配置 API Key',
@@ -66,7 +67,7 @@ const STRINGS = {
   },
   en: {
     // Content script
-    triggerLabel: '🔍 Explain',
+    triggerLabel: 'nodx',
     triggerExplainTitle: 'Have AI explain this',
     panelTitle: 'nodx Lens · Explanation',
     connecting: 'Connecting…',
@@ -84,6 +85,7 @@ const STRINGS = {
     extInvalidatedInline: 'Extension context invalidated. Please refresh this page.',
     extReloadedToast: '🔁 nodx Lens updated · refresh this page to continue',
     annotationTitle: 'Click to view · right-click to remove',
+    generatedForText: '🎨 An image was generated from this text — see the side panel history to view or save it.',
 
     // Service worker
     missingApiKey: 'Please set your API key in Settings first.',

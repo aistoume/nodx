@@ -57,3 +57,4 @@ coverage/
 
 # Pitch deck build scripts — kept local, not on GitHub
 pitch/
+apps/extension/*.zip
