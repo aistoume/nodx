@@ -67,15 +67,22 @@
       <h1>Install nodx Lens on macOS (beta)</h1>
       <p class="subtitle">Unsigned beta — takes 60 seconds + one terminal command.</p>
 
-      <a class="download-btn" href="/downloads/nodx-lens-0.0.1-arm64.dmg" download>
-        ⬇ Download nodx-lens-0.0.1-arm64.dmg
+      <div class="callout">
+        <strong>Update:</strong> the standalone Lens-for-Mac app has been merged
+        into <a href="/nodx/">nodx desktop</a> (since 0.3). Download nodx desktop
+        below to get system-wide ⌥+E select-and-explain plus the full thinking
+        workspace — the install steps on this page apply the same way.
+      </div>
+
+      <a class="download-btn" href="/downloads/nodx-0.5.0-arm64.dmg" download>
+        ⬇ Download nodx-0.5.0-arm64.dmg
       </a>
-      <p style="font-size:13px;color:var(--muted);">Apple Silicon · macOS 12+ · ~5 MB</p>
+      <p style="font-size:13px;color:var(--muted);">Apple Silicon · macOS 12+ · ~8 MB</p>
 
       <h2>1. Install</h2>
       <ol>
         <li>Double-click the downloaded <code>.dmg</code></li>
-        <li>Drag <strong>nodx Lens</strong> to the <strong>Applications</strong> folder</li>
+        <li>Drag <strong>nodx</strong> to the <strong>Applications</strong> folder</li>
         <li>Eject the DMG</li>
       </ol>
 
@@ -90,7 +97,7 @@
       </div>
 
       <p>Open <strong>Terminal</strong> (⌘+Space → "Terminal") and paste:</p>
-      <pre><code>xattr -dr com.apple.quarantine "/Applications/nodx Lens.app"</code></pre>
+      <pre><code>xattr -dr com.apple.quarantine "/Applications/nodx.app"</code></pre>
 
       <p>That's it. Double-click <strong>nodx Lens</strong> in Applications — it opens normally.</p>
 

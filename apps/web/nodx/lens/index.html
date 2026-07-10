@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>nodx Lens — Inline AI explanations on any webpage</title>
-    <meta name="description" content="Select any text on any webpage to get an instant AI explanation in place. Annotations stay. Bring your own Claude / GPT / Gemini API key. macOS app in beta." />
-    <meta property="og:title" content="nodx Lens — Inline AI explanations on any webpage" />
-    <meta property="og:description" content="Highlight any text → instant AI explanation. No tab-switching. No chat clutter." />
-    <meta property="og:image" content="/promo/small-tile.png" />
+    <title>nodx Lens — Turn anything you see into AI action</title>
+    <meta name="description" content="Select text or box any region on any webpage → AI explain, search, shop, or generate images. Captures stay marked on the page. Bring your own Claude / GPT / Gemini key." />
+    <meta property="og:title" content="nodx Lens — Turn anything you see into AI action" />
+    <meta property="og:description" content="Select text or box any region → explain, search, shop, generate. Captures stay marked and become material for thinking." />
+    <meta property="og:image" content="/screenshots/lens-09-wheel.png" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:creator" content="@LaoMo9394" />
@@ -35,84 +35,112 @@
 
     <section class="hero container">
       <div class="hero-text">
-        <h1>Highlight → explain<br /><span class="accent">→ save as thinking.</span></h1>
-        <p class="lead-large">The entry point to nodx. Not "another AI assistant" — the start of a conversation that compounds.</p>
+        <h1>See it. Ask it.<br /><span class="accent">Act on it.</span></h1>
+        <p class="lead-large">Turn anything you see on a webpage — a phrase, a product photo, a chart — into instant AI action.</p>
         <p class="lead">
-          Select any text on any webpage. Get a streamed AI explanation in place.
-          The underline stays — click later and the same explanation returns without
-          re-paying. One more click saves it as a <strong>thinking card</strong>
-          that nodx desktop will pick up and weave into your decision graph.
+          Select text or box any region of the page, and an <strong>action wheel</strong>
+          appears: Explain, Search, Shop, Generate, Save. Results stream in place.
+          Every capture leaves a marked box on the page — click it anytime to run
+          <em>more</em> actions on the same capture, and everything is logged in
+          the side panel.
         </p>
         <div class="cta">
-          <a class="btn primary" href="https://chrome.google.com/webstore/" target="_blank" rel="noopener">
+          <a class="btn primary" href="https://chromewebstore.google.com/detail/ipljkbefemodjbihcnmmaallcfndmild" target="_blank" rel="noopener">
             <span>Add to Chrome</span>
             <small>Free forever · BYO API key</small>
           </a>
-          <a class="btn ghost" href="#install-mac">macOS app (beta) →</a>
+          <a class="btn ghost" href="#demo">Watch the 40-second demo ↓</a>
         </div>
-        <p class="caption">v0.3 · persistent annotations · save to nodx · 中文 / English</p>
+        <p class="caption">v0.9 · action wheel · vision on any region · image generation · 中文 / English</p>
       </div>
       <div class="hero-shot">
-        <img src="/screenshots/1-hero-select-explain.png" alt="nodx Lens floating panel showing an AI explanation next to highlighted text" />
+        <img src="/screenshots/lens-09-wheel.png" alt="nodx Lens action wheel over selected text: explain, save, shopping, generate" />
+      </div>
+    </section>
+
+    <section id="demo" class="how container">
+      <h2 class="center">40 seconds, start to finish</h2>
+      <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+        <iframe
+          src="https://www.youtube.com/embed/7nnm_P5aZ5k"
+          title="nodx Lens demo — turn anything you see into AI action"
+          style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+        ></iframe>
       </div>
     </section>
 
     <section id="features" class="features container">
-      <h2>Six things other "AI explainers" don't do</h2>
+      <h2>One action wheel, two ways in</h2>
       <div class="grid">
         <div class="card highlight">
-          <h3>💾 Save as thinking card</h3>
-          <p>One click on any explanation packages it as a <strong>thinking card</strong> (snippet + AI explanation + source) into your local library. nodx desktop picks these up as starting points for structured reasoning — the "attention token" that turns reading into deciding.</p>
+          <h3>🎡 The action wheel</h3>
+          <p>Select text or box any page region — the same four-spoke wheel appears:
+          🔍 Explain / Search · 💡 Save · 🛒 Shopping (Google Shopping or Amazon) ·
+          🎨 Generate. The selection <em>is</em> the prompt; no copy-pasting anywhere.</p>
         </div>
         <div class="card highlight">
-          <h3>📌 Persistent annotations</h3>
-          <p>The blue underline survives panel close. Click it later — same explanation re-opens, no second API call. Like Grammarly's underlines, but for understanding instead of grammar.</p>
+          <h3>📦 Boxes are action hubs</h3>
+          <p>Every capture leaves a yellow box on the page. Click it to reopen the
+          wheel and act on the same capture again. Its corner badge tells the story —
+          💬 3 🔎 🎨 means three Q&amp;A turns, a search, and a generated image.
+          One region never grows duplicate boxes.</p>
         </div>
         <div class="card">
-          <h3>🔍 Select-to-explain</h3>
-          <p>Highlight 2–500 characters → click 🔍 → streamed explanation in place. 50–150 words by default; tap "Deepen" for a 200–400 word version with examples.</p>
+          <h3>👁 Vision on any region</h3>
+          <p>Box a product photo, a chart, a UI — ask "what is this?" about the exact
+          pixels. Visual search uses Google Lens for real images, AI recognition +
+          image search for everything else.</p>
         </div>
         <div class="card">
-          <h3>🌊 Real streaming</h3>
-          <p>Words appear as the model generates them. Judge within the first sentence whether the answer is on-track — close early if it isn't.</p>
+          <h3>🎨 Image generation</h3>
+          <p>From selected text or a boxed region, generate one image laid out as a
+          2×2 style grid — product photo, watercolor, 3D render, line art — powered
+          by Gemini's image model with your own key.</p>
         </div>
         <div class="card">
-          <h3>🔐 Local-first, zero telemetry</h3>
-          <p>No nodx server. API key, settings, history, snippets all in <code>chrome.storage.local</code>. Requests go directly from your browser to your AI provider.</p>
+          <h3>🗂 The side panel remembers</h3>
+          <p>Current-page captures on top, each with its own Q&amp;A thread. A
+          collapsible history logs every search, shopping trip, and generated image
+          with a re-open link. Underlines and boxes persist across sessions.</p>
         </div>
         <div class="card">
-          <h3>🧰 Truly free + BYO key</h3>
-          <p>Anthropic Claude, OpenAI GPT, or Google Gemini — pick your model, pay only for what you use. <strong>No subscription, no Pro tier, no usage caps</strong>.</p>
+          <h3>🔐 Local-first, BYO key</h3>
+          <p>No nodx server, no telemetry. Keys, captures, and history live in
+          <code>chrome.storage.local</code>; AI requests go directly from your
+          browser to Anthropic, OpenAI, or Google. <strong>No subscription.</strong></p>
         </div>
       </div>
     </section>
 
     <section id="how" class="how container">
-      <h2>From reading to thinking — in 30 seconds</h2>
+      <h2>From seeing to acting — in 30 seconds</h2>
       <ol class="steps">
         <li><strong>Install</strong> from the Chrome Web Store (60 seconds).</li>
         <li><strong>Open Settings</strong> — pick a provider, paste your own API key.</li>
-        <li><strong>Highlight</strong> any phrase on any webpage — the 🔍 trigger floats above.</li>
-        <li><strong>Click → read</strong> — explanation streams in; underline persists.</li>
-        <li><strong>Save to nodx</strong> — explanation becomes a thinking card you can revisit, or forward to nodx desktop when it ships.</li>
+        <li><strong>Select text</strong> on any page, or click 📸 Screenshot region in the side panel and drag over anything.</li>
+        <li><strong>Pick a spoke</strong> — explain it, search it, shop it, or generate from it.</li>
+        <li><strong>Come back anytime</strong> — the box stays on the page; click it to keep going, or send it to nodx desktop.</li>
       </ol>
     </section>
 
     <section id="install" class="install container">
       <h2>Install</h2>
       <div class="install-grid">
-        <a class="install-card" href="https://chrome.google.com/webstore/" target="_blank" rel="noopener">
+        <a class="install-card" href="https://chromewebstore.google.com/detail/ipljkbefemodjbihcnmmaallcfndmild" target="_blank" rel="noopener">
           <div class="status live">Live</div>
           <h3>🌐 Chrome / Edge / Brave / Arc</h3>
           <p>Manifest V3 extension. Works on every Chromium browser.</p>
           <span class="install-cta">Open Chrome Web Store →</span>
         </a>
-        <a id="install-mac" class="install-card coming" href="/downloads/nodx-lens-0.0.1-arm64.dmg" download>
-          <div class="status beta">Beta</div>
-          <h3>🍎 macOS native (beta)</h3>
-          <p>System-wide select-and-explain via ⌥+E. Works in VS Code, Notes, Word, PDF — anywhere you read on Mac.</p>
-          <span class="install-cta">Download .dmg (Apple Silicon) →</span>
-          <small style="display:block;margin-top:8px;font-size:11px;opacity:0.75;">Apple Silicon · macOS 12+ · ~5 MB · <a href="/nodx/lens/install-mac.html" style="color:#fff;text-decoration:underline;">Install instructions ↗</a></small>
+        <a class="install-card" href="/nodx/#full">
+          <div class="status beta">Now inside nodx desktop</div>
+          <h3>🍎 On Mac, outside the browser</h3>
+          <p>System-wide select-and-explain via ⌥+E — in VS Code, Notes, Word, PDF,
+          anywhere you read — is now built into <strong>nodx desktop</strong>
+          (merged from the old standalone Lens-for-Mac app).</p>
+          <span class="install-cta">Get nodx desktop →</span>
         </a>
       </div>
     </section>
@@ -120,10 +148,11 @@
     <section class="upsell container">
       <h2>Lens is step 1.</h2>
       <p class="upsell-lead">
-        Every thinking card you save in Lens becomes raw material for
-        <a href="/nodx/">nodx desktop</a> — where snippets get structured into
-        first-principles decompositions, debated by AI expert panels,
-        compared against your past reasoning, and turned into atomic actions.
+        Everything you capture in Lens — snippets, screenshots, generated images —
+        can flow into the inspiration pool of
+        <a href="/nodx/">nodx desktop</a>, where it becomes material for
+        first-principles decompositions, AI expert-panel debates, and a thinking
+        library that compounds over time.
       </p>
       <p class="upsell-lead">
         Lens by itself is useful. Lens + nodx desktop is how thinking compounds.
@@ -145,7 +174,7 @@
           <a href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏 @LaoMo9394</a>
         </div>
       </div>
-      <div class="copyright">© 2026 Aicon Solutions · v0.3</div>
+      <div class="copyright">© 2026 Aicon Solutions · v0.9</div>
     </footer>
   </body>
 </html>
