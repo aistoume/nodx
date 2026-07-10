@@ -181,4 +181,9 @@ nodx/
 
 ## License
 
-Not yet declared. Treat as private until otherwise noted.
+Copyright 2026 Aicon Solutions (aistoume).
+
+Licensed under the [Apache License, Version 2.0](./LICENSE). You may use,
+modify, and distribute this code — including commercially — provided you
+preserve the license and notices. "nodx" and "Aicon Solutions" names and
+logos are not licensed for use as trademarks.
