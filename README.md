@@ -14,19 +14,19 @@ The "chat" channel sits at the bottom of the document for free-form follow-up; t
 
 ## Status
 
-Mid-M1 (per [`CLAUDE.md`](./CLAUDE.md) §5). All Week-1 + most of Week-2 scope is in:
+Post-M1, mid-M2 (per [`CLAUDE.md`](./CLAUDE.md) §9 — the authoritative feature ledger). Highlights:
 
-- ✅ Tauri 2.11 desktop shell with SQLite (3 migrations)
-- ✅ pnpm + Turborepo monorepo, 4 packages, 107 vitest cases
-- ✅ Three-column layout with Tailwind v4 design tokens lifted from [`prototype.html`](./prototype.html)
-- ✅ Topic CRUD (create / archive / delete / parent-child)
-- ✅ Cloudflare Worker AI gateway with streaming + Anthropic `web_search`
-- ✅ Survey card (with custom factor input) → decompose → thinking document
-- ✅ Selection menu (解释 / 便签 / 深化) with accept-reject suggestion UX
-- ✅ Right-panel cards anchored to doc selection, scroll-tracked
-- ⏳ Atomic-action checker (M1 Week 2 closer)
-- ⏳ Cytoscape network-graph view (M1 Week 3)
-- ⏳ Yjs sync / Supabase (M3)
+- ✅ Tauri 2.11 desktop shell, SQLite with 14 migrations, in-proc Rust AI gateway (keychain-held keys, per-launch token)
+- ✅ Survey → first-principles decomposition → thinking document → annotations (four-color, anchored)
+- ✅ Expert-panel debate engine (multi-expert, devil's advocate, Local-Maximum convergence, merge/replace back into the doc)
+- ✅ CBR thinking library: abstraction → embedding index → retrieve → fork-and-adapt; "debate only the diff" panels
+- ✅ Auto-recursion engine: PM AI spawns sub-discussions until actionable, Auto-Run with per-layer preview + rollback
+- ✅ Replay ("nothing gets lost"): recap cards, reasoning traces, open-question 卡点 across sessions
+- ✅ React Flow network graph with material nodes, blank canvases, material synthesis, thinking/execution node splits
+- ✅ Decision-report export + `.nodx` data bundles (full-fidelity subtree transfer)
+- ✅ i18n (zh/en), ⌥+E system-wide capture, Windows CI
+- ✅ **nodx Lens** Chrome extension 0.9 (`apps/extension`): action wheel on text or region — explain / search / shop / generate, box-as-action-hub, side-panel history
+- ⏳ Auto-recursion Sprint C, drafts drawer, @-mentions UI; Safari + Android ports in planning (`docs/multiplatform-roadmap.md`)
 
 Full roadmap and design rationale in [`PRD.md`](./PRD.md).
 
@@ -37,8 +37,8 @@ Full roadmap and design rationale in [`PRD.md`](./PRD.md).
 │ apps/desktop  (Tauri 2.11 + React 19 + Vite 6)       │
 │   ├─ TipTap editor (the document)                    │
 │   ├─ Local SQLite via @tauri-apps/plugin-sql         │
-│   └─ Calls AI through @nodx/ai → worker, never       │
-│      directly to Anthropic                           │
+│   └─ Calls AI through @nodx/ai → local in-proc Rust │
+│      gateway on 127.0.0.1:8787 (keys in keychain)    │
 └────────────────────┬─────────────────────────────────┘
                      │
         ┌────────────┴────────────┐
@@ -54,7 +54,7 @@ Full roadmap and design rationale in [`PRD.md`](./PRD.md).
                                     │
                                     ▼
                            Anthropic Messages API
-                           (Sonnet 4.6 / Haiku 4.5)
+                           (Opus 4.8 / Haiku 4.5)
 ```
 
 Workspaces:
@@ -73,7 +73,7 @@ Workspaces:
 - Node 20+, pnpm 9+
 - Rust toolchain (`rustup default stable`) — required by Tauri
 - macOS Xcode CLT for Tauri (`xcode-select --install`)
-- An Anthropic API key with access to Claude Sonnet 4.6 + Haiku 4.5
+- An Anthropic API key (core tier: Claude Opus 4.8; light tier: Haiku 4.5)
 
 ### 1. Install
 
