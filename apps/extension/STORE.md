@@ -4,21 +4,17 @@
 
 ---
 
-## v0.7.0 更新说明（如果是 update 而不是首次上架）
+## v0.9.0 更新说明（What's new — 贴到 Description 开头）
 
-**主要新功能**：Side panel + 持久截图高亮 + 图片 Q&A
+```
+What's new in 0.9.0 — Boxes become action hubs
 
-- 点扩展图标不再弹小 popup，而是打开右侧 side panel（Chrome 114+ 原生支持）
-- Side panel 顶部有 **📸 Screenshot region** 按钮：网页上任意位置框选 → 截图变成一张"灵感卡片"
-- 每张截图会作为**黄色边框标注**留在网页上（同一 URL 跨 session 保留，localStorage-based）
-- Side panel 里每张卡有独立的 Q&A 输入框，可对着 Sonnet vision 追问关于这张截图的任何问题
-- 默认自动同步截图到 nodx desktop 灵感池（可关，走 `http://127.0.0.1:8787/v1/capture-image`）
-
-**新权限**：
-- `sidePanel` — 打开 Chrome 侧边栏面板
-- `http://127.0.0.1:8787/*` host permission — 同步截图到本地 nodx desktop 服务（optional，用户可关）
-
----
+• Click any highlight box to reopen the action wheel — run Explain, Visual Search, Shopping, or Image Generation on the same capture. Every action is logged onto that box (💬 🔎 🛒 🎨 badges); one region never grows duplicate boxes.
+• Search, Shopping, and Generate now leave a highlight box right where you captured, with results one click away in the side panel.
+• Text selections get the full action wheel too: Explain / Search / Shopping / Generate / Save — all logged with quote-card thumbnails; text-generated images leave an underline marker on the source text.
+• Side panel redesigned: current-page captures stay on top; global history is collapsible.
+• Fixed: highlight boxes no longer cover a site's own popups; card delete buttons no longer get clipped.
+```
 
 ## Name (最多 45 字符)
 
@@ -29,45 +25,62 @@ nodx Lens — Inline AI Explanations
 ## Short description (最多 132 字符)
 
 ```
-Select text on any webpage to get instant AI explanations in place. Annotations persist. Bring your own Claude / GPT / Gemini key.
+Select text or box any page region → AI explain, search, shop, or generate images. Captures stay marked and sync to nodx desktop.
 ```
 
 中文版（如做 zh-CN 区域）：
 ```
-任意网页选中文字，原地浮出 AI 解释。底线标注持久保留。用你自己的 Claude / GPT / Gemini API key。
+选中文字或框选网页任意区域 → AI 解释、搜索、购物、生成图片。标记持久保留，可同步到 nodx 桌面。
 ```
 
 ## Detailed description (English — primary listing)
 
 ```
-nodx Lens turns text selection into instant AI context. Highlight any phrase on any webpage, click the floating "🔍 explain" button, and a streaming explanation appears right next to what you were reading. No tab-switching, no new chat thread to clutter, no copy-pasting into another tool.
+nodx Lens turns anything you see on a webpage — a phrase, a product photo, a chart — into instant AI action. Select text or box any region of the page, and an action wheel appears: Explain, Search, Shop, Generate, Save. Results stream in place; every capture stays marked on the page and logged in the side panel.
 
 ═══════════════════════════════════════════
-WHO IT'S FOR
+TWO WAYS IN, ONE ACTION WHEEL
 ═══════════════════════════════════════════
 
-• Anyone reading long AI replies in a chat tool — get a side-channel definition without polluting your main conversation.
-• Knowledge workers who skim research papers, Substack essays, technical docs, and want fast context on a term they don't know.
-• People who collect annotations as they read — every explanation leaves a persistent underline you can revisit.
+✍️ Select text → the wheel offers:
+  🔍 Explain — a streaming AI explanation right under the selection (short first, "deepen" for a 200–400 word version)
+  🔎 Search — Google the exact phrase in a new tab
+  🛒 Shop — jump to Google Shopping or Amazon with the phrase as the query
+  🎨 Generate — turn the text into an AI image (a 2×2 style grid: product photo / watercolor / 3D render / line art)
+  💡 Save — send the snippet to the nodx desktop inspiration pool
+
+📸 Box a region (Screenshot region in the side panel) → the same wheel, powered by vision:
+  🔍 Explain — ask the AI "what is this?" about the exact pixels you boxed
+  🔎 Visual search — Google Lens when the region is a real image, AI-recognition + image search otherwise
+  🛒 Shop — the AI names the product, then opens Google Shopping or Amazon with that query
+  🎨 Generate — the AI describes the subject, then generates the 2×2 style grid
+  💡 Save — keep the crop as an inspiration card
 
 ═══════════════════════════════════════════
-CORE FEATURES
+BOXES ARE ACTION HUBS
 ═══════════════════════════════════════════
 
-🔍 Select-to-explain
-Highlight 2–500 characters on any webpage. A small "🔍 explain" pill floats above the selection. Click it. A panel slides in below the highlight with a streaming explanation — 50–150 words by default, tuned to be a quick definition with one concrete example.
+Every region capture leaves a yellow highlight box on the page — and the box stays useful:
 
-📌 Persistent underlines
-When the explanation finishes, the selected text gets a blue underline that stays on the page. Click outside, scroll away, switch tabs — the underline doesn't disappear. Click any underline later to instantly bring the panel back with the same explanation (no extra API call). Right-click an underline to delete the annotation.
+• Click the box → the action wheel reopens for that same capture. Explain it, shop it, generate from it — no re-selecting.
+• Every action is logged onto the box. Its corner badge tells the story at a glance: 💬 3 🔎 🎨 means three Q&A turns, a search, and a generated image.
+• One region, one box — repeat actions never stack duplicates.
+• Click the corner badge → the side panel opens focused on that capture's card.
 
-📚 Deepen on demand
-The panel has a "deepen" button that swaps in a longer 200–400 word explanation — mechanism, example, common misconceptions, or contrast with adjacent ideas. You decide when to spend more tokens.
+═══════════════════════════════════════════
+THE SIDE PANEL REMEMBERS EVERYTHING
+═══════════════════════════════════════════
 
-🌊 Real streaming
-Words appear character-by-character as the model generates them. You can tell within the first sentence whether the answer is what you wanted — and close the panel early if it's off-track. No wasted wait time.
+• Captures from the page you're reading stay on top, each with its own Q&A thread — keep asking follow-up questions about the same screenshot.
+• A global, collapsible history logs every search, shopping trip, and generated image — with a "reopen" link to jump back to the results tab.
+• Text actions are logged too, as quote-card thumbnails of the selected words.
+• Highlight boxes persist per-URL across sessions; explanations re-open without a second API call.
 
-⌨️ Keyboard control
-Press Esc to close the panel. The trigger button auto-hides when you click elsewhere. Selection-debouncing keeps the UI from flickering as you adjust your highlight.
+═══════════════════════════════════════════
+WORKS WITH NODX DESKTOP (OPTIONAL)
+═══════════════════════════════════════════
+
+If the nodx desktop app is running, captures and saved snippets sync into its inspiration pool over 127.0.0.1 — your machine only, no cloud hop. From there they become material for nodx's networked decision-thinking workspace. The extension is fully useful without the desktop app.
 
 ═══════════════════════════════════════════
 PRIVACY
@@ -75,10 +88,10 @@ PRIVACY
 
 This extension does not have a backend. We do not run a server.
 
-✓ Your API key, settings, and recent explanation history live only in chrome.storage.local on your own machine.
-✓ When you trigger an explanation, the request goes directly from your browser to the AI provider you configured — never through any nodx-controlled server.
+✓ Your API keys, settings, captures, and history live only in chrome.storage.local on your own machine.
+✓ AI requests go directly from your browser to the provider you configured — never through any nodx-controlled server.
+✓ Desktop sync targets 127.0.0.1 (your own computer) and can be switched off.
 ✓ No analytics, no telemetry, no third-party trackers, no ads.
-✓ History is capped at 20 entries, fully local, and can be cleared with one click from the toolbar popup.
 
 Full privacy policy is linked from the listing.
 
@@ -86,52 +99,38 @@ Full privacy policy is linked from the listing.
 HOW IT WORKS (2-MINUTE SETUP)
 ═══════════════════════════════════════════
 
-1. Install the extension.
-2. Settings opens automatically on first install.
-3. Pick a provider: Anthropic, OpenAI, or Google.
-4. Paste your own API key (from the provider's console — you keep full control of usage and billing).
-5. Pick which model to use for short vs. deep explanations.
-6. Go to any webpage, highlight something, and click 🔍.
+1. Install the extension — Settings opens automatically.
+2. Pick a provider: Anthropic, OpenAI, or Google, and paste your own API key (you keep full control of usage and billing).
+3. For image generation, add a Google AI key (Gemini image model).
+4. Select text or click "📸 Screenshot region" in the side panel — and pick a spoke on the wheel.
 
 ═══════════════════════════════════════════
 WHY BRING-YOUR-OWN-KEY INSTEAD OF A SUBSCRIPTION
 ═══════════════════════════════════════════
 
 • Privacy: your queries go to your provider account, not a middleman's.
-• Pay-as-you-go: a typical short explanation costs a fraction of a cent on Haiku- or Flash-class models. Light users will pay less than any flat subscription would charge.
+• Pay-as-you-go: a short explanation costs a fraction of a cent on Haiku- or Flash-class models.
 • Model freedom: swap providers or models any time. You're never locked in.
-• Transparency: you can see your own API console for exactly what was sent and what it cost.
+• Transparency: your own API console shows exactly what was sent and what it cost.
 
 ═══════════════════════════════════════════
 SUPPORTED MODELS
 ═══════════════════════════════════════════
 
-• Anthropic — claude-haiku-4-5 (default for short explanations, fast and cheap), claude-sonnet-4-6 (default for deep explanations)
+• Anthropic — claude-haiku-4-5 (short explanations), claude-sonnet-5 (deep explanations & vision)
 • OpenAI — gpt-4o-mini, gpt-4o, gpt-5
-• Google — gemini-2.5-flash, gemini-2.5-pro
+• Google — gemini-2.5-flash, gemini-2.5-pro; gemini-2.5-flash-image for image generation
 
-You can change the picked model per provider in Settings any time.
+Change models per provider in Settings any time.
 
 ═══════════════════════════════════════════
 PERMISSIONS, IN PLAIN ENGLISH
 ═══════════════════════════════════════════
 
-• "Read and change all your data on all websites" — sounds scary; in practice, it's because the extension has to be ready to activate when you select text on whatever page you're reading. It does not read or modify page contents unless you explicitly click the floating trigger button.
-• "Storage" — to keep your API key and settings on your local machine.
-• "Host permissions" to api.anthropic.com, api.openai.com, generativelanguage.googleapis.com — so the extension can talk directly to whichever AI provider you chose.
-
-═══════════════════════════════════════════
-WHAT'S NEXT
-═══════════════════════════════════════════
-
-V0.1 (this release) — Core flow, persistent annotations, three providers, local history.
-
-Planned:
-• V0.2 — Web Crypto encryption for the stored API key
-• V0.3 — Global keyboard shortcut (Alt+E) to trigger without clicking
-• V0.4 — Annotations that survive page reload by re-anchoring to text
-• V0.5 — Cross-page "my annotations" library, searchable from the popup
-• V1.0 — Companion desktop app integration (save a snippet to deeper structured thinking)
+• "Read and change all your data on all websites" — the extension must be ready to activate when you select text or box a region on whatever page you're reading. It does not read or modify page contents until you explicitly act.
+• "Storage" — your API keys, settings, captures, and history, kept on your local machine.
+• Host permissions to the AI providers — so your browser can call them directly.
+• 127.0.0.1:8787 — optional sync to your own nodx desktop app.
 
 ═══════════════════════════════════════════
 CONTACT / FEEDBACK
@@ -139,87 +138,83 @@ CONTACT / FEEDBACK
 
 X (Twitter): https://x.com/LaoMo9394
 
-nodx is a small toolkit for thinking with AI as a sparring partner, not a replacement. Lens is the lightweight browser entry point. A networked decision-thinking desktop app is in development separately.
+nodx is a small toolkit for thinking with AI as a sparring partner, not a replacement. Lens is the lightweight browser entry point; a networked decision-thinking desktop app ships alongside it.
 ```
-
----
 
 ## Detailed description (中文版 — 用作 zh-CN 区域 localization)
 
 ```
-nodx Lens 让你在任何网页选中文字时，AI 解释会浮在选区下方——不必跳走 Google，也不必去 ChatGPT 开新对话。
+nodx Lens 把网页上你看到的任何东西——一段文字、一张商品图、一幅图表——变成即时的 AI 行动。选中文字或框选页面任意区域，四向动作轮浮现：解释 / 搜索 / 购物 / 生成 / 保存。结果原地流式呈现，每次捕获都在页面留下标记、在侧栏留下记录。
 
 ═══════════════════════════════════════════
-适合谁
+两个入口，同一个动作轮
 ═══════════════════════════════════════════
 
-• 在 Gemini / ChatGPT / Claude.ai 阅读 AI 回答，想查一个小术语，又不想污染主对话上下文
-• 看 Substack / Medium / 学术 blog 的长文，遇到陌生概念
-• 在 Notion / 飞书 hover 一段历史会议记录，想 catch up
+✍️ 选中文字：
+  🔍 解释 — 选区下方流式 AI 解释（先短版，「深入」换 200–400 字详解）
+  🔎 搜索 — 新标签页直接 Google 这段文字
+  🛒 购物 — 以文字为关键词跳 Google Shopping 或 Amazon
+  🎨 生成 — 把文字变成 AI 图片（2×2 四风格：商品照 / 水彩 / 3D 渲染 / 线稿）
+  💡 保存 — 存进 nodx 桌面灵感池
+
+📸 框选区域（侧栏「Screenshot region」）：同一个轮盘，vision 加持：
+  🔍 解释 — 对着框住的像素问「这是什么」
+  🔎 以图搜 — 真实图片直接 Google Lens；否则 AI 认图后图片搜索
+  🛒 购物 — AI 认出商品名，再开 Google Shopping / Amazon
+  🎨 生成 — AI 描述主体后生成 2×2 风格图
+  💡 保存 — 截图存成灵感卡
 
 ═══════════════════════════════════════════
-核心功能
+框就是操作枢纽
 ═══════════════════════════════════════════
 
-🔍 选中即解释
-任意网页选中 2-500 字 → 浮出"🔍 解释"按钮 → 点击 → 浮窗在选区下方流式展示 AI 解释
+每次框选都会在页面留下黄色高亮框——而且框一直有用：
 
-📌 持久标注（像 Grammarly 那样）
-解释生成完成后，选中文字下方自动出现蓝色标注线。点其他地方不消失。任何时候点标注线，浮窗就回到原位显示同一份解释（不重复扣 API 费用）。右键标注线删除。
+• 点框身 → 动作轮为这次捕获重开，解释、购物、生成随点随用，不必重新框选
+• 每个动作都记在框上，角标一眼读懂：💬 3 🔎 🎨 = 三轮问答 + 一次搜索 + 一张生成图
+• 同一区域永远只有一个框，重复操作不叠框
+• 点角标 → 侧栏打开并定位到这张卡
 
-📚 深入解释
-浮窗里的"深入"按钮触发更详细的解释（短版 50–150 字 / 深版 200–400 字），让你按需消费 token。
+═══════════════════════════════════════════
+侧栏记住一切
+═══════════════════════════════════════════
 
-🌊 真流式输出
-不是先等 3 秒再砰一下出全文，而是文字逐字浮现，你可以提前判断有没有打到点上，节省时间。
+• 当前页的捕获卡置顶，每张卡有独立问答串，可对同一张截图持续追问
+• 全局记录（可折叠）留存每次搜索/购物/生成，一键「重新打开」结果页
+• 文字动作同样留档，缩略图是选中文字的引用卡
+• 高亮框按 URL 跨会话保留；解释可原地重开，不重复扣 API 费用
+
+═══════════════════════════════════════════
+与 nodx 桌面版联动（可选）
+═══════════════════════════════════════════
+
+nodx 桌面 app 运行时，捕获与保存的内容会经 127.0.0.1 同步进它的灵感池——只在你自己的机器内流动，之后成为 nodx 网状决策思考的素材。不装桌面版，扩展本身也完整可用。
 
 ═══════════════════════════════════════════
 隐私
 ═══════════════════════════════════════════
 
-✅ 完全本地：API key、历史、设置都只存在你本机的 chrome.storage.local
-✅ 直连：调用从你浏览器直发到 AI 提供商，nodx 没有任何服务器
-✅ 零追踪：没有 Google Analytics、没有 Mixpanel、没有 Sentry、没有任何 telemetry
-✅ 开源：源码在 GitHub 可审计
+✅ 完全本地：API key、捕获、历史、设置都只存在你本机的 chrome.storage.local
+✅ 直连：AI 调用从你的浏览器直发提供商，nodx 没有任何服务器
+✅ 桌面同步只走 127.0.0.1（你自己的电脑），可随时关闭
+✅ 零追踪：没有任何 analytics / telemetry / 广告
 
 ═══════════════════════════════════════════
-配置方式（一次性 2 分钟）
+配置（一次性 2 分钟）
 ═══════════════════════════════════════════
 
-1. 安装扩展（这一步你正在做）
-2. 第一次打开会自动弹 Settings 页
-3. 选 provider：Anthropic / OpenAI / Google 三选一
-4. 贴你自己的 API key（去对应官网申请）
-5. 任意网页选文字，开用
-
-═══════════════════════════════════════════
-为什么自带 key 而不是包月订阅
-═══════════════════════════════════════════
-
-• 你的数据走你自己的账户，更隐私
-• 按用量计费，你不用买高峰也不用浪费低谷
-• 你随时换 provider、换 model，没人锁你
+1. 安装扩展，Settings 自动打开
+2. 选 provider：Anthropic / OpenAI / Google，贴你自己的 API key
+3. 想用图片生成，再配一个 Google AI key（Gemini 出图模型）
+4. 任意网页选文字或框选区域，点动作轮开用
 
 ═══════════════════════════════════════════
 支持的模型
 ═══════════════════════════════════════════
 
-• Anthropic：claude-haiku-4-5（短解释，便宜快）/ claude-sonnet-4-6（深入解释）
+• Anthropic：claude-haiku-4-5（短解释）/ claude-sonnet-5（深入解释 + vision）
 • OpenAI：gpt-4o-mini / gpt-4o / gpt-5
-• Google：gemini-2.5-flash / gemini-2.5-pro
-
-═══════════════════════════════════════════
-版本与开发
-═══════════════════════════════════════════
-
-V0.1.0：基础功能 + 三家流式 + 持久标注 + 本地历史
-
-接下来计划：
-• V0.2：Web Crypto 加密 API key
-• V0.3：全局快捷键（Alt+E 不点按钮直接解释）
-• V0.4：刷新页面后标注自动重新定位
-• V0.5：跨页面"我的标注库"
-• V1.0：和 nodx 桌面端打通——一键把解释保存为决策思考
+• Google：gemini-2.5-flash / gemini-2.5-pro；出图用 gemini-2.5-flash-image
 
 ═══════════════════════════════════════════
 联系 / 反馈
@@ -227,7 +222,7 @@ V0.1.0：基础功能 + 三家流式 + 持久标注 + 本地历史
 
 X (Twitter)：https://x.com/LaoMo9394
 
-nodx 是一套"AI 陪你想"的工具集。Lens 是浏览器版的轻量入口，桌面端做的是完整的网状决策思考工作台。
+nodx 是一套「AI 陪你想」的工具集。Lens 是浏览器端的轻量入口，桌面端是完整的网状决策思考工作台。
 ```
 
 ---
@@ -323,17 +318,16 @@ Privacy policy URL: `<把 Gist 的 raw URL 贴这里>`
 
 ---
 
-## 截图（必须 5 张，至少 1280×800 或 640×400）
+## 截图（1280×800，已生成在 ~/Desktop/nodx-store-shots/）
 
-需要你**手动截**这五张：
+由 Playwright 脚本自动布景生成（scratchpad/store-shots.mjs，可在每次发版后重跑）：
 
-1. **主截图（首屏）**：Gemini 网页选中一个术语，浮出"🔍 解释"按钮 + 浮窗里流式显示解释 + 选中文字下方蓝色底线标注
-2. **设置页**：Settings 页面，展示三个 provider 单选 + key 输入框
-3. **历史**：扩展 popup，展示几条历史记录
-4. **深入解释**：浮窗"深入"模式，宽版显示长解释
-5. **不同网页**：Substack / Medium 一篇英文长文上选中术语 + 浮窗（证明任意网页可用）
-
-每张 PNG，1280×800 或更大。最简单办法：实际操作 → 截图 → 用 Preview 裁到 1280×800。
+1. **1-wheel.png** — 选中文字 + 四向动作轮（🔍/💡/🛒/🎨）
+2. **2-shopping.png** — 🛒 二级菜单（Shopping / Amazon）
+3. **3-explain-search.png** — 🔍 二级菜单（解释 / 搜索）
+4. **4-explain-panel.png** — AI 解释面板（流式结果 + Deepen/Save/Copy）
+5. **5-marquee-wheel.png** — 框选图片区域后动作轮弹出
+6. **6-box-chip.png** — 留在页面上的黄色高亮框 + 角标
 
 ## 宣传图（可选但能拉曝光）
 
