@@ -58,10 +58,48 @@ pub struct Usage {
 pub struct AnthropicError {
     pub status: u16,
     pub message: String,
-    /// Raw upstream body, kept for future error reporting / diagnostics.
-    /// Not read anywhere yet — silence the dead-code lint.
-    #[allow(dead_code)]
+    /// Raw upstream body from Anthropic — the actual reason for a 4xx
+    /// (e.g. `{"error":{"type":"invalid_request_error","message":"..."}}`).
     pub upstream_body: String,
+}
+
+impl AnthropicError {
+    /// Human-facing one-liner that folds in the upstream reason so the
+    /// real cause reaches the UI instead of a bare "400 Bad Request".
+    /// We prefer the upstream `error.message`, fall back to the raw body
+    /// (truncated), and finally to `message` alone.
+    pub fn detail(&self) -> String {
+        let reason = extract_upstream_reason(&self.upstream_body);
+        match reason {
+            Some(r) => format!("{}: {}", self.message, r),
+            None => self.message.clone(),
+        }
+    }
+}
+
+/// Pull `error.message` out of an Anthropic error envelope; fall back to a
+/// trimmed slice of the raw body. Returns None when there's nothing useful.
+fn extract_upstream_reason(body: &str) -> Option<String> {
+    let trimmed = body.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if let Ok(v) = serde_json::from_str::<serde_json::Value>(trimmed) {
+        if let Some(m) = v
+            .get("error")
+            .and_then(|e| e.get("message"))
+            .and_then(|m| m.as_str())
+        {
+            return Some(m.to_string());
+        }
+    }
+    // Non-JSON or unexpected shape — surface a bounded slice so we still
+    // learn something without dumping a huge blob into the UI.
+    let mut s: String = trimmed.chars().take(300).collect();
+    if trimmed.chars().count() > 300 {
+        s.push('…');
+    }
+    Some(s)
 }
 
 impl std::fmt::Display for AnthropicError {
@@ -134,31 +172,72 @@ pub async fn call_anthropic(
         body["tools"] = serde_json::json!([web_search_tool()]);
     }
 
-    let response = client
+    let mut response = post_messages(client, api_key, &body).await?;
+
+    let mut status = response.status();
+    if !status.is_success() {
+        let err_body = response.text().await.unwrap_or_default();
+        // Newer models (Opus 4.8+) reject `temperature` outright. Strip it
+        // and retry once so one gateway works across model generations —
+        // callers keep passing temperature for the models that accept it.
+        if status.as_u16() == 400 && err_body.contains("`temperature` is deprecated") {
+            log::info!(
+                "anthropic rejected `temperature` for {}; retrying without it",
+                req.model
+            );
+            body.as_object_mut()
+                .expect("request body is a JSON object")
+                .remove("temperature");
+            response = post_messages(client, api_key, &body).await?;
+            status = response.status();
+            if !status.is_success() {
+                let retry_body = response.text().await.unwrap_or_default();
+                return Err(AnthropicError {
+                    status: status.as_u16(),
+                    message: format!(
+                        "anthropic {} {}",
+                        status.as_u16(),
+                        status.canonical_reason().unwrap_or("")
+                    ),
+                    upstream_body: retry_body,
+                });
+            }
+        } else {
+            return Err(AnthropicError {
+                status: status.as_u16(),
+                message: format!(
+                    "anthropic {} {}",
+                    status.as_u16(),
+                    status.canonical_reason().unwrap_or("")
+                ),
+                upstream_body: err_body,
+            });
+        }
+    }
+
+    consume_sse_stream(response, &req.model, req.assistant_prefill.is_some()).await
+}
+
+/// One POST to the Messages API. Split out so the temperature-retry path can
+/// resend without duplicating header plumbing.
+async fn post_messages(
+    client: &reqwest::Client,
+    api_key: &str,
+    body: &serde_json::Value,
+) -> Result<reqwest::Response, AnthropicError> {
+    client
         .post(ANTHROPIC_URL)
         .header("x-api-key", api_key)
         .header("anthropic-version", ANTHROPIC_VERSION)
         .header("content-type", "application/json")
-        .json(&body)
+        .json(body)
         .send()
         .await
         .map_err(|e| AnthropicError {
             status: 502,
             message: format!("network: {}", e),
             upstream_body: String::new(),
-        })?;
-
-    let status = response.status();
-    if !status.is_success() {
-        let body = response.text().await.unwrap_or_default();
-        return Err(AnthropicError {
-            status: status.as_u16(),
-            message: format!("anthropic {} {}", status.as_u16(), status.canonical_reason().unwrap_or("")),
-            upstream_body: body,
-        });
-    }
-
-    consume_sse_stream(response, &req.model, req.assistant_prefill.is_some()).await
+        })
 }
 
 /// Parse the SSE stream from Anthropic into one accumulated text + usage.
