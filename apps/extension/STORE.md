@@ -266,6 +266,16 @@ The content script never reads or modifies page contents on its own — it activ
 We use Chrome's sidePanel API to show a per-tab "inspiration inbox" that lists every screenshot the user has taken on the current webpage, plus their Q&A history for each one. The side panel replaces the small popup from previous versions as the extension's main surface — clicking the toolbar icon opens/closes it. All data shown in the side panel comes from the user's own chrome.storage.local; nothing is fetched from a nodx server.
 ```
 
+### clipboardWrite
+```
+Used only for explicit, user-initiated copy actions: the "Copy" button in the explanation panel (copies the AI explanation text), the copy spoke of the text-selection menu (copies the selected text), and the image hand-off flow where the user chooses to copy a captured or AI-generated image so they can paste it into an external site (e.g. an image search engine). Nothing is ever written to the clipboard without the user clicking a copy control, and the extension never reads the clipboard.
+```
+
+### scripting
+```
+Used exclusively to inject the extension's OWN declared content scripts: (1) into tabs that were already open when the extension is installed or updated — otherwise features would not work on existing tabs until each page is manually reloaded; and (2) as a one-time retry when messaging a tab whose content script is missing (e.g. after a service-worker restart). We only ever inject the same files listed under content_scripts in the manifest, never remote code or dynamically generated scripts.
+```
+
 ### Host permission — http://127.0.0.1:8787/*
 ```
 When the user has the companion nodx desktop app installed and running, the extension can (optionally, off by a checkbox) POST a captured screenshot to nodx desktop's local HTTP server (127.0.0.1:8787) so it lands in the desktop app's inspiration pool automatically. This is entirely local: 127.0.0.1 addresses never leave the user's own machine, and the toggle defaults to on but can be turned off in the side panel at any time. If the desktop app isn't running, the POST silently times out and the extension's own side-panel copy of the screenshot is unaffected.
