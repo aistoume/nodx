@@ -41,19 +41,29 @@ class FloatingBubbleService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val code = intent?.getIntExtra(EXTRA_RESULT_CODE, 0) ?: 0
+        @Suppress("DEPRECATION")
+        val data = intent?.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
+        if (projection == null && (code == 0 || data == null)) {
+            // System restart without a fresh MediaProjection grant — we're
+            // not even allowed to startForeground(mediaProjection) in this
+            // state (SecurityException on 14+). User restarts from the app.
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        // Order matters on 14+: startForeground(mediaProjection) BEFORE
+        // getMediaProjection, and registerCallback BEFORE any capture.
         startAsForeground()
-        if (intent != null && projection == null) {
-            val code = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
-            @Suppress("DEPRECATION")
-            val data = intent.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
-            if (code != 0 && data != null) {
-                val mgr = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-                projection = mgr.getMediaProjection(code, data)
-                capture = ScreenCaptureManager(this, projection!!)
-            }
+        if (projection == null) {
+            val mgr = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            projection = mgr.getMediaProjection(code, data!!)
+            projection!!.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() { stopSelf() }
+            }, null)
+            capture = ScreenCaptureManager(this, projection!!)
         }
         if (bubble == null) addBubble()
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun startAsForeground() {
