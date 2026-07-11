@@ -18,7 +18,8 @@ object GeminiClient {
     private val JSON = "application/json".toMediaType()
 
     /** Returns decoded PNG/JPEG bytes, or throws with a readable message. */
-    fun generateImage(apiKey: String, prompt: String, model: String = "gemini-2.5-flash-image"): ByteArray {
+    // gemini-2.5-flash-image shuts down 2026-08-17 — Nano Banana 2 is the successor.
+    fun generateImage(apiKey: String, prompt: String, model: String = "gemini-3.1-flash-image"): ByteArray {
         val payload = JSONObject().put(
             "contents",
             JSONArray().put(

@@ -46,13 +46,38 @@ const DEFAULT_SETTINGS: Settings = {
   },
   imageGen: {
     apiKey: '',
-    model: 'gemini-2.5-flash-image',
+    model: 'gemini-3.1-flash-image',
   },
 };
 
+/**
+ * Stored settings can carry model ids that have since been retired or
+ * superseded — map them forward so old installs keep working
+ * (gemini-2.5-flash-image shuts down 2026-08-17).
+ */
+const LEGACY_MODEL_MAP: Record<string, string> = {
+  'claude-opus-4-6': 'claude-opus-4-8',
+  'gpt-4o-mini': 'gpt-5.6-luna',
+  'gpt-4o': 'gpt-5.6-sol',
+  'gpt-5': 'gpt-5.6-sol',
+  'gemini-2.5-flash': 'gemini-3.5-flash',
+  'gemini-2.5-pro': 'gemini-3-pro',
+  'gemini-2.5-flash-image': 'gemini-3.1-flash-image',
+};
+
+function upgradeModel(id: string): string {
+  return LEGACY_MODEL_MAP[id] ?? id;
+}
+
 export async function getSettings(): Promise<Settings> {
   const stored = await chrome.storage.local.get('settings');
-  return { ...DEFAULT_SETTINGS, ...(stored.settings ?? {}) };
+  const s: Settings = { ...DEFAULT_SETTINGS, ...(stored.settings ?? {}) };
+  s.model = {
+    explain: upgradeModel(s.model.explain),
+    deepen: upgradeModel(s.model.deepen),
+  };
+  s.imageGen = { ...s.imageGen, model: upgradeModel(s.imageGen.model) };
+  return s;
 }
 
 export async function setSettings(s: Partial<Settings>): Promise<void> {

@@ -273,7 +273,7 @@ function safeParse<T>(s: string): T | null {
 // ============================================================================
 // Google Gemini — image generation (non-streaming :generateContent).
 //   Used by the "🎨 generate" radial action: Sonnet writes an image prompt,
-//   then a Gemini image model (gemini-2.5-flash-image = Nano Banana, or
+//   then a Gemini image model (gemini-3.1-flash-image = Nano Banana 2, or
 //   gemini-3-pro-image) renders it and returns inline base64 bytes.
 //   This is a SEPARATE key from the main text provider — Anthropic can't
 //   generate images, so image-gen always needs a Google AI key.

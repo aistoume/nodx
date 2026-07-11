@@ -451,7 +451,7 @@ async function generateImageFromPrompt(
     }
     const { dataUrl } = await generateGeminiImage(
       img.apiKey,
-      img.model || 'gemini-2.5-flash-image',
+      img.model || 'gemini-3.1-flash-image',
       prompt,
     );
     return { ok: true, dataUrl };

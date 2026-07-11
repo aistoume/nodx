@@ -22,23 +22,27 @@ import {
   type WheelItem,
 } from '../shared/wheel.js';
 
+// Model lists refreshed 2026-07-11 — explain = fast/cheap tier, deepen = quality tier.
 const MODELS: Record<Provider, { explain: string[]; deepen: string[]; help: string }> = {
   anthropic: {
     explain: ['claude-haiku-4-5'],
-    deepen: ['claude-sonnet-5', 'claude-opus-4-6'],
+    deepen: ['claude-sonnet-5', 'claude-opus-4-8'],
     help: 'Get an Anthropic key at console.anthropic.com/settings/keys',
   },
   openai: {
-    explain: ['gpt-4o-mini'],
-    deepen: ['gpt-4o', 'gpt-5'],
+    explain: ['gpt-5.6-luna', 'gpt-5.6-terra'],
+    deepen: ['gpt-5.6-sol', 'gpt-5.6-terra'],
     help: 'Get an OpenAI key at platform.openai.com/api-keys',
   },
   google: {
-    explain: ['gemini-2.5-flash'],
-    deepen: ['gemini-2.5-pro'],
+    explain: ['gemini-3.5-flash', 'gemini-3.1-flash-lite'],
+    deepen: ['gemini-3-pro', 'gemini-3.5-flash'],
     help: 'Get a Google AI key at aistudio.google.com/app/apikey',
   },
 };
+
+/** Image-gen models (gemini-2.5-flash-image shuts down 2026-08-17). */
+const IMAGE_GEN_MODELS = ['gemini-3.1-flash-image', 'gemini-3-pro-image'];
 
 function App() {
   const [settings, setSettingsState] = useState<Settings | null>(null);
@@ -191,7 +195,7 @@ function App() {
             })
           }
         >
-          {['gemini-2.5-flash-image'].map((m) => (
+          {IMAGE_GEN_MODELS.map((m) => (
             <option key={m} value={m}>{m}</option>
           ))}
         </select>
