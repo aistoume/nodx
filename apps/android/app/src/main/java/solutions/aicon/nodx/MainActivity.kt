@@ -12,27 +12,40 @@ import android.provider.Settings
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.HorizontalScrollView
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
- * Entry screen. Two one-time setup steps, then everything lives in the
- * floating bubble service:
- *   1) SYSTEM_ALERT_WINDOW (draw over other apps)
- *   2) MediaProjection consent (system screen-capture dialog)
- * After both, we start FloatingBubbleService; the user can minimise the
- * app and the bubble stays on top of every screen.
+ * Entry screen. Once the keys are in and "draw over apps" is granted,
+ * opening the app auto-launches the screen-capture consent — the only
+ * tap the system still requires — then minimises itself; everything
+ * else lives in the floating bubble. The screen also shows a "最近添加"
+ * strip previewing the newest saves (full browse in GalleryActivity).
  */
 class MainActivity : AppCompatActivity() {
 
     private val projectionManager by lazy {
         getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private lateinit var keyInput: EditText
     private lateinit var geminiInput: EditText
+    private lateinit var recentRow: LinearLayout
+    private lateinit var recentEmpty: TextView
+
+    /** Auto-launch the projection consent at most once per app entry. */
+    private var autoStartAttempted = false
 
     /**
      * A collapsible BYOK row: masked "saved" status line ↔ editable field.
@@ -77,7 +90,7 @@ class MainActivity : AppCompatActivity() {
             if (result.resultCode == Activity.RESULT_OK && result.data != null) {
                 startBubble(result.resultCode, result.data!!)
             } else {
-                toast("需要屏幕录制授权才能截屏")
+                toast("需要屏幕录制授权才能截屏（点「启动」可重试）")
             }
         }
 
@@ -100,21 +113,44 @@ class MainActivity : AppCompatActivity() {
             root, "🎨 Google AI key", "Google AI key（🎨生成用，AIza…，可留空）",
             Prefs.geminiKey(this),
         ) { Prefs.setGeminiKey(this, it) }
-        val start = Button(this).apply { text = "启动 nodx 悬浮球" }
-        start.setOnClickListener {
-            if (Prefs.anthropicKey(this).isBlank()) {
-                toast("请先填 Anthropic key")
-                return@setOnClickListener
-            }
-            ensureOverlayThenProjection()
-        }
-        root.addView(start)
         root.addView(Button(this).apply {
-            text = "📁 收集库（已保存的截图）"
+            text = "启动 nodx 悬浮球"
+            setOnClickListener {
+                if (Prefs.anthropicKey(this@MainActivity).isBlank()) {
+                    toast("请先填 Anthropic key")
+                    return@setOnClickListener
+                }
+                ensureOverlayThenProjection()
+            }
+        })
+
+        // ── 最近添加：横排预览，点图看大图；「收集库 ▸」进全量网格 ──
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 48, 0, 12)
+        }
+        header.addView(TextView(this).apply {
+            text = "🖼 最近添加"; textSize = 16f
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        header.addView(TextView(this).apply {
+            text = "收集库 ▸"; textSize = 14f
             setOnClickListener { startActivity(Intent(this@MainActivity, GalleryActivity::class.java)) }
         })
+        root.addView(header)
+        recentRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        root.addView(HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(recentRow)
+        })
+        recentEmpty = TextView(this).apply {
+            text = "还没有保存过 — 框选后点 💡 或 🎨"
+            visibility = View.GONE
+        }
+        root.addView(recentEmpty)
+
         root.addView(TextView(this).apply {
-            text = "步骤：① 授予“显示在其他应用上层” ② 允许屏幕录制 → 悬浮球出现，点它截屏 → 框选 → 动作轮（🔍解释/搜索 · 💡保存 · 🛒购物 · 🎨生成）。"
+            text = "点悬浮球截屏 → 框选 → 动作轮（🔍解释/搜索 · 💡保存 · 🛒购物 · 🎨生成）。打开本页会自动请求启动，只需在系统弹窗点「开始」。"
             setPadding(0, 40, 0, 0)
         })
         setContentView(root)
@@ -126,12 +162,57 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        refreshRecent()
+        maybeAutoStart()
+    }
+
+    /**
+     * Auto-start: keys ready + overlay granted + bubble not running →
+     * jump straight to the system consent (the one tap Android insists
+     * on). Attempted once per activity lifetime so cancelling the dialog
+     * doesn't loop it.
+     */
+    private fun maybeAutoStart() {
+        if (autoStartAttempted || FloatingBubbleService.isRunning) return
+        if (Prefs.anthropicKey(this).isBlank() || !Settings.canDrawOverlays(this)) return
+        autoStartAttempted = true
+        projectionLauncher.launch(projectionManager.createScreenCaptureIntent())
+    }
+
+    private fun refreshRecent() {
+        scope.launch {
+            val items = withContext(Dispatchers.IO) { MediaLibrary.recentThumbs(this@MainActivity, 8) }
+            recentRow.removeAllViews()
+            recentEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+            val cell = (96 * resources.displayMetrics.density).toInt()
+            val gap = (8 * resources.displayMetrics.density).toInt()
+            items.forEach { (uri, bmp) ->
+                recentRow.addView(ImageView(this@MainActivity).apply {
+                    layoutParams = LinearLayout.LayoutParams(cell, cell).apply { rightMargin = gap }
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    setImageBitmap(bmp)
+                    setOnClickListener {
+                        if (uri != null && uri.scheme == "content") {
+                            startActivity(
+                                Intent(Intent.ACTION_VIEW).setDataAndType(uri, "image/*")
+                                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            )
+                        }
+                    }
+                })
+            }
+        }
+    }
+
     private fun ensureOverlayThenProjection() {
         if (!Settings.canDrawOverlays(this)) {
             startActivity(
                 Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
             )
-            toast("请授予“显示在其他应用上层”，回来再点一次")
+            toast("请授予“显示在其他应用上层”，授完回来会自动继续")
+            autoStartAttempted = false // let onResume pick it up after the grant
             return
         }
         projectionLauncher.launch(projectionManager.createScreenCaptureIntent())
@@ -144,8 +225,13 @@ class MainActivity : AppCompatActivity() {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(svc)
         else startService(svc)
-        toast("悬浮球已启动，可最小化本页")
+        toast("悬浮球已启动")
         moveTaskToBack(true)
+    }
+
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
     }
 
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_SHORT).show()

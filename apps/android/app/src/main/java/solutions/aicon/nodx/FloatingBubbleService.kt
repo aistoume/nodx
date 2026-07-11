@@ -31,6 +31,10 @@ class FloatingBubbleService : Service() {
         const val EXTRA_RESULT_DATA = "result_data"
         private const val CHANNEL_ID = "nodx_bubble"
         private const val NOTIF_ID = 1001
+
+        /** Lets MainActivity skip auto-start when the bubble already runs. */
+        @Volatile var isRunning = false
+            private set
     }
 
     private lateinit var windowManager: WindowManager
@@ -63,6 +67,7 @@ class FloatingBubbleService : Service() {
             capture = ScreenCaptureManager(this, projection!!)
         }
         if (bubble == null) addBubble()
+        isRunning = true
         return START_NOT_STICKY
     }
 
@@ -137,6 +142,7 @@ class FloatingBubbleService : Service() {
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     override fun onDestroy() {
+        isRunning = false
         bubble?.let { runCatching { windowManager.removeView(it) } }
         capture?.release(); projection?.stop()
         super.onDestroy()

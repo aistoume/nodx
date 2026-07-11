@@ -1,17 +1,12 @@
 package solutions.aicon.nodx
 
 import android.Manifest
-import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
-import android.util.Size
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AbsListView
@@ -27,7 +22,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 /**
  * 收集库 — browses what 💡保存 dropped into the gallery. The photo album
@@ -93,37 +87,7 @@ class GalleryActivity : AppCompatActivity() {
     }
 
     /** Newest-first thumbnails of everything under Pictures/nodx. */
-    private fun queryThumbs(): List<Pair<Uri?, Bitmap>> {
-        val out = mutableListOf<Pair<Uri?, Bitmap>>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            contentResolver.query(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                arrayOf(MediaStore.Images.Media._ID),
-                "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?",
-                arrayOf("${Environment.DIRECTORY_PICTURES}/nodx%"),
-                "${MediaStore.Images.Media.DATE_ADDED} DESC",
-            )?.use { c ->
-                while (c.moveToNext() && out.size < 200) {
-                    val uri = ContentUris.withAppendedId(
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI, c.getLong(0)
-                    )
-                    runCatching { contentResolver.loadThumbnail(uri, Size(384, 384), null) }
-                        .getOrNull()?.let { out += uri to it }
-                }
-            }
-        } else {
-            // API 26–28: 保存 falls back to the app-private pictures dir.
-            val dir = File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "nodx")
-            dir.listFiles { f -> f.extension == "png" }
-                ?.sortedByDescending { it.lastModified() }
-                ?.take(200)
-                ?.forEach { f ->
-                    val opts = BitmapFactory.Options().apply { inSampleSize = 4 }
-                    BitmapFactory.decodeFile(f.absolutePath, opts)?.let { out += null to it }
-                }
-        }
-        return out
-    }
+    private fun queryThumbs(): List<Pair<Uri?, Bitmap>> = MediaLibrary.recentThumbs(this, 200)
 
     override fun onDestroy() {
         scope.cancel()
