@@ -75,12 +75,13 @@ object WheelConfig {
     private const val FILE = "nodx"
     private const val KEY = "wheel_config_v1"
 
-    /** The stock wheel — mirrors Lens 0.9 (localized labels/prompt). */
-    fun defaults(c: Context): List<WheelItem> = listOf(
+    /** The stock wheel — mirrors Lens 0.9. Defaults are plain English on
+     *  every locale (same as the extension); users customize from there. */
+    fun defaults(@Suppress("UNUSED_PARAMETER") c: Context): List<WheelItem> = listOf(
         WheelItem("🔍", "", null, listOf(
-            WheelItem("📖", c.getString(R.string.radial_explain),
-                WheelAction.Prompt(c.getString(R.string.prompt_explain))),
-            WheelItem("🔎", c.getString(R.string.radial_search),
+            WheelItem("📖", "Explain",
+                WheelAction.Prompt("What is this? Answer concisely (2–4 sentences), quoting key numbers/text exactly.")),
+            WheelItem("🔎", "Search",
                 WheelAction.Search("https://www.google.com/search?udm=2&q=")),
         )),
         WheelItem("💡", "", WheelAction.Save),

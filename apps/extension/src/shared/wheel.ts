@@ -27,7 +27,7 @@ export interface WheelConfigV1 {
 }
 
 export const DEFAULT_EXPLAIN_PROMPT =
-  '这是什么？简洁回答（2–4 句），关键数字/文字精确引用。';
+  'What is this? Answer concisely (2–4 sentences), quoting key numbers/text exactly.';
 export const DEFAULT_IMAGE_SEARCH_PREFIX = 'https://www.google.com/search?udm=2&q=';
 
 /** The stock wheel — mirrors Lens 0.9 exactly. */
@@ -38,8 +38,8 @@ export function defaultWheel(): WheelConfigV1 {
       {
         emoji: '🔍', label: '', action: null,
         children: [
-          { emoji: '📖', label: '解释', action: { kind: 'prompt', prompt: DEFAULT_EXPLAIN_PROMPT }, children: [] },
-          { emoji: '🔎', label: '搜索', action: { kind: 'search', urlPrefix: DEFAULT_IMAGE_SEARCH_PREFIX }, children: [] },
+          { emoji: '📖', label: 'Explain', action: { kind: 'prompt', prompt: DEFAULT_EXPLAIN_PROMPT }, children: [] },
+          { emoji: '🔎', label: 'Search', action: { kind: 'search', urlPrefix: DEFAULT_IMAGE_SEARCH_PREFIX }, children: [] },
         ],
       },
       { emoji: '💡', label: '', action: { kind: 'save' }, children: [] },
