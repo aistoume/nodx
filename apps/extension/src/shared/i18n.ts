@@ -81,6 +81,9 @@ const STRINGS = {
     wheelResetBtn: '恢复默认',
     wheelInvalid: '每个按钮需要图标；提示词 / URL 不能为空；子菜单至少 1 个子项',
     wheelPreviewHint: '预览即时反映编辑效果；点带子菜单的辐条展开，点中心 ↩ 收回。',
+    wheelLayoutSingle: '生成单图',
+    wheelLayoutGrid: '生成 2×2 四格',
+    wheelStylePh: '生成风格提示词 — {subject} 会被替换为 AI 认图出的主体描述',
 
     // Popup
     popupTitle: 'nodx Lens',
@@ -160,6 +163,9 @@ const STRINGS = {
     wheelResetBtn: 'Restore defaults',
     wheelInvalid: 'Each button needs an icon; prompt/URL must not be empty; a submenu needs at least 1 sub-item',
     wheelPreviewHint: 'The preview mirrors your edits live — click a submenu spoke to fan it out, click the centre ↩ to collapse.',
+    wheelLayoutSingle: 'Single image',
+    wheelLayoutGrid: '2×2 four-style grid',
+    wheelStylePh: 'Style prompt — {subject} is replaced by the AI\'s description of the crop',
 
     // Popup
     popupTitle: 'nodx Lens',

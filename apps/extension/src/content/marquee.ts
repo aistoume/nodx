@@ -35,6 +35,7 @@ import {
 import { showWheelMenu } from './radial-menu.js';
 import {
   DEFAULT_EXPLAIN_PROMPT,
+  DEFAULT_GRID_STYLE_PROMPT,
   DEFAULT_IMAGE_SEARCH_PREFIX,
   getWheelConfig,
   type WheelAction,
@@ -249,7 +250,8 @@ async function routeWheelAction(
       break;
     case 'generate': {
       // Sonnet writes a subject description from the screenshot; the
-      // shared generator then turns that subject into the 2×2 grid image.
+      // shared generator wraps it in the user's style template (single
+      // image or 2×2 grid) and has Gemini render it.
       const busy = showToast(
         'Sonnet 正在写生成 prompt… (15-40s)',
         { spinner: true, persistent: true },
@@ -258,7 +260,7 @@ async function routeWheelAction(
       try {
         base = await generatePromptViaServiceWorker(cropped.dataUrl);
         busy.close();
-        await runGenerateFromSubject(base, rect, onBox);
+        await runGenerateFromSubject(base, rect, onBox, action.stylePrompt);
       } catch (e) {
         busy.close();
         const msg = e instanceof Error ? e.message : String(e);
@@ -279,37 +281,25 @@ async function routeWheelAction(
 // string comes from: Sonnet-认图 for images, the raw selection for text).
 // ────────────────────────────────────────────────────────────────────────────
 
-/** Wrap a subject description in the 2×2-grid image-gen instruction. */
-function buildGridPrompt(subject: string): string {
-  return `Create ONE single image composed as a clean 2×2 grid of four equal quadrants. Each quadrant shows the SAME subject rendered in a different visual style. Keep the subject identical across all four quadrants.
-
-Subject: ${subject}
-
-- Top-left quadrant: a realistic e-commerce PRODUCT PHOTOGRAPH of the subject as a physical, purchasable object on a plain seamless white studio background, soft even lighting, sharp focus, realistic materials.
-- Top-right quadrant: a hand-drawn ink-and-watercolour illustration.
-- Bottom-left quadrant: a polished 3D render with soft global illumination and subtle reflections.
-- Bottom-right quadrant: minimalist black line art on a plain white background, a few clean strokes, no shading.
-
-Lay the four quadrants out as an even, clearly separated 2×2 grid. Keep it a small, compact graphic.`;
-}
-
 /**
- * Turn a subject description into a downscaled 2×2 grid image, record it to
- * the side-panel history, and show the result modal. Shared by the image
- * and text 🎨 spokes. Throws on generation failure so callers can offer a
- * fallback hand-off.
+ * Turn a subject description into a downscaled generated image, record it
+ * to the side-panel history, and show the result modal. Shared by the
+ * image and text 🎨 spokes. `styleTemplate` is the wheel's user-editable
+ * style prompt with a `{subject}` placeholder (single image or 2×2 grid).
+ * Throws on generation failure so callers can offer a fallback hand-off.
  */
 export async function runGenerateFromSubject(
   subject: string,
   rect?: MarqueeRect,
   onBox?: Highlight,
+  styleTemplate: string = DEFAULT_GRID_STYLE_PROMPT,
 ): Promise<void> {
-  const busy = showToast('🎨 Gemini 出图中…（一张图·2×2 四格）', {
+  const busy = showToast('🎨 Gemini 出图中…', {
     spinner: true,
     persistent: true,
   });
   try {
-    const gridPrompt = buildGridPrompt(subject);
+    const gridPrompt = styleTemplate.replaceAll('{subject}', subject);
     const raw = await generateImageViaServiceWorker(gridPrompt);
     // The user wants a small, low-res graphic — downscale before we
     // show / save / store it (also keeps it small for chrome.storage).

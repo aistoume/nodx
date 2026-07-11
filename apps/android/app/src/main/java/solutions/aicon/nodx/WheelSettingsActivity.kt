@@ -53,7 +53,26 @@ class WheelSettingsActivity : AppCompatActivity() {
                 this@WheelSettingsActivity, android.R.layout.simple_spinner_dropdown_item, kindLabels
             )
         }
+
+        /** Only for kind=GENERATE: single image vs 2×2 grid. */
+        val layout = Spinner(this@WheelSettingsActivity).apply {
+            adapter = ArrayAdapter(
+                this@WheelSettingsActivity, android.R.layout.simple_spinner_dropdown_item,
+                listOf(getString(R.string.wheel_layout_single), getString(R.string.wheel_layout_grid)),
+            )
+        }
         val param = EditText(this@WheelSettingsActivity)
+
+        private fun isDefaultStyle(s: String) =
+            s.isBlank() || s == WheelAction.DEFAULT_GRID_STYLE_PROMPT ||
+                s == WheelAction.DEFAULT_SINGLE_STYLE_PROMPT
+
+        private fun layoutValue() =
+            if (layout.selectedItemPosition == 0) WheelAction.LAYOUT_SINGLE else WheelAction.LAYOUT_GRID
+
+        private fun defaultStyleForLayout() =
+            if (layoutValue() == WheelAction.LAYOUT_SINGLE) WheelAction.DEFAULT_SINGLE_STYLE_PROMPT
+            else WheelAction.DEFAULT_GRID_STYLE_PROMPT
 
         init {
             val row = LinearLayout(this@WheelSettingsActivity).apply { orientation = LinearLayout.HORIZONTAL }
@@ -61,25 +80,43 @@ class WheelSettingsActivity : AppCompatActivity() {
             row.addView(label, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2f))
             root.addView(row)
             root.addView(kind)
+            root.addView(layout)
             root.addView(param)
+            val prefillAction = prefill?.action
             kind.setSelection(
-                when (prefill?.action) {
+                when (prefillAction) {
                     is WheelAction.Search -> Kind.SEARCH.ordinal
                     WheelAction.Save -> Kind.SAVE.ordinal
-                    WheelAction.Generate -> Kind.GENERATE.ordinal
+                    is WheelAction.Generate -> Kind.GENERATE.ordinal
                     else -> Kind.PROMPT.ordinal
                 }
             )
+            layout.setSelection(
+                if ((prefillAction as? WheelAction.Generate)?.layout == WheelAction.LAYOUT_SINGLE) 0 else 1
+            )
             param.setText(
-                when (val a = prefill?.action) {
-                    is WheelAction.Prompt -> a.prompt
-                    is WheelAction.Search -> a.urlPrefix
+                when (prefillAction) {
+                    is WheelAction.Prompt -> prefillAction.prompt
+                    is WheelAction.Search -> prefillAction.urlPrefix
+                    is WheelAction.Generate -> prefillAction.stylePrompt
                     else -> ""
                 }
             )
             kind.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                    // Entering generate with an untouched param → prefill template.
+                    if (Kind.entries[pos] == Kind.GENERATE && isDefaultStyle(param.text.toString())) {
+                        param.setText(defaultStyleForLayout())
+                    }
                     syncParam(); onFormChanged()
+                }
+                override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
+            }
+            layout.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                    // Swap in the matching default unless the user customized it.
+                    if (isDefaultStyle(param.text.toString())) param.setText(defaultStyleForLayout())
+                    onFormChanged()
                 }
                 override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
             }
@@ -95,11 +132,23 @@ class WheelSettingsActivity : AppCompatActivity() {
         }
 
         private fun syncParam() {
-            if (kind.visibility != View.VISIBLE) { param.visibility = View.GONE; return }
+            if (kind.visibility != View.VISIBLE) {
+                param.visibility = View.GONE; layout.visibility = View.GONE; return
+            }
             when (Kind.entries[kind.selectedItemPosition]) {
-                Kind.PROMPT -> { param.visibility = View.VISIBLE; param.hint = getString(R.string.wheel_param_prompt_hint) }
-                Kind.SEARCH -> { param.visibility = View.VISIBLE; param.hint = getString(R.string.wheel_param_url_hint) }
-                else -> param.visibility = View.GONE
+                Kind.PROMPT -> {
+                    param.visibility = View.VISIBLE; layout.visibility = View.GONE
+                    param.hint = getString(R.string.wheel_param_prompt_hint)
+                }
+                Kind.SEARCH -> {
+                    param.visibility = View.VISIBLE; layout.visibility = View.GONE
+                    param.hint = getString(R.string.wheel_param_url_hint)
+                }
+                Kind.GENERATE -> {
+                    param.visibility = View.VISIBLE; layout.visibility = View.VISIBLE
+                    param.hint = getString(R.string.wheel_param_style_hint)
+                }
+                else -> { param.visibility = View.GONE; layout.visibility = View.GONE }
             }
         }
 
@@ -119,7 +168,8 @@ class WheelSettingsActivity : AppCompatActivity() {
                 Kind.PROMPT -> { if (p.isEmpty()) { toast(getString(R.string.wheel_err_param)); return null }; WheelAction.Prompt(p) }
                 Kind.SEARCH -> { if (p.isEmpty()) { toast(getString(R.string.wheel_err_param)); return null }; WheelAction.Search(p) }
                 Kind.SAVE -> WheelAction.Save
-                Kind.GENERATE -> WheelAction.Generate
+                Kind.GENERATE ->
+                    WheelAction.Generate(layoutValue(), p.ifEmpty { defaultStyleForLayout() })
             }
             return WheelItem(e, label.text.toString().trim(), action)
         }
@@ -134,7 +184,8 @@ class WheelSettingsActivity : AppCompatActivity() {
                 Kind.PROMPT -> WheelAction.Prompt(p)
                 Kind.SEARCH -> WheelAction.Search(p)
                 Kind.SAVE -> WheelAction.Save
-                Kind.GENERATE -> WheelAction.Generate
+                Kind.GENERATE ->
+                    WheelAction.Generate(layoutValue(), p.ifEmpty { defaultStyleForLayout() })
             }
             return WheelItem(e, l, action)
         }

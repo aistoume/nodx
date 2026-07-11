@@ -9,6 +9,8 @@ import {
 } from '../shared/settings.js';
 import { setLocale, t, type Language } from '../shared/i18n.js';
 import {
+  DEFAULT_GRID_STYLE_PROMPT,
+  DEFAULT_SINGLE_STYLE_PROMPT,
   defaultWheel,
   getWheelConfig,
   resetWheelConfig,
@@ -389,7 +391,7 @@ function actionOf(kind: KindKey, param: string): WheelAction {
     case 'save':
       return { kind: 'save' };
     case 'generate':
-      return { kind: 'generate' };
+      return { kind: 'generate', layout: 'grid', stylePrompt: DEFAULT_GRID_STYLE_PROMPT };
   }
 }
 
@@ -400,18 +402,24 @@ function kindOf(a: WheelAction | null): KindKey {
 function paramOf(a: WheelAction | null): string {
   if (a?.kind === 'prompt') return a.prompt;
   if (a?.kind === 'search') return a.urlPrefix;
+  if (a?.kind === 'generate') return a.stylePrompt;
   return '';
 }
 
 function ItemFields({
   item,
   onChange,
+  onRemove,
+  removeDisabled,
 }: {
   item: WheelItem;
   onChange: (next: WheelItem) => void;
+  onRemove?: () => void;
+  removeDisabled?: boolean;
 }) {
   const kind = kindOf(item.action);
-  const needsParam = kind === 'prompt' || kind === 'search';
+  const needsParam = kind === 'prompt' || kind === 'search' || kind === 'generate';
+  const gen = item.action?.kind === 'generate' ? item.action : null;
   return (
     <div className="wheel-item">
       <div className="hbox">
@@ -422,30 +430,87 @@ function ItemFields({
           onInput={(e) => onChange({ ...item, emoji: (e.target as HTMLInputElement).value })}
         />
         <input
+          className="wheel-name"
           value={item.label}
           placeholder={t('wheelLabelPh')}
           onInput={(e) => onChange({ ...item, label: (e.target as HTMLInputElement).value })}
         />
         <select
+          className="wheel-kind"
           value={kind}
           onChange={(e) => {
             const k = (e.target as HTMLSelectElement).value as KindKey;
-            onChange({ ...item, action: actionOf(k, paramOf(item.action)) });
+            onChange({ ...item, action: k === kind ? item.action : actionOf(k, '') });
           }}
         >
           {KIND_ORDER.map((k) => (
             <option key={k} value={k}>{kindLabel(k)}</option>
           ))}
         </select>
+        {onRemove && (
+          <button
+            type="button"
+            className="wheel-x"
+            title={t('wheelRemove')}
+            disabled={removeDisabled}
+            onClick={onRemove}
+          >
+            ✕
+          </button>
+        )}
       </div>
+      {gen && (
+        <div className="hbox wheel-gen-layout">
+          <select
+            value={gen.layout}
+            onChange={(e) => {
+              const layout = (e.target as HTMLSelectElement).value as 'single' | 'grid';
+              // Swap in the matching default unless the user already
+              // customized the template.
+              const untouched =
+                !gen.stylePrompt.trim() ||
+                gen.stylePrompt === DEFAULT_GRID_STYLE_PROMPT ||
+                gen.stylePrompt === DEFAULT_SINGLE_STYLE_PROMPT;
+              onChange({
+                ...item,
+                action: {
+                  kind: 'generate',
+                  layout,
+                  stylePrompt: untouched
+                    ? layout === 'single'
+                      ? DEFAULT_SINGLE_STYLE_PROMPT
+                      : DEFAULT_GRID_STYLE_PROMPT
+                    : gen.stylePrompt,
+                },
+              });
+            }}
+          >
+            <option value="single">{t('wheelLayoutSingle')}</option>
+            <option value="grid">{t('wheelLayoutGrid')}</option>
+          </select>
+        </div>
+      )}
       {needsParam && (
         <textarea
-          rows={kind === 'prompt' ? 3 : 1}
+          rows={kind === 'search' ? 1 : kind === 'generate' ? 5 : 3}
           value={paramOf(item.action)}
-          placeholder={kind === 'prompt' ? t('wheelPromptPh') : t('wheelUrlPh')}
-          onInput={(e) =>
-            onChange({ ...item, action: actionOf(kind, (e.target as HTMLTextAreaElement).value) })
+          placeholder={
+            kind === 'prompt'
+              ? t('wheelPromptPh')
+              : kind === 'search'
+                ? t('wheelUrlPh')
+                : t('wheelStylePh')
           }
+          onInput={(e) => {
+            const v = (e.target as HTMLTextAreaElement).value;
+            onChange({
+              ...item,
+              action:
+                gen != null
+                  ? { ...gen, stylePrompt: v }
+                  : actionOf(kind, v),
+            });
+          }}
         />
       )}
     </div>
@@ -474,6 +539,7 @@ function WheelEditor({ onSaved }: { onSaved: () => void }) {
       (it.children.length === 0 &&
         ((it.action?.kind === 'prompt' && !it.action.prompt.trim()) ||
           (it.action?.kind === 'search' && !it.action.urlPrefix.trim()) ||
+          (it.action?.kind === 'generate' && !it.action.stylePrompt.trim()) ||
           it.action === null));
     for (const s of cfg.spokes) {
       if (!s.emoji.trim()) return false;
@@ -572,19 +638,14 @@ function WheelEditor({ onSaved }: { onSaved: () => void }) {
                           children: spoke.children.map((c, m) => (m === j ? next : c)),
                         })
                       }
-                    />
-                    <button
-                      type="button"
-                      disabled={spoke.children.length <= 1}
-                      onClick={() =>
+                      onRemove={() =>
                         patchSpoke(i, {
                           ...spoke,
                           children: spoke.children.filter((_, m) => m !== j),
                         })
                       }
-                    >
-                      {t('wheelRemove')}
-                    </button>
+                      removeDisabled={spoke.children.length <= 1}
+                    />
                   </div>
                 ))}
                 {spoke.children.length < 3 && (

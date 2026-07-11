@@ -80,4 +80,7 @@
     <string name="wheel_err_param">A prompt/URL parameter is missing</string>
     <string name="wheel_err_child">A submenu needs at least 1 sub-item</string>
     <string name="wheel_preview_hint">Live preview — mirrors your edits; tap a submenu spoke to fan it out, tap ↩ to collapse.</string>
+    <string name="wheel_layout_single">Single image</string>
+    <string name="wheel_layout_grid">2×2 four-style grid</string>
+    <string name="wheel_param_style_hint">Style prompt — {subject} is replaced by the AI\'s description of the crop</string>
 </resources>

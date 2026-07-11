@@ -12,7 +12,13 @@ export type WheelAction =
   | { kind: 'prompt'; prompt: string }
   | { kind: 'search'; urlPrefix: string }
   | { kind: 'save' }
-  | { kind: 'generate' };
+  | {
+      kind: 'generate';
+      /** One clean image, or the four-style 2×2 grid. */
+      layout: 'single' | 'grid';
+      /** Style template; `{subject}` is replaced by the AI's image description. */
+      stylePrompt: string;
+    };
 
 export interface WheelItem {
   emoji: string;
@@ -29,6 +35,36 @@ export interface WheelConfigV1 {
 export const DEFAULT_EXPLAIN_PROMPT =
   'What is this? Answer concisely (2–4 sentences), quoting key numbers/text exactly.';
 export const DEFAULT_IMAGE_SEARCH_PREFIX = 'https://www.google.com/search?udm=2&q=';
+
+/** 2×2 four-style grid — the Lens 0.9 behaviour, now a user-editable template. */
+export const DEFAULT_GRID_STYLE_PROMPT = `Create ONE single image composed as a clean 2×2 grid of four equal quadrants. Each quadrant shows the SAME subject rendered in a different visual style. Keep the subject identical across all four quadrants.
+
+Subject: {subject}
+
+- Top-left quadrant: a realistic e-commerce PRODUCT PHOTOGRAPH of the subject as a physical, purchasable object on a plain seamless white studio background, soft even lighting, sharp focus, realistic materials.
+- Top-right quadrant: a hand-drawn ink-and-watercolour illustration.
+- Bottom-left quadrant: a polished 3D render with soft global illumination and subtle reflections.
+- Bottom-right quadrant: minimalist black line art on a plain white background, a few clean strokes, no shading.
+
+Lay the four quadrants out as an even, clearly separated 2×2 grid. Keep it a small, compact graphic.`;
+
+export const DEFAULT_SINGLE_STYLE_PROMPT = `Create ONE single, polished image of the subject below. Clean composition, soft lighting, simple uncluttered background, sharp focus. Keep it a small, compact graphic.
+
+Subject: {subject}`;
+
+/** Fill in fields older stored configs (or hand-written JSON) may miss. */
+export function normalizeAction(a: WheelAction | null): WheelAction | null {
+  if (a?.kind === 'generate') {
+    return {
+      kind: 'generate',
+      layout: a.layout === 'single' ? 'single' : 'grid',
+      stylePrompt:
+        a.stylePrompt?.trim() ||
+        (a.layout === 'single' ? DEFAULT_SINGLE_STYLE_PROMPT : DEFAULT_GRID_STYLE_PROMPT),
+    };
+  }
+  return a;
+}
 
 /** The stock wheel — mirrors Lens 0.9 exactly. */
 export function defaultWheel(): WheelConfigV1 {
@@ -50,7 +86,11 @@ export function defaultWheel(): WheelConfigV1 {
           { emoji: '📦', label: 'Amazon', action: { kind: 'search', urlPrefix: 'https://www.amazon.com/s?k=' }, children: [] },
         ],
       },
-      { emoji: '🎨', label: '', action: { kind: 'generate' }, children: [] },
+      {
+        emoji: '🎨', label: '',
+        action: { kind: 'generate', layout: 'grid', stylePrompt: DEFAULT_GRID_STYLE_PROMPT },
+        children: [],
+      },
     ],
   };
 }
@@ -61,7 +101,15 @@ export async function getWheelConfig(): Promise<WheelConfigV1> {
   if (!cfg || cfg.version !== 1 || !Array.isArray(cfg.spokes) || cfg.spokes.length !== 4) {
     return defaultWheel();
   }
-  return cfg;
+  // Normalize actions saved by older versions (e.g. bare {kind:'generate'}).
+  return {
+    ...cfg,
+    spokes: cfg.spokes.map((s) => ({
+      ...s,
+      action: normalizeAction(s.action),
+      children: s.children.map((c) => ({ ...c, action: normalizeAction(c.action) })),
+    })),
+  };
 }
 
 export async function setWheelConfig(cfg: WheelConfigV1): Promise<void> {

@@ -80,4 +80,7 @@
     <string name="wheel_err_param">提示词 / URL 参数没填</string>
     <string name="wheel_err_child">子菜单至少要 1 个子项</string>
     <string name="wheel_preview_hint">实时预览 — 编辑即时反映；点带子菜单的辐条展开，点 ↩ 收回。</string>
+    <string name="wheel_layout_single">生成单图</string>
+    <string name="wheel_layout_grid">生成 2×2 四格</string>
+    <string name="wheel_param_style_hint">生成风格提示词 — {subject} 会被替换为 AI 认图出的主体描述</string>
 </resources>

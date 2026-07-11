@@ -42,7 +42,7 @@ object Actions {
             is WheelAction.Prompt -> explain(context, crop, action.prompt)
             is WheelAction.Search -> aiSearchOpen(context, crop, action.urlPrefix, R.string.act_searched)
             WheelAction.Save -> save(context, crop)
-            WheelAction.Generate -> generate(context, crop)
+            is WheelAction.Generate -> generate(context, crop, action)
         }
     }
 
@@ -92,7 +92,7 @@ object Actions {
      * prompt from the crop → Gemini renders the 2×2 four-style grid →
      * downscale → gallery (= 收集库) → open in the system viewer.
      */
-    private fun generate(context: Context, crop: Bitmap) {
+    private fun generate(context: Context, crop: Bitmap, action: WheelAction.Generate) {
         val aKey = Prefs.anthropicKey(context)
         val gKey = Prefs.geminiKey(context)
         if (aKey.isBlank()) { toast(context, context.getString(R.string.toast_need_key)); return }
@@ -106,7 +106,9 @@ object Actions {
             val subject = runCatching { AnthropicClient.describeForGeneration(aKey, b64) }
                 .getOrElse { mainToast(context, context.getString(R.string.gen_prompt_failed, it.message), long = true); return@launch }
             mainToast(context, context.getString(R.string.gen_rendering), long = true)
-            val bytes = runCatching { GeminiClient.generateImage(gKey, buildGridPrompt(subject)) }
+            val bytes = runCatching {
+                GeminiClient.generateImage(gKey, action.stylePrompt.replace("{subject}", subject))
+            }
                 .getOrElse { mainToast(context, context.getString(R.string.gen_failed, it.message), long = true); return@launch }
             val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                 ?: run { mainToast(context, context.getString(R.string.gen_decode_failed)); return@launch }
@@ -124,18 +126,6 @@ object Actions {
         }
     }
 
-    /** Same 2×2 four-style grid instruction as the extension's buildGridPrompt. */
-    private fun buildGridPrompt(subject: String): String =
-        """Create ONE single image composed as a clean 2×2 grid of four equal quadrants. Each quadrant shows the SAME subject rendered in a different visual style. Keep the subject identical across all four quadrants.
-
-Subject: $subject
-
-- Top-left quadrant: a realistic e-commerce PRODUCT PHOTOGRAPH of the subject as a physical, purchasable object on a plain seamless white studio background, soft even lighting, sharp focus, realistic materials.
-- Top-right quadrant: a hand-drawn ink-and-watercolour illustration.
-- Bottom-left quadrant: a polished 3D render with soft global illumination and subtle reflections.
-- Bottom-right quadrant: minimalist black line art on a plain white background, a few clean strokes, no shading.
-
-Lay the four quadrants out as an even, clearly separated 2×2 grid. Keep it a small, compact graphic."""
 
     private fun downscale(b: Bitmap, maxEdge: Int): Bitmap {
         val longest = maxOf(b.width, b.height)
