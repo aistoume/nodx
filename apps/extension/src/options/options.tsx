@@ -719,7 +719,7 @@ function WheelEditor({ onSaved }: { onSaved: () => void }) {
                       action: null,
                       children: spoke.children.length
                         ? spoke.children
-                        : [{ emoji: '❓', label: '', action: actionOf('prompt', ''), children: [] }],
+                        : [{ emoji: '❓', label: '', action: defaultActionFor('prompt'), children: [] }],
                     })
                   }
                 />{' '}
@@ -769,7 +769,7 @@ function WheelEditor({ onSaved }: { onSaved: () => void }) {
                         ...spoke,
                         children: [
                           ...spoke.children,
-                          { emoji: '❓', label: '', action: actionOf('prompt', ''), children: [] },
+                          { emoji: '❓', label: '', action: defaultActionFor('prompt'), children: [] },
                         ],
                       })
                     }
