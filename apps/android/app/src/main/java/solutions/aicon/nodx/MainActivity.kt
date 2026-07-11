@@ -65,7 +65,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
         root.addView(TextView(this).apply {
-            text = "$label 已保存（…${saved.takeLast(4)}）— 点此修改"
+            text = getString(R.string.key_saved_fmt, label, saved.takeLast(4))
             visibility = if (saved.isBlank()) View.GONE else View.VISIBLE
             setPadding(0, 24, 0, 24)
             setOnClickListener { visibility = View.GONE; input.visibility = View.VISIBLE }
@@ -87,39 +87,39 @@ class MainActivity : AppCompatActivity() {
             setPadding(64, 140, 64, 64)
         }
         root.addView(TextView(this).apply {
-            text = "nodx · 系统级思考助手"; textSize = 20f
+            text = getString(R.string.app_title); textSize = 20f
         })
         // Saved keys stay collapsed to a masked status line — the field only
         // reappears when the user explicitly asks to change it.
         keyInput = addKeyRow(
-            root, "🔑 Anthropic key", "Anthropic API key (sk-ant-...)",
+            root, getString(R.string.label_anthropic_key), getString(R.string.hint_anthropic_key),
             Prefs.anthropicKey(this),
         ) { Prefs.setAnthropicKey(this, it) }
         geminiInput = addKeyRow(
-            root, "🎨 Google AI key", "Google AI key（🎨生成用，AIza…，可留空）",
+            root, getString(R.string.label_gemini_key), getString(R.string.hint_gemini_key),
             Prefs.geminiKey(this),
         ) { Prefs.setGeminiKey(this, it) }
         root.addView(Button(this).apply {
-            text = "启动 nodx 悬浮球"
+            text = getString(R.string.btn_start)
             setOnClickListener {
                 if (Prefs.anthropicKey(this@MainActivity).isBlank()) {
-                    toast("请先填 Anthropic key")
+                    toast(getString(R.string.toast_need_key))
                     return@setOnClickListener
                 }
                 ensureOverlayThenProjection()
             }
         })
         root.addView(Button(this).apply {
-            text = "🛑 停止悬浮球（结束录屏）"
+            text = getString(R.string.btn_stop)
             setOnClickListener {
                 if (FloatingBubbleService.isRunning) {
                     startService(
                         Intent(this@MainActivity, FloatingBubbleService::class.java)
                             .setAction(FloatingBubbleService.ACTION_STOP)
                     )
-                    toast("已停止，录屏会话已结束")
+                    toast(getString(R.string.toast_stopped))
                 } else {
-                    toast("悬浮球未在运行")
+                    toast(getString(R.string.toast_not_running))
                 }
             }
         })
@@ -130,11 +130,11 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 48, 0, 12)
         }
         header.addView(TextView(this).apply {
-            text = "🖼 最近添加"; textSize = 16f
+            text = getString(R.string.recent_title); textSize = 16f
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         })
         header.addView(TextView(this).apply {
-            text = "收集库 ▸"; textSize = 14f
+            text = getString(R.string.recent_more); textSize = 14f
             setOnClickListener { startActivity(Intent(this@MainActivity, GalleryActivity::class.java)) }
         })
         root.addView(header)
@@ -144,13 +144,13 @@ class MainActivity : AppCompatActivity() {
             addView(recentRow)
         })
         recentEmpty = TextView(this).apply {
-            text = "还没有保存过 — 框选后点 💡 或 🎨"
+            text = getString(R.string.recent_empty)
             visibility = View.GONE
         }
         root.addView(recentEmpty)
 
         root.addView(TextView(this).apply {
-            text = "打开本页悬浮球自动就位（零弹窗）。点悬浮球截屏 → 框选 → 动作轮（🔍解释/搜索 · 💡保存 · 🛒购物 · 🎨生成）。每个会话首次截屏时系统会弹一次「分享屏幕」，之后随便截。"
+            text = getString(R.string.main_instructions)
             setPadding(0, 40, 0, 0)
         })
         setContentView(root)
@@ -178,7 +178,7 @@ class MainActivity : AppCompatActivity() {
         if (Prefs.anthropicKey(this).isBlank() || !Settings.canDrawOverlays(this)) return
         autoStartAttempted = true
         startBubbleService()
-        toast("悬浮球已就位 — 首次截屏时会请求屏幕分享")
+        toast(getString(R.string.toast_bubble_ready))
     }
 
     private fun refreshRecent() {
@@ -211,12 +211,12 @@ class MainActivity : AppCompatActivity() {
             startActivity(
                 Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
             )
-            toast("请授予“显示在其他应用上层”，授完回来会自动继续")
+            toast(getString(R.string.toast_grant_overlay))
             autoStartAttempted = false // let onResume pick it up after the grant
             return
         }
         startBubbleService()
-        toast("悬浮球已启动 — 首次截屏时会请求屏幕分享")
+        toast(getString(R.string.toast_bubble_ready))
     }
 
     private fun startBubbleService() {

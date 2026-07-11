@@ -41,11 +41,11 @@ object Actions {
         when (choice) {
             RadialMenu.Choice.EXPLAIN -> explain(context, crop)
             RadialMenu.Choice.SEARCH ->
-                aiSearchOpen(context, crop, "https://www.google.com/search?udm=2&q=", "已在 Google 图片搜")
+                aiSearchOpen(context, crop, "https://www.google.com/search?udm=2&q=", R.string.act_searched_google)
             RadialMenu.Choice.SHOPPING_GOOGLE ->
-                aiSearchOpen(context, crop, "https://www.google.com/search?udm=28&q=", "已在 Google Shopping 搜")
+                aiSearchOpen(context, crop, "https://www.google.com/search?udm=28&q=", R.string.act_searched_shopping)
             RadialMenu.Choice.SHOPPING_AMAZON ->
-                aiSearchOpen(context, crop, "https://www.amazon.com/s?k=", "已在 Amazon 搜")
+                aiSearchOpen(context, crop, "https://www.amazon.com/s?k=", R.string.act_searched_amazon)
             RadialMenu.Choice.SAVE -> save(context, crop)
             RadialMenu.Choice.GENERATE -> generate(context, crop)
         }
@@ -53,28 +53,29 @@ object Actions {
 
     private fun explain(context: Context, crop: Bitmap) {
         val b64 = toBase64Png(crop)
-        toast(context, "识别中…")
+        toast(context, context.getString(R.string.act_recognizing))
         CoroutineScope(Dispatchers.IO).launch {
             val apiKey = Prefs.anthropicKey(context)
-            if (apiKey.isBlank()) { mainToast(context, "请先在主界面填 Anthropic key"); return@launch }
-            val answer = runCatching { AnthropicClient.explain(apiKey, b64) }
-                .getOrElse { "调用失败: ${it.message}" }
+            if (apiKey.isBlank()) { mainToast(context, context.getString(R.string.toast_need_key)); return@launch }
+            val answer = runCatching {
+                AnthropicClient.explain(apiKey, b64, context.getString(R.string.prompt_explain))
+            }.getOrElse { context.getString(R.string.act_call_failed, it.message) }
             mainToast(context, answer.take(300), long = true)
         }
     }
 
     /** Shared: Haiku names the image → open browser at `urlPrefix<query>`. */
-    private fun aiSearchOpen(context: Context, crop: Bitmap, urlPrefix: String, okMsg: String) {
+    private fun aiSearchOpen(context: Context, crop: Bitmap, urlPrefix: String, okMsgRes: Int) {
         val b64 = toBase64Png(crop)
-        toast(context, "认图中…")
+        toast(context, context.getString(R.string.act_identifying))
         CoroutineScope(Dispatchers.IO).launch {
             val apiKey = Prefs.anthropicKey(context)
-            if (apiKey.isBlank()) { mainToast(context, "请先在主界面填 Anthropic key"); return@launch }
+            if (apiKey.isBlank()) { mainToast(context, context.getString(R.string.toast_need_key)); return@launch }
             val query = runCatching { AnthropicClient.identify(apiKey, b64) }.getOrNull()
-            if (query.isNullOrBlank()) { mainToast(context, "没认出主体，换个框选试试"); return@launch }
+            if (query.isNullOrBlank()) { mainToast(context, context.getString(R.string.act_no_subject)); return@launch }
             withContext(Dispatchers.Main) {
                 openUrl(context, urlPrefix + URLEncoder.encode(query, "UTF-8"))
-                toast(context, "$okMsg：$query")
+                toast(context, context.getString(okMsgRes, query))
             }
         }
     }
@@ -83,7 +84,10 @@ object Actions {
     private fun save(context: Context, crop: Bitmap) {
         CoroutineScope(Dispatchers.IO).launch {
             val uri = storeToGallery(context, crop, "nodx")
-            mainToast(context, if (uri != null) "💡 已存入相册 Pictures/nodx（app 收集库可查看）" else "保存失败")
+            mainToast(
+                context,
+                context.getString(if (uri != null) R.string.act_saved else R.string.act_save_failed)
+            )
         }
     }
 
@@ -95,25 +99,25 @@ object Actions {
     private fun generate(context: Context, crop: Bitmap) {
         val aKey = Prefs.anthropicKey(context)
         val gKey = Prefs.geminiKey(context)
-        if (aKey.isBlank()) { toast(context, "请先在主界面填 Anthropic key"); return }
+        if (aKey.isBlank()) { toast(context, context.getString(R.string.toast_need_key)); return }
         if (gKey.isBlank()) {
-            toast(context, "🎨 生成需要 Google AI key — 回 nodx 主界面填（aistudio.google.com 免费申请）", long = true)
+            toast(context, context.getString(R.string.gen_need_key), long = true)
             return
         }
         val b64 = toBase64Png(crop)
-        toast(context, "🎨 Sonnet 正在写生成 prompt…（15–40s）", long = true)
+        toast(context, context.getString(R.string.gen_writing_prompt), long = true)
         CoroutineScope(Dispatchers.IO).launch {
             val subject = runCatching { AnthropicClient.describeForGeneration(aKey, b64) }
-                .getOrElse { mainToast(context, "写 prompt 失败: ${it.message}", long = true); return@launch }
-            mainToast(context, "🎨 Gemini 出图中…（一张图·2×2 四格）", long = true)
+                .getOrElse { mainToast(context, context.getString(R.string.gen_prompt_failed, it.message), long = true); return@launch }
+            mainToast(context, context.getString(R.string.gen_rendering), long = true)
             val bytes = runCatching { GeminiClient.generateImage(gKey, buildGridPrompt(subject)) }
-                .getOrElse { mainToast(context, "生成失败: ${it.message}", long = true); return@launch }
+                .getOrElse { mainToast(context, context.getString(R.string.gen_failed, it.message), long = true); return@launch }
             val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                ?: run { mainToast(context, "生成结果解码失败"); return@launch }
+                ?: run { mainToast(context, context.getString(R.string.gen_decode_failed)); return@launch }
             val uri = storeToGallery(context, downscale(bmp, 640), "nodx-gen")
             withContext(Dispatchers.Main) {
-                if (uri == null) { toast(context, "🎨 生成成功但保存失败"); return@withContext }
-                toast(context, "🎨 已生成并存入收集库")
+                if (uri == null) { toast(context, context.getString(R.string.gen_saved_failed)); return@withContext }
+                toast(context, context.getString(R.string.gen_done))
                 if (uri.scheme == "content") runCatching {
                     context.startActivity(
                         Intent(Intent.ACTION_VIEW).setDataAndType(uri, "image/*")
@@ -156,7 +160,7 @@ Lay the four quadrants out as an even, clearly separated 2×2 grid. Keep it a sm
                 }
                 val uri = context.contentResolver.insert(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values
-                ) ?: error("MediaStore insert 失败")
+                ) ?: error("MediaStore insert failed")
                 context.contentResolver.openOutputStream(uri)!!.use {
                     bmp.compress(Bitmap.CompressFormat.PNG, 100, it)
                 }
@@ -180,7 +184,7 @@ Lay the four quadrants out as an even, clearly separated 2×2 grid. Keep it a sm
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         runCatching { context.startActivity(intent) }
-            .onFailure { toast(context, "打不开浏览器: ${it.message}") }
+            .onFailure { toast(context, context.getString(R.string.act_browser_failed, it.message)) }
     }
 
     private fun toBase64Png(bmp: Bitmap): String {

@@ -1,0 +1,59 @@
+<resources>
+    <string name="app_name">nodx</string>
+    <string name="app_title">nodx · 系统级思考助手</string>
+    <string name="channel_name">nodx 悬浮球</string>
+    <string name="notif_title">nodx 已就绪</string>
+    <string name="notif_text">点悬浮球截屏 → 框选 → 动作轮</string>
+    <string name="notif_stop">停止</string>
+
+    <string name="hint_anthropic_key">Anthropic API key (sk-ant-…)</string>
+    <string name="hint_gemini_key">Google AI key（🎨生成用，AIza…，可留空）</string>
+    <string name="label_anthropic_key">🔑 Anthropic key</string>
+    <string name="label_gemini_key">🎨 Google AI key</string>
+    <string name="key_saved_fmt">%1$s 已保存（…%2$s）— 点此修改</string>
+
+    <string name="btn_start">启动 nodx 悬浮球</string>
+    <string name="btn_stop">🛑 停止悬浮球（结束录屏）</string>
+    <string name="toast_stopped">已停止，录屏会话已结束</string>
+    <string name="toast_not_running">悬浮球未在运行</string>
+    <string name="toast_need_key">请先填 Anthropic key</string>
+    <string name="toast_bubble_ready">悬浮球已就位 — 首次截屏时会请求屏幕分享</string>
+    <string name="toast_grant_overlay">请授予“显示在其他应用上层”，授完回来会自动继续</string>
+
+    <string name="recent_title">🖼 最近添加</string>
+    <string name="recent_more">收集库 ▸</string>
+    <string name="recent_empty">还没有保存过 — 框选后点 💡 或 🎨</string>
+    <string name="main_instructions">打开本页悬浮球自动就位（零弹窗）。点悬浮球截屏 → 框选 → 动作轮（🔍解释/搜索 · 💡保存 · 🛒购物 · 🎨生成）。每个会话首次截屏时系统会弹一次「分享屏幕」，之后随便截。</string>
+
+    <string name="gallery_title">nodx 收集库 · Pictures/nodx</string>
+    <string name="gallery_empty">还没有保存过截图 — 框选后点 💡</string>
+    <string name="gallery_private_file">此图在应用私有目录，暂不支持外部查看</string>
+
+    <string name="consent_needed">需要屏幕分享授权才能截屏</string>
+    <string name="projection_expired">投屏已失效，再点一次悬浮球重新授权</string>
+
+    <string name="radial_explain">解释</string>
+    <string name="radial_search">搜索</string>
+
+    <string name="act_recognizing">识别中…</string>
+    <string name="act_identifying">认图中…</string>
+    <string name="act_call_failed">调用失败: %1$s</string>
+    <string name="act_no_subject">没认出主体，换个框选试试</string>
+    <string name="act_searched_google">已在 Google 图片搜：%1$s</string>
+    <string name="act_searched_shopping">已在 Google Shopping 搜：%1$s</string>
+    <string name="act_searched_amazon">已在 Amazon 搜：%1$s</string>
+    <string name="act_saved">💡 已存入相册 Pictures/nodx（app 收集库可查看）</string>
+    <string name="act_save_failed">保存失败</string>
+    <string name="act_browser_failed">打不开浏览器: %1$s</string>
+
+    <string name="gen_need_key">🎨 生成需要 Google AI key — 回 nodx 主界面填（aistudio.google.com 免费申请）</string>
+    <string name="gen_writing_prompt">🎨 Sonnet 正在写生成 prompt…（15–40s）</string>
+    <string name="gen_rendering">🎨 Gemini 出图中…（一张图·2×2 四格）</string>
+    <string name="gen_prompt_failed">写 prompt 失败: %1$s</string>
+    <string name="gen_failed">生成失败: %1$s</string>
+    <string name="gen_decode_failed">生成结果解码失败</string>
+    <string name="gen_done">🎨 已生成并存入收集库</string>
+    <string name="gen_saved_failed">🎨 生成成功但保存失败</string>
+
+    <string name="prompt_explain">这是什么？简洁回答（2-4 句），关键数字/文字精确引用。用中文回答。</string>
+</resources>

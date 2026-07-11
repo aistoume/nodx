@@ -26,7 +26,7 @@ class ProjectionConsentActivity : ComponentActivity() {
                         .putExtra(FloatingBubbleService.EXTRA_RESULT_DATA, result.data)
                 )
             } else {
-                Toast.makeText(this, "需要屏幕分享授权才能截屏", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.consent_needed), Toast.LENGTH_SHORT).show()
             }
             finish()
         }

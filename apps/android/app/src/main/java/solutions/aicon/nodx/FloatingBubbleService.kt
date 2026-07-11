@@ -184,7 +184,7 @@ class FloatingBubbleService : Service() {
                 // failing forever.
                 detachProjection()
                 android.widget.Toast.makeText(
-                    this, "投屏已失效，再点一次悬浮球重新授权",
+                    this, getString(R.string.projection_expired),
                     android.widget.Toast.LENGTH_LONG
                 ).show()
             }

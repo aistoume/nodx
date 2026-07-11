@@ -39,7 +39,7 @@ class GalleryActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        title = "nodx 收集库 · Pictures/nodx"
+        title = getString(R.string.gallery_title)
         val pad = (8 * resources.displayMetrics.density).toInt()
         grid = GridView(this).apply {
             numColumns = 3
@@ -61,7 +61,7 @@ class GalleryActivity : AppCompatActivity() {
         scope.launch {
             val items = withContext(Dispatchers.IO) { queryThumbs() }
             if (items.isEmpty()) {
-                Toast.makeText(this@GalleryActivity, "还没有保存过截图 — 框选后点 💡", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@GalleryActivity, getString(R.string.gallery_empty), Toast.LENGTH_LONG).show()
             }
             val cell = (resources.displayMetrics.widthPixels / 3) - (12 * resources.displayMetrics.density).toInt()
             grid.adapter = object : BaseAdapter() {
@@ -81,7 +81,7 @@ class GalleryActivity : AppCompatActivity() {
                 items[pos].first?.let { uri ->
                     startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "image/*")
                         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
-                } ?: Toast.makeText(this@GalleryActivity, "此图在应用私有目录，暂不支持外部查看", Toast.LENGTH_SHORT).show()
+                } ?: Toast.makeText(this@GalleryActivity, getString(R.string.gallery_private_file), Toast.LENGTH_SHORT).show()
             }
         }
     }

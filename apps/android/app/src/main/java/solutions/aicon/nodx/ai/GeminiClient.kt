@@ -33,12 +33,12 @@ object GeminiClient {
             .post(payload.toString().toRequestBody(JSON))
             .build()
         client.newCall(req).execute().use { resp ->
-            val txt = resp.body?.string() ?: error("Gemini 空响应")
+            val txt = resp.body?.string() ?: error("Gemini: empty response")
             if (!resp.isSuccessful) error("Gemini ${resp.code}: ${txt.take(200)}")
             val parts = JSONObject(txt)
                 .optJSONArray("candidates")?.optJSONObject(0)
                 ?.optJSONObject("content")?.optJSONArray("parts")
-                ?: error("Gemini 没返回内容")
+                ?: error("Gemini: no content returned")
             for (i in 0 until parts.length()) {
                 val data = parts.optJSONObject(i)?.optJSONObject("inlineData")?.optString("data")
                 if (!data.isNullOrEmpty()) return Base64.decode(data, Base64.DEFAULT)
@@ -46,9 +46,9 @@ object GeminiClient {
             // No image part — surface any text the model returned instead.
             for (i in 0 until parts.length()) {
                 val t = parts.optJSONObject(i)?.optString("text")
-                if (!t.isNullOrEmpty()) error("Gemini 只回了文字: ${t.take(120)}")
+                if (!t.isNullOrEmpty()) error("Gemini returned text only: ${t.take(120)}")
             }
-            error("Gemini 没返回图片")
+            error("Gemini: no image returned")
         }
     }
 }

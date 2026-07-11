@@ -1,7 +1,59 @@
 <resources>
     <string name="app_name">nodx</string>
-    <string name="channel_name">nodx 悬浮球</string>
-    <string name="notif_title">nodx 已就绪</string>
-    <string name="notif_text">点悬浮球截屏 → 框选 → 动作轮</string>
-    <string name="notif_stop">停止</string>
+    <string name="app_title">nodx · System-level thinking assistant</string>
+    <string name="channel_name">nodx bubble</string>
+    <string name="notif_title">nodx is ready</string>
+    <string name="notif_text">Tap the bubble to capture → select → action wheel</string>
+    <string name="notif_stop">Stop</string>
+
+    <string name="hint_anthropic_key">Anthropic API key (sk-ant-…)</string>
+    <string name="hint_gemini_key">Google AI key (for 🎨 generate, AIza…, optional)</string>
+    <string name="label_anthropic_key">🔑 Anthropic key</string>
+    <string name="label_gemini_key">🎨 Google AI key</string>
+    <string name="key_saved_fmt">%1$s saved (…%2$s) — tap to change</string>
+
+    <string name="btn_start">Start nodx bubble</string>
+    <string name="btn_stop">🛑 Stop bubble (end screen capture)</string>
+    <string name="toast_stopped">Stopped — screen-capture session ended</string>
+    <string name="toast_not_running">Bubble is not running</string>
+    <string name="toast_need_key">Please enter your Anthropic key first</string>
+    <string name="toast_bubble_ready">Bubble is up — screen share will be requested on the first capture</string>
+    <string name="toast_grant_overlay">Please allow "Display over other apps", then come back — it continues automatically</string>
+
+    <string name="recent_title">🖼 Recently added</string>
+    <string name="recent_more">Library ▸</string>
+    <string name="recent_empty">Nothing saved yet — select an area and tap 💡 or 🎨</string>
+    <string name="main_instructions">The bubble appears automatically when you open this page (no dialogs). Tap it to capture → select → action wheel (🔍 explain/search · 💡 save · 🛒 shopping · 🎨 generate). The system asks to share your screen once per session, on the first capture.</string>
+
+    <string name="gallery_title">nodx library · Pictures/nodx</string>
+    <string name="gallery_empty">No captures saved yet — select an area and tap 💡</string>
+    <string name="gallery_private_file">Stored in the app-private folder; external viewer unavailable</string>
+
+    <string name="consent_needed">Screen-share permission is required to capture</string>
+    <string name="projection_expired">Screen capture expired — tap the bubble again to re-authorize</string>
+
+    <string name="radial_explain">Explain</string>
+    <string name="radial_search">Search</string>
+
+    <string name="act_recognizing">Recognizing…</string>
+    <string name="act_identifying">Identifying…</string>
+    <string name="act_call_failed">Call failed: %1$s</string>
+    <string name="act_no_subject">Couldn\'t identify the subject — try a different selection</string>
+    <string name="act_searched_google">Searching Google Images: %1$s</string>
+    <string name="act_searched_shopping">Searching Google Shopping: %1$s</string>
+    <string name="act_searched_amazon">Searching Amazon: %1$s</string>
+    <string name="act_saved">💡 Saved to Pictures/nodx (browse in the in-app library)</string>
+    <string name="act_save_failed">Save failed</string>
+    <string name="act_browser_failed">Couldn\'t open browser: %1$s</string>
+
+    <string name="gen_need_key">🎨 Generate needs a Google AI key — add it on the nodx main screen (free at aistudio.google.com)</string>
+    <string name="gen_writing_prompt">🎨 Sonnet is writing the generation prompt… (15–40s)</string>
+    <string name="gen_rendering">🎨 Gemini is rendering… (one image · 2×2 grid)</string>
+    <string name="gen_prompt_failed">Prompt writing failed: %1$s</string>
+    <string name="gen_failed">Generation failed: %1$s</string>
+    <string name="gen_decode_failed">Couldn\'t decode the generated image</string>
+    <string name="gen_done">🎨 Generated and saved to the library</string>
+    <string name="gen_saved_failed">🎨 Generated but saving failed</string>
+
+    <string name="prompt_explain">What is this? Answer concisely (2–4 sentences), quoting key numbers/text exactly. Answer in English.</string>
 </resources>

@@ -64,8 +64,8 @@ class RadialMenu(context: Context, screenW: Int, screenH: Int, wantX: Float, wan
     // Colours match the extension's rgba(...,0.95) spokes.
     private val options = listOf(
         Option("🔍", "", 0f, 0xF23B82F6.toInt(), children = listOf(
-            Option("📖", "解释", 0f, 0xF23B82F6.toInt(), Choice.EXPLAIN),
-            Option("🔎", "搜索", 0f, 0xF23B82F6.toInt(), Choice.SEARCH),
+            Option("📖", context.getString(R.string.radial_explain), 0f, 0xF23B82F6.toInt(), Choice.EXPLAIN),
+            Option("🔎", context.getString(R.string.radial_search), 0f, 0xF23B82F6.toInt(), Choice.SEARCH),
         )),
         Option("💡", "", 90f, 0xF2D97706.toInt(), Choice.SAVE),
         Option("🛒", "", 180f, 0xF210B981.toInt(), children = listOf(
