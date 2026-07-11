@@ -39,9 +39,7 @@
     <string name="act_identifying">认图中…</string>
     <string name="act_call_failed">调用失败: %1$s</string>
     <string name="act_no_subject">没认出主体，换个框选试试</string>
-    <string name="act_searched_google">已在 Google 图片搜：%1$s</string>
-    <string name="act_searched_shopping">已在 Google Shopping 搜：%1$s</string>
-    <string name="act_searched_amazon">已在 Amazon 搜：%1$s</string>
+    <string name="act_searched">已搜索：%1$s</string>
     <string name="act_saved">💡 已存入相册 Pictures/nodx（app 收集库可查看）</string>
     <string name="act_save_failed">保存失败</string>
     <string name="act_browser_failed">打不开浏览器: %1$s</string>
@@ -56,4 +54,29 @@
     <string name="gen_saved_failed">🎨 生成成功但保存失败</string>
 
     <string name="prompt_explain">这是什么？简洁回答（2-4 句），关键数字/文字精确引用。用中文回答。</string>
+
+    <string name="btn_wheel">⚙️ 自定义动作轮</string>
+    <string name="wheel_title">自定义动作轮</string>
+    <string name="wheel_pos_up">上辐条（蓝）</string>
+    <string name="wheel_pos_right">右辐条（琥珀）</string>
+    <string name="wheel_pos_down">下辐条（绿）</string>
+    <string name="wheel_pos_left">左辐条（紫）</string>
+    <string name="wheel_emoji_hint">图标（emoji）</string>
+    <string name="wheel_label_hint">名称（可留空）</string>
+    <string name="wheel_mode_action">单动作</string>
+    <string name="wheel_mode_children">子菜单</string>
+    <string name="wheel_kind_prompt">AI 回答（自定义提示词）</string>
+    <string name="wheel_kind_search">AI 认图 → 打开网址</string>
+    <string name="wheel_kind_save">保存到收集库</string>
+    <string name="wheel_kind_generate">生成图片（Gemini）</string>
+    <string name="wheel_param_prompt_hint">随截图一起发送的提示词</string>
+    <string name="wheel_param_url_hint">URL 前缀（末尾自动拼关键词），如 https://www.google.com/search?q=</string>
+    <string name="wheel_add_child">＋ 添加子项</string>
+    <string name="wheel_remove">✕ 删除</string>
+    <string name="wheel_save">保存动作轮</string>
+    <string name="wheel_reset">恢复默认</string>
+    <string name="wheel_saved">已保存 — 下次截屏生效</string>
+    <string name="wheel_err_emoji">每个按钮都需要 emoji 图标</string>
+    <string name="wheel_err_param">提示词 / URL 参数没填</string>
+    <string name="wheel_err_child">子菜单至少要 1 个子项</string>
 </resources>

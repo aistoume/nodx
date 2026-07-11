@@ -25,19 +25,17 @@ import kotlin.math.sin
  */
 class RadialMenu(context: Context, screenW: Int, screenH: Int, wantX: Float, wantY: Float) {
 
-    enum class Choice { EXPLAIN, SEARCH, SAVE, SHOPPING_GOOGLE, SHOPPING_AMAZON, GENERATE }
-
-    class Option(
+    private class Option(
         val emoji: String,
         val label: String,
         val angleDeg: Float,
         val color: Int,
-        val choice: Choice? = null,
+        val action: WheelAction? = null,
         val children: List<Option>? = null,
     )
 
     sealed class Hit {
-        class Pick(val choice: Choice) : Hit()
+        class Pick(val action: WheelAction) : Hit()
         object Expanded : Hit()   // tapped a branch spoke → menu re-rendered
         object Back : Hit()       // centre ↩ at level 2
         object Cancel : Hit()     // centre ✕ or scrim tap
@@ -61,19 +59,21 @@ class RadialMenu(context: Context, screenW: Int, screenH: Int, wantX: Float, wan
     private val centreR = sdp(20f)  // 40dp centre
     private val subSpread = 32f     // ± degrees children fan from parent
 
-    // Colours match the extension's rgba(...,0.95) spokes.
-    private val options = listOf(
-        Option("🔍", "", 0f, 0xF23B82F6.toInt(), children = listOf(
-            Option("📖", context.getString(R.string.radial_explain), 0f, 0xF23B82F6.toInt(), Choice.EXPLAIN),
-            Option("🔎", context.getString(R.string.radial_search), 0f, 0xF23B82F6.toInt(), Choice.SEARCH),
-        )),
-        Option("💡", "", 90f, 0xF2D97706.toInt(), Choice.SAVE),
-        Option("🛒", "", 180f, 0xF210B981.toInt(), children = listOf(
-            Option("🏷", "Shopping", 0f, 0xF210B981.toInt(), Choice.SHOPPING_GOOGLE),
-            Option("📦", "Amazon", 0f, 0xF210B981.toInt(), Choice.SHOPPING_AMAZON),
-        )),
-        Option("🎨", "", 270f, 0xF2A855F7.toInt(), Choice.GENERATE),
+    // Spoke colours stay fixed per position (match the extension's
+    // rgba(...,0.95) values); everything else comes from WheelConfig.
+    private val spokeColors = intArrayOf(
+        0xF23B82F6.toInt(), 0xF2D97706.toInt(), 0xF210B981.toInt(), 0xF2A855F7.toInt(),
     )
+    private val options: List<Option> = WheelConfig.load(context).mapIndexed { i, item ->
+        val color = spokeColors[i]
+        Option(
+            item.emoji, item.label, i * 90f, color,
+            action = item.action,
+            children = item.children.takeIf { it.isNotEmpty() }?.map { kid ->
+                Option(kid.emoji, kid.label, 0f, color, action = kid.action)
+            },
+        )
+    }
 
     /** Menu centre, clamped so level-2 children always stay on screen. */
     val cx: Float
@@ -170,8 +170,11 @@ class RadialMenu(context: Context, screenW: Int, screenH: Int, wantX: Float, wan
             for (opt in options) {
                 val (bx, by) = posOf(opt.angleDeg, outerRadius)
                 if (hypot((x - bx).toDouble(), (y - by).toDouble()) <= buttonR) {
-                    return if (opt.children != null) { expanded = opt; Hit.Expanded }
-                    else Hit.Pick(opt.choice!!)
+                    return when {
+                        opt.children != null -> { expanded = opt; Hit.Expanded }
+                        opt.action != null -> Hit.Pick(opt.action)
+                        else -> Hit.Cancel // misconfigured spoke: no action, no children
+                    }
                 }
             }
         } else {
@@ -179,7 +182,7 @@ class RadialMenu(context: Context, screenW: Int, screenH: Int, wantX: Float, wan
             kids.forEachIndexed { i, kid ->
                 val (bx, by) = childPos(exp, i, kids.size)
                 if (hypot((x - bx).toDouble(), (y - by).toDouble()) <= buttonR) {
-                    return Hit.Pick(kid.choice!!)
+                    return kid.action?.let { Hit.Pick(it) } ?: Hit.Cancel
                 }
             }
         }

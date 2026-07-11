@@ -124,6 +124,13 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+        root.addView(Button(this).apply {
+            text = getString(R.string.btn_wheel)
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, WheelSettingsActivity::class.java))
+            }
+        })
+
         // ── 最近添加：横排预览，点图看大图；「收集库 ▸」进全量网格 ──
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL

@@ -39,9 +39,7 @@
     <string name="act_identifying">Identifying…</string>
     <string name="act_call_failed">Call failed: %1$s</string>
     <string name="act_no_subject">Couldn\'t identify the subject — try a different selection</string>
-    <string name="act_searched_google">Searching Google Images: %1$s</string>
-    <string name="act_searched_shopping">Searching Google Shopping: %1$s</string>
-    <string name="act_searched_amazon">Searching Amazon: %1$s</string>
+    <string name="act_searched">Searching: %1$s</string>
     <string name="act_saved">💡 Saved to Pictures/nodx (browse in the in-app library)</string>
     <string name="act_save_failed">Save failed</string>
     <string name="act_browser_failed">Couldn\'t open browser: %1$s</string>
@@ -56,4 +54,29 @@
     <string name="gen_saved_failed">🎨 Generated but saving failed</string>
 
     <string name="prompt_explain">What is this? Answer concisely (2–4 sentences), quoting key numbers/text exactly. Answer in English.</string>
+
+    <string name="btn_wheel">⚙️ Customize action wheel</string>
+    <string name="wheel_title">Customize action wheel</string>
+    <string name="wheel_pos_up">Up spoke (blue)</string>
+    <string name="wheel_pos_right">Right spoke (amber)</string>
+    <string name="wheel_pos_down">Down spoke (green)</string>
+    <string name="wheel_pos_left">Left spoke (purple)</string>
+    <string name="wheel_emoji_hint">Icon (emoji)</string>
+    <string name="wheel_label_hint">Name (optional)</string>
+    <string name="wheel_mode_action">Single action</string>
+    <string name="wheel_mode_children">Submenu</string>
+    <string name="wheel_kind_prompt">AI answer (custom prompt)</string>
+    <string name="wheel_kind_search">AI identify → open URL</string>
+    <string name="wheel_kind_save">Save to library</string>
+    <string name="wheel_kind_generate">Generate image (Gemini)</string>
+    <string name="wheel_param_prompt_hint">Prompt sent with the screenshot</string>
+    <string name="wheel_param_url_hint">URL prefix (keyword appended), e.g. https://www.google.com/search?q=</string>
+    <string name="wheel_add_child">＋ Add sub-item</string>
+    <string name="wheel_remove">✕ Remove</string>
+    <string name="wheel_save">Save wheel</string>
+    <string name="wheel_reset">Restore defaults</string>
+    <string name="wheel_saved">Saved — takes effect on the next capture</string>
+    <string name="wheel_err_emoji">Every button needs an emoji icon</string>
+    <string name="wheel_err_param">A prompt/URL parameter is missing</string>
+    <string name="wheel_err_child">A submenu needs at least 1 sub-item</string>
 </resources>

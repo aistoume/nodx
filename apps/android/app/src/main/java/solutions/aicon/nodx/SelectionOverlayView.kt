@@ -88,7 +88,7 @@ class SelectionOverlayView(
             is RadialMenu.Hit.Pick -> {
                 val bmp = crop
                 onClose()
-                if (bmp != null) Actions.run(context, hit.choice, bmp)
+                if (bmp != null) Actions.run(context, hit.action, bmp)
             }
             is RadialMenu.Hit.Cancel -> onClose()
             // Expanded / Back mutate the menu's level — just redraw.

@@ -37,34 +37,30 @@ import java.net.URLEncoder
  */
 object Actions {
 
-    fun run(context: Context, choice: RadialMenu.Choice, crop: Bitmap) {
-        when (choice) {
-            RadialMenu.Choice.EXPLAIN -> explain(context, crop)
-            RadialMenu.Choice.SEARCH ->
-                aiSearchOpen(context, crop, "https://www.google.com/search?udm=2&q=", R.string.act_searched_google)
-            RadialMenu.Choice.SHOPPING_GOOGLE ->
-                aiSearchOpen(context, crop, "https://www.google.com/search?udm=28&q=", R.string.act_searched_shopping)
-            RadialMenu.Choice.SHOPPING_AMAZON ->
-                aiSearchOpen(context, crop, "https://www.amazon.com/s?k=", R.string.act_searched_amazon)
-            RadialMenu.Choice.SAVE -> save(context, crop)
-            RadialMenu.Choice.GENERATE -> generate(context, crop)
+    fun run(context: Context, action: WheelAction, crop: Bitmap) {
+        when (action) {
+            is WheelAction.Prompt -> explain(context, crop, action.prompt)
+            is WheelAction.Search -> aiSearchOpen(context, crop, action.urlPrefix, R.string.act_searched)
+            WheelAction.Save -> save(context, crop)
+            WheelAction.Generate -> generate(context, crop)
         }
     }
 
-    private fun explain(context: Context, crop: Bitmap) {
+    /** kind=prompt：vision call with the (user-customizable) prompt → toast. */
+    private fun explain(context: Context, crop: Bitmap, prompt: String) {
         val b64 = toBase64Png(crop)
         toast(context, context.getString(R.string.act_recognizing))
         CoroutineScope(Dispatchers.IO).launch {
             val apiKey = Prefs.anthropicKey(context)
             if (apiKey.isBlank()) { mainToast(context, context.getString(R.string.toast_need_key)); return@launch }
             val answer = runCatching {
-                AnthropicClient.explain(apiKey, b64, context.getString(R.string.prompt_explain))
+                AnthropicClient.explain(apiKey, b64, prompt)
             }.getOrElse { context.getString(R.string.act_call_failed, it.message) }
             mainToast(context, answer.take(300), long = true)
         }
     }
 
-    /** Shared: Haiku names the image → open browser at `urlPrefix<query>`. */
+    /** kind=search: Haiku names the image → open browser at `urlPrefix<query>`. */
     private fun aiSearchOpen(context: Context, crop: Bitmap, urlPrefix: String, okMsgRes: Int) {
         val b64 = toBase64Png(crop)
         toast(context, context.getString(R.string.act_identifying))
