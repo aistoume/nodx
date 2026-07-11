@@ -39,7 +39,15 @@ class RadialMenu(
         val color: Int,
         val action: WheelAction? = null,
         val children: List<Option>? = null,
-    )
+    ) {
+        /** Uploaded image icons arrive as data: URLs in the emoji field. */
+        val icon: android.graphics.Bitmap? =
+            if (emoji.startsWith("data:")) runCatching {
+                val b64 = emoji.substringAfter("base64,", "")
+                val bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+                android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            }.getOrNull() else null
+    }
 
     sealed class Hit {
         class Pick(val action: WheelAction) : Hit()
@@ -64,7 +72,7 @@ class RadialMenu(
     private val subRadius = sdp(150f)
     private val buttonR = sdp(32f)  // 64dp button
     private val centreR = sdp(20f)  // 40dp centre
-    private val subSpread = 32f     // ± degrees children fan from parent
+    private val subStep = 36f       // degrees between ADJACENT children (equal, tight fan)
 
     // Spoke colours stay fixed per position (match the extension's
     // rgba(...,0.95) values); everything else comes from WheelConfig.
@@ -116,6 +124,7 @@ class RadialMenu(
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER; textSize = sdp(10f); color = Color.WHITE; isFakeBoldText = true
     }
+    private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { isFilterBitmap = true }
     private val centrePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(230, 24, 24, 27) }
     private val centreGlyph = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER; textSize = sdp(16f); color = Color.WHITE
@@ -127,7 +136,7 @@ class RadialMenu(
     }
 
     private fun childPos(parent: Option, i: Int, count: Int): Pair<Float, Float> {
-        val offset = if (count == 1) 0f else (i - (count - 1) / 2f) * 2f * subSpread
+        val offset = (i - (count - 1) / 2f) * subStep
         return posOf(parent.angleDeg + offset, subRadius)
     }
 
@@ -159,7 +168,15 @@ class RadialMenu(
         fill.alpha = if (dimmed) 120 else Color.alpha(opt.color)
         canvas.drawCircle(x, y, buttonR, fill)
         canvas.drawCircle(x, y, buttonR, border)
-        if (opt.label.isEmpty()) {
+        val icon = opt.icon
+        if (icon != null) {
+            val half = sdp(15f)
+            val yOff = if (opt.label.isEmpty()) 0f else -sdp(5f)
+            val dst = android.graphics.RectF(x - half, y - half + yOff, x + half, y + half + yOff)
+            iconPaint.alpha = if (dimmed) 120 else 255
+            canvas.drawBitmap(icon, null, dst, iconPaint)
+            if (opt.label.isNotEmpty()) canvas.drawText(opt.label, x, y + sdp(16f), labelPaint)
+        } else if (opt.label.isEmpty()) {
             canvas.drawText(opt.emoji, x, y - (emojiPaint.ascent() + emojiPaint.descent()) / 2f, emojiPaint)
         } else {
             canvas.drawText(opt.emoji, x, y - sdp(4f), emojiPaint)

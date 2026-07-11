@@ -18,7 +18,7 @@
 
 import { getSettings } from '../shared/settings.js';
 import { buildExplainPrompt, buildDeepenPrompt } from '../shared/prompts.js';
-import { callAnthropic, callOpenAI, callGoogle, generateGeminiImage } from '../shared/providers.js';
+import { callAI, callAnthropic, callOpenAI, callGoogle, generateGeminiImage } from '../shared/providers.js';
 import { recordExplanation } from '../shared/history.js';
 import { resolveLocale, t, setLocale } from '../shared/i18n.js';
 
@@ -410,24 +410,19 @@ async function generatePromptFromImage(
         error: 'AI key not set. Open settings and paste your Anthropic key.',
       };
     }
-    if (settings.provider !== 'anthropic') {
-      return {
-        ok: false,
-        error:
-          'Prompt generation requires Anthropic (Sonnet vision). Change provider in settings.',
-      };
-    }
+
     const b64 = dataUrl.replace(/^data:[^,]+,/, '');
     const mime = dataUrl.match(/^data:([^;]+);/)?.[1] ?? 'image/png';
 
     const prompt =
       "Look at this image carefully. Write a detailed, vivid image-generation prompt (English, one paragraph, 60–120 words) that captures the subject, composition, style, colours, lighting, mood, and any distinctive details. The prompt should be usable in Midjourney / DALL-E / Gemini image generation. Do NOT prefix with 'a prompt for' — just write the prompt itself.";
 
-    // Reuse the extension's own Anthropic streamer.
+    // Vision call via whichever provider the user picked.
     let full = '';
-    await callAnthropic(
+    await callAI(
+      settings.provider,
       settings.apiKey,
-      settings.model.deepen, // Sonnet, not Haiku — vision quality matters.
+      settings.model.deepen, // deep model, not the short one — vision quality matters.
       prompt,
       (chunk) => (full += chunk),
       undefined,
@@ -473,15 +468,14 @@ async function shoppingQueryFromImage(
     if (!settings.apiKey) {
       return { ok: false, error: 'AI key 未设置，打开 ⚙ 设置粘贴 Anthropic key。' };
     }
-    if (settings.provider !== 'anthropic') {
-      return { ok: false, error: '商品识别需要 Anthropic (Sonnet/Haiku vision)。' };
-    }
+
     const b64 = dataUrl.replace(/^data:[^,]+,/, '');
     const mime = dataUrl.match(/^data:([^;]+);/)?.[1] ?? 'image/png';
     const prompt =
       'Identify the single product shown in this image. Reply with ONLY a concise shopping search query — brand + product name + key attribute (e.g. "Seven Minerals aloe vera gel 12oz"). 3-8 words, no punctuation, no quotes, no explanation. If it is not obviously a buyable product, still return the best short search term for the main object.';
     let full = '';
-    await callAnthropic(
+    await callAI(
+      settings.provider,
       settings.apiKey,
       settings.model.explain,
       prompt,

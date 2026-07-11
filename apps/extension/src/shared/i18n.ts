@@ -84,6 +84,8 @@ const STRINGS = {
     wheelLayoutSingle: '生成单图',
     wheelLayoutGrid: '生成 2×2 四格',
     wheelStylePh: '生成风格提示词 — {subject} 会被替换为 AI 认图出的主体描述',
+    iconUpload: '上传图片…',
+    iconManualPh: '或直接输入 emoji',
 
     // Popup
     popupTitle: 'nodx Lens',
@@ -166,6 +168,8 @@ const STRINGS = {
     wheelLayoutSingle: 'Single image',
     wheelLayoutGrid: '2×2 four-style grid',
     wheelStylePh: 'Style prompt — {subject} is replaced by the AI\'s description of the crop',
+    iconUpload: 'Upload image…',
+    iconManualPh: 'or type an emoji',
 
     // Popup
     popupTitle: 'nodx Lens',

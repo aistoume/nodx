@@ -41,6 +41,10 @@ sealed class WheelAction {
         const val LAYOUT_SINGLE = "single"
         const val LAYOUT_GRID = "grid"
 
+        const val DEFAULT_EXPLAIN_PROMPT =
+            "What is this? Answer concisely (2\u20134 sentences), quoting key numbers/text exactly."
+        const val DEFAULT_SEARCH_PREFIX = "https://www.google.com/search?udm=2&q="
+
         const val DEFAULT_GRID_STYLE_PROMPT = """Create ONE single image composed as a clean 2×2 grid of four equal quadrants. Each quadrant shows the SAME subject rendered in a different visual style. Keep the subject identical across all four quadrants.
 
 Subject: {subject}
@@ -110,10 +114,8 @@ object WheelConfig {
      *  every locale (same as the extension); users customize from there. */
     fun defaults(@Suppress("UNUSED_PARAMETER") c: Context): List<WheelItem> = listOf(
         WheelItem("🔍", "", null, listOf(
-            WheelItem("📖", "Explain",
-                WheelAction.Prompt("What is this? Answer concisely (2–4 sentences), quoting key numbers/text exactly.")),
-            WheelItem("🔎", "Search",
-                WheelAction.Search("https://www.google.com/search?udm=2&q=")),
+            WheelItem("📖", "Explain", WheelAction.Prompt(WheelAction.DEFAULT_EXPLAIN_PROMPT)),
+            WheelItem("🔎", "Search", WheelAction.Search(WheelAction.DEFAULT_SEARCH_PREFIX)),
         )),
         WheelItem("💡", "", WheelAction.Save),
         WheelItem("🛒", "", null, listOf(

@@ -63,6 +63,17 @@ class WheelSettingsActivity : AppCompatActivity() {
         }
         val param = EditText(this@WheelSettingsActivity)
 
+        /** Per-kind param memory — switching kinds no longer wipes input. */
+        private val stash = mutableMapOf<Kind, String>()
+        private var lastKind = Kind.PROMPT
+
+        private fun defaultParamFor(k: Kind): String = when (k) {
+            Kind.PROMPT -> WheelAction.DEFAULT_EXPLAIN_PROMPT
+            Kind.SEARCH -> WheelAction.DEFAULT_SEARCH_PREFIX
+            Kind.GENERATE -> defaultStyleForLayout()
+            Kind.SAVE -> ""
+        }
+
         private fun isDefaultStyle(s: String) =
             s.isBlank() || s == WheelAction.DEFAULT_GRID_STYLE_PROMPT ||
                 s == WheelAction.DEFAULT_SINGLE_STYLE_PROMPT
@@ -102,11 +113,16 @@ class WheelSettingsActivity : AppCompatActivity() {
                     else -> ""
                 }
             )
+            lastKind = Kind.entries[kind.selectedItemPosition]
             kind.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) {
-                    // Entering generate with an untouched param → prefill template.
-                    if (Kind.entries[pos] == Kind.GENERATE && isDefaultStyle(param.text.toString())) {
-                        param.setText(defaultStyleForLayout())
+                    val newKind = Kind.entries[pos]
+                    if (newKind != lastKind) {
+                        // Stash the old kind's param and restore what the
+                        // user last typed for the new kind (or a default).
+                        stash[lastKind] = param.text.toString()
+                        param.setText(stash[newKind] ?: defaultParamFor(newKind))
+                        lastKind = newKind
                     }
                     syncParam(); onFormChanged()
                 }

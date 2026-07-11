@@ -188,7 +188,7 @@ const MENU_ID = '__nodx_radial_menu__';
 const OUTER_RADIUS = 92; // level-1 button distance from centre
 const SUB_RADIUS = 172; // level-2 children sit further out
 const BUTTON_SIZE = 78;
-const SUB_SPREAD = 32; // ± degrees the children fan from the parent angle
+const SUB_STEP = 36; // degrees between ADJACENT children (equal spacing, tight fan)
 
 /**
  * Show the radial menu centred at (viewX, viewY) in viewport coords.
@@ -252,7 +252,7 @@ export function showRadialMenu(
         const parentPos = angleToXY(level.angleDeg, OUTER_RADIUS, cx, cy);
         const kids = level.children ?? [];
         kids.forEach((kid, i) => {
-          const offset = kids.length === 1 ? 0 : (i - (kids.length - 1) / 2) * 2 * SUB_SPREAD;
+          const offset = (i - (kids.length - 1) / 2) * SUB_STEP;
           const pos = angleToXY(level!.angleDeg + offset, SUB_RADIUS, cx, cy);
           root.appendChild(makeLine(parentPos, pos));
           const btn = makeButton(kid.emoji, kid.label, pos, level!.bg);
@@ -373,9 +373,34 @@ function makeButton(
     padding: '0',
     userSelect: 'none',
   } as CSSStyleDeclaration);
-  btn.innerHTML = label
-    ? `<span style="font-size:22px;line-height:1;">${emoji}</span><span style="font-size:11px;">${label}</span>`
-    : `<span style="font-size:26px;line-height:1;">${emoji}</span>`;
+  // Icon: a data: URL renders as an image (user-uploaded icon); anything
+  // else is emoji/text. Built via DOM (not innerHTML) since labels are
+  // user-authored strings.
+  if (emoji.startsWith('data:')) {
+    const img = document.createElement('img');
+    img.src = emoji;
+    Object.assign(img.style, {
+      width: '28px',
+      height: '28px',
+      borderRadius: '6px',
+      objectFit: 'cover',
+    } as CSSStyleDeclaration);
+    btn.appendChild(img);
+  } else {
+    const span = document.createElement('span');
+    span.textContent = emoji;
+    Object.assign(span.style, {
+      fontSize: label ? '22px' : '26px',
+      lineHeight: '1',
+    } as CSSStyleDeclaration);
+    btn.appendChild(span);
+  }
+  if (label) {
+    const l = document.createElement('span');
+    l.textContent = label;
+    l.style.fontSize = '11px';
+    btn.appendChild(l);
+  }
 
   btn.addEventListener('mouseenter', () => {
     if (btn.style.cursor === 'default') return; // dim anchor: no hover pop

@@ -46,7 +46,7 @@ import {
   dataUrlToBlob,
 } from '../shared/radial-actions.js';
 import { getSettings } from '../shared/settings.js';
-import { callAnthropic } from '../shared/providers.js';
+import { callAI } from '../shared/providers.js';
 
 const OVERLAY_ID = '__nodx_marquee_overlay__';
 const TOAST_ID = '__nodx_marquee_toast__';
@@ -1005,17 +1005,13 @@ async function explainHighlight(
     if (!settings.apiKey) {
       throw new Error('AI key 未设置 —— 打开 ⚙ 设置粘贴你的 Anthropic API key。');
     }
-    if (settings.provider !== 'anthropic') {
-      throw new Error(
-        '图片解释目前只支持 Anthropic (Sonnet vision)。⚙ 设置里切一下 provider。',
-      );
-    }
     const b64 = cropped.dataUrl.replace(/^data:[^,]+,/, '');
     const mime =
       cropped.dataUrl.match(/^data:([^;]+);/)?.[1] ?? 'image/png';
 
     let full = '';
-    await callAnthropic(
+    await callAI(
+      settings.provider,
       settings.apiKey,
       settings.model.explain,
       question,

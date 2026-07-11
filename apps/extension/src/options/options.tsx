@@ -9,7 +9,9 @@ import {
 } from '../shared/settings.js';
 import { setLocale, t, type Language } from '../shared/i18n.js';
 import {
+  DEFAULT_EXPLAIN_PROMPT,
   DEFAULT_GRID_STYLE_PROMPT,
+  DEFAULT_IMAGE_SEARCH_PREFIX,
   DEFAULT_SINGLE_STYLE_PROMPT,
   defaultWheel,
   getWheelConfig,
@@ -282,7 +284,7 @@ function WheelPreview({
   const OUTER = 88;
   const SUB = 152;
   const BTN = 64;
-  const SPREAD = 32;
+  const STEP = 36; // degrees between adjacent children
 
   // Guard: the expanded spoke may have lost its children mid-edit.
   const expIdx =
@@ -290,7 +292,7 @@ function WheelPreview({
   const exp = expIdx != null ? spokes[expIdx]! : null;
 
   const childPos = (j: number, count: number) => {
-    const offset = count === 1 ? 0 : (j - (count - 1) / 2) * 2 * SPREAD;
+    const offset = (j - (count - 1) / 2) * STEP;
     return polar(expIdx! * 90 + offset, SUB);
   };
 
@@ -312,7 +314,11 @@ function WheelPreview({
       }}
       onClick={extra.onClick}
     >
-      <span className="wp-emoji">{item.emoji || '❓'}</span>
+      {item.emoji.startsWith('data:') ? (
+        <img className="wp-img" src={item.emoji} />
+      ) : (
+        <span className="wp-emoji">{item.emoji || '❓'}</span>
+      )}
       {item.label && <span className="wp-label">{item.label}</span>}
     </div>
   );
@@ -382,6 +388,114 @@ function kindLabel(k: KindKey): string {
         : t('wheelKindGenerate');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Icon picker — preset emoji library + custom image upload. Uploaded images
+// are centre-cropped to 64×64 and stored as data: URLs in the item's emoji
+// field (renderers show an <img> whenever the value starts with "data:").
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PRESET_ICONS = [
+  '🔍', '🔎', '📖', '💡', '🛒', '🏷', '📦', '🎨',
+  '🧠', '📝', '🌐', '🔤', '🖼️', '📷', '🎬', '🎵',
+  '📊', '📈', '🧾', '💬', '❓', '✅', '⭐', '❤️',
+  '🔥', '⚡', '🚀', '🛠️', '🔧', '🧪', '🩺', '⚖️',
+  '🗺️', '🧭', '⏰', '💰', '🏠', '🍔', '👕', '🚗',
+];
+
+function IconGlyph({ icon, size }: { icon: string; size: number }) {
+  return icon.startsWith('data:') ? (
+    <img
+      src={icon}
+      style={{ width: `${size}px`, height: `${size}px`, borderRadius: '4px', objectFit: 'cover' }}
+    />
+  ) : (
+    <span style={{ fontSize: `${size - 2}px`, lineHeight: 1 }}>{icon || '❓'}</span>
+  );
+}
+
+function IconPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const pick = (v: string) => {
+    onChange(v);
+    setOpen(false);
+  };
+  const onFile = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const f = input.files?.[0];
+    input.value = '';
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = 64;
+        c.height = 64;
+        const ctx = c.getContext('2d');
+        if (!ctx) return;
+        const s = Math.min(img.naturalWidth, img.naturalHeight);
+        ctx.drawImage(
+          img,
+          (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s,
+          0, 0, 64, 64,
+        );
+        pick(c.toDataURL('image/png'));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(f);
+  };
+  return (
+    <div className="icon-picker">
+      <button
+        type="button"
+        className="icon-btn"
+        title={t('wheelEmojiPh')}
+        onClick={() => setOpen(!open)}
+      >
+        <IconGlyph icon={value} size={20} />
+      </button>
+      {open && (
+        <div className="icon-pop">
+          <div className="icon-grid">
+            {PRESET_ICONS.map((e) => (
+              <button type="button" key={e} onClick={() => pick(e)}>
+                {e}
+              </button>
+            ))}
+          </div>
+          <div className="icon-actions">
+            <label className="icon-upload">
+              {t('iconUpload')}
+              <input type="file" accept="image/*" onChange={onFile} />
+            </label>
+            <input
+              className="icon-manual"
+              placeholder={t('iconManualPh')}
+              value={value.startsWith('data:') ? '' : value}
+              onInput={(e) => onChange((e.target as HTMLInputElement).value)}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Sensible starting action per kind — used when there's nothing stashed. */
+function defaultActionFor(k: KindKey): WheelAction {
+  switch (k) {
+    case 'prompt':
+      return { kind: 'prompt', prompt: DEFAULT_EXPLAIN_PROMPT };
+    case 'search':
+      return { kind: 'search', urlPrefix: DEFAULT_IMAGE_SEARCH_PREFIX };
+    case 'save':
+      return { kind: 'save' };
+    case 'generate':
+      return { kind: 'generate', layout: 'grid', stylePrompt: DEFAULT_GRID_STYLE_PROMPT };
+  }
+}
+
 function actionOf(kind: KindKey, param: string): WheelAction {
   switch (kind) {
     case 'prompt':
@@ -420,14 +534,15 @@ function ItemFields({
   const kind = kindOf(item.action);
   const needsParam = kind === 'prompt' || kind === 'search' || kind === 'generate';
   const gen = item.action?.kind === 'generate' ? item.action : null;
+  // Stash the action per kind so switching away and back restores what the
+  // user had typed (instead of wiping the prompt/URL).
+  const [stash, setStash] = useState<Partial<Record<KindKey, WheelAction>>>({});
   return (
     <div className="wheel-item">
       <div className="hbox">
-        <input
-          className="wheel-emoji"
+        <IconPicker
           value={item.emoji}
-          placeholder={t('wheelEmojiPh')}
-          onInput={(e) => onChange({ ...item, emoji: (e.target as HTMLInputElement).value })}
+          onChange={(v) => onChange({ ...item, emoji: v })}
         />
         <input
           className="wheel-name"
@@ -440,7 +555,9 @@ function ItemFields({
           value={kind}
           onChange={(e) => {
             const k = (e.target as HTMLSelectElement).value as KindKey;
-            onChange({ ...item, action: k === kind ? item.action : actionOf(k, '') });
+            if (k === kind) return;
+            if (item.action) setStash({ ...stash, [kind]: item.action });
+            onChange({ ...item, action: stash[k] ?? defaultActionFor(k) });
           }}
         >
           {KIND_ORDER.map((k) => (
@@ -612,13 +729,9 @@ function WheelEditor({ onSaved }: { onSaved: () => void }) {
             {isSub ? (
               <>
                 <div className="hbox">
-                  <input
-                    className="wheel-emoji"
+                  <IconPicker
                     value={spoke.emoji}
-                    placeholder={t('wheelEmojiPh')}
-                    onInput={(e) =>
-                      patchSpoke(i, { ...spoke, emoji: (e.target as HTMLInputElement).value })
-                    }
+                    onChange={(v) => patchSpoke(i, { ...spoke, emoji: v })}
                   />
                   <input
                     value={spoke.label}

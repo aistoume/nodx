@@ -101,3 +101,33 @@ select { width: auto; min-width: 200px; }
   .wheel-body { flex-direction: column; }
   .wheel-preview-col { position: static; flex: none; width: 100%; }
 }
+
+/* Icon picker */
+.icon-picker { position: relative; flex: 0 0 auto; }
+.icon-btn {
+  width: 36px; height: 34px; padding: 0 !important;
+  border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.icon-pop {
+  position: absolute; z-index: 20; top: 38px; left: 0;
+  width: 268px; padding: 10px; background: #fff;
+  border: 1px solid #ddd; border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.16);
+}
+.icon-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
+.icon-grid button {
+  border: 0 !important; background: transparent; font-size: 17px;
+  padding: 3px 0 !important; border-radius: 6px; cursor: pointer;
+}
+.icon-grid button:hover { background: #f0f0ee; }
+.icon-actions { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+.icon-upload {
+  font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0;
+  color: #1a1a1a; margin: 0; padding: 5px 10px; border: 1px solid #ddd;
+  border-radius: 6px; cursor: pointer; white-space: nowrap;
+}
+.icon-upload input[type=file] { display: none; }
+.icon-manual { flex: 1; min-width: 0; font-size: 12px; padding: 5px 8px !important;
+  border: 1px solid #ddd; border-radius: 6px; }
+.wp-btn .wp-img { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; }

@@ -92,7 +92,16 @@ export async function callOpenAI(
   prompt: string,
   onChunk: ChunkCallback,
   signal?: AbortSignal,
+  image?: AnthropicImageInput,
 ): Promise<string> {
+  // With an image the user message becomes a multi-part content array
+  // (image_url data URL + text).
+  const userContent: unknown = image
+    ? [
+        { type: 'image_url', image_url: { url: `data:${image.mime};base64,${image.base64}` } },
+        { type: 'text', text: prompt },
+      ]
+    : prompt;
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     signal,
@@ -104,7 +113,7 @@ export async function callOpenAI(
       model,
       stream: true,
       max_tokens: 800,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: userContent }],
     }),
   });
 
@@ -140,17 +149,21 @@ export async function callGoogle(
   prompt: string,
   onChunk: ChunkCallback,
   signal?: AbortSignal,
+  image?: AnthropicImageInput,
 ): Promise<string> {
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}` +
     `:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
 
+  const parts: unknown[] = image
+    ? [{ inlineData: { mimeType: image.mime, data: image.base64 } }, { text: prompt }]
+    : [{ text: prompt }];
   const res = await fetch(url, {
     method: 'POST',
     signal,
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: [{ role: 'user', parts }],
       generationConfig: { maxOutputTokens: 800 },
     }),
   });
@@ -172,6 +185,33 @@ export async function callGoogle(
     }
   });
   return full;
+}
+
+// ============================================================================
+// Provider dispatch — one entry point for text or vision calls, so callers
+// (explain / identify / prompt-writing) work with whichever provider the
+// user picked in settings.
+// ============================================================================
+
+export type ProviderName = 'anthropic' | 'openai' | 'google';
+
+export async function callAI(
+  provider: ProviderName,
+  apiKey: string,
+  model: string,
+  prompt: string,
+  onChunk: ChunkCallback,
+  signal?: AbortSignal,
+  image?: AnthropicImageInput,
+): Promise<string> {
+  switch (provider) {
+    case 'anthropic':
+      return callAnthropic(apiKey, model, prompt, onChunk, signal, image);
+    case 'openai':
+      return callOpenAI(apiKey, model, prompt, onChunk, signal, image);
+    case 'google':
+      return callGoogle(apiKey, model, prompt, onChunk, signal, image);
+  }
 }
 
 // ============================================================================
