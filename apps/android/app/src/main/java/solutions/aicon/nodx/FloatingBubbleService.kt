@@ -123,7 +123,14 @@ class FloatingBubbleService : Service() {
         bubble?.visibility = View.INVISIBLE
         cap.captureOnce { bmp ->
             bubble?.visibility = View.VISIBLE
-            if (bmp != null) SelectionOverlayView.show(this, windowManager, bmp)
+            if (bmp != null) {
+                SelectionOverlayView.show(this, windowManager, bmp)
+            } else {
+                android.widget.Toast.makeText(
+                    this, "截屏失败：投屏授权可能已失效，请回 nodx 重新启动悬浮球",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
         }
     }
 

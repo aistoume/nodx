@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -56,14 +57,31 @@ class MainActivity : AppCompatActivity() {
         root.addView(TextView(this).apply {
             text = "nodx · 系统级思考助手"; textSize = 20f
         })
+        // Saved key stays collapsed to a masked status line — the field only
+        // reappears when the user explicitly asks to change it.
+        val saved = Prefs.anthropicKey(this)
         keyInput = EditText(this).apply {
             hint = "Anthropic API key (sk-ant-...)"
-            setText(Prefs.anthropicKey(this@MainActivity))
+            setText(saved)
+            visibility = if (saved.isBlank()) View.VISIBLE else View.GONE
         }
+        val keyStatus = TextView(this).apply {
+            text = "🔑 API key 已保存（…${saved.takeLast(4)}）— 点此修改"
+            visibility = if (saved.isBlank()) View.GONE else View.VISIBLE
+            setPadding(0, 24, 0, 24)
+            setOnClickListener { visibility = View.GONE; keyInput.visibility = View.VISIBLE }
+        }
+        root.addView(keyStatus)
         root.addView(keyInput)
         val start = Button(this).apply { text = "启动 nodx 悬浮球" }
         start.setOnClickListener {
-            Prefs.setAnthropicKey(this, keyInput.text.toString().trim())
+            if (keyInput.visibility == View.VISIBLE) {
+                Prefs.setAnthropicKey(this, keyInput.text.toString().trim())
+            }
+            if (Prefs.anthropicKey(this).isBlank()) {
+                toast("请先填 Anthropic key")
+                return@setOnClickListener
+            }
             ensureOverlayThenProjection()
         }
         root.addView(start)
