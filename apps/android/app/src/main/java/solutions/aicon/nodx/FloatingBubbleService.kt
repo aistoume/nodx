@@ -20,9 +20,12 @@ import android.widget.ImageView
 import kotlin.math.abs
 
 /**
- * Foreground service (mediaProjection type). Holds the MediaProjection
- * granted in MainActivity, draws a draggable floating bubble, and on tap
- * grabs one screen frame then shows the SelectionOverlayView.
+ * Foreground service — the floating bubble. Starts WITHOUT any projection
+ * (specialUse FGS type), so opening the app puts the bubble up with zero
+ * dialogs. The screen-share consent is deferred to the FIRST bubble tap
+ * of each session (ProjectionConsentActivity relays the grant back with
+ * ACTION_GRANT_AND_CAPTURE, and the tap's capture runs right after);
+ * subsequent taps reuse the live projection silently.
  */
 class FloatingBubbleService : Service() {
 
@@ -30,6 +33,7 @@ class FloatingBubbleService : Service() {
         const val EXTRA_RESULT_CODE = "result_code"
         const val EXTRA_RESULT_DATA = "result_data"
         const val ACTION_STOP = "solutions.aicon.nodx.STOP"
+        const val ACTION_GRANT_AND_CAPTURE = "solutions.aicon.nodx.GRANT_AND_CAPTURE"
         private const val CHANNEL_ID = "nodx_bubble"
         private const val NOTIF_ID = 1001
 
@@ -42,6 +46,7 @@ class FloatingBubbleService : Service() {
     private var bubble: View? = null
     private var projection: MediaProjection? = null
     private var capture: ScreenCaptureManager? = null
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -54,30 +59,43 @@ class FloatingBubbleService : Service() {
         val code = intent?.getIntExtra(EXTRA_RESULT_CODE, 0) ?: 0
         @Suppress("DEPRECATION")
         val data = intent?.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
-        if (projection == null && (code == 0 || data == null)) {
-            // System restart without a fresh MediaProjection grant — we're
-            // not even allowed to startForeground(mediaProjection) in this
-            // state (SecurityException on 14+). User restarts from the app.
-            stopSelf()
-            return START_NOT_STICKY
-        }
-        // Order matters on 14+: startForeground(mediaProjection) BEFORE
-        // getMediaProjection, and registerCallback BEFORE any capture.
-        startAsForeground()
-        if (projection == null) {
+
+        if (projection == null && code != 0 && data != null) {
+            // Consent just granted. Order matters on 14+: upgrade to the
+            // mediaProjection FGS type BEFORE getMediaProjection, and
+            // registerCallback BEFORE any capture.
+            startAsForeground(withProjection = true)
             val mgr = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            projection = mgr.getMediaProjection(code, data!!)
+            projection = mgr.getMediaProjection(code, data)
             projection!!.registerCallback(object : MediaProjection.Callback() {
-                override fun onStop() { stopSelf() }
+                override fun onStop() { detachProjection() }
             }, null)
             capture = ScreenCaptureManager(this, projection!!)
+            if (intent.action == ACTION_GRANT_AND_CAPTURE) {
+                // Run the capture the user's tap asked for, after the
+                // consent dialog has left the screen.
+                main.postDelayed({ onBubbleTap() }, 400)
+            }
+        } else {
+            // Plain start (app open / sticky revive): bubble only, no
+            // projection — consent comes on first tap.
+            startAsForeground(withProjection = projection != null)
         }
         if (bubble == null) addBubble()
         isRunning = true
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
-    private fun startAsForeground() {
+    /** Projection gone (stopped/revoked/expired) — keep the bubble, re-ask next tap. */
+    private fun detachProjection() {
+        capture?.release(); capture = null
+        projection = null
+        // Drop the mediaProjection FGS type — holding it without a live
+        // projection is what the 14+ policy complains about.
+        runCatching { startAsForeground(withProjection = false) }
+    }
+
+    private fun startAsForeground(withProjection: Boolean) {
         val nm = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             nm.createNotificationChannel(
@@ -97,10 +115,16 @@ class FloatingBubbleService : Service() {
                 Notification.Action.Builder(null, getString(R.string.notif_stop), stopPending).build()
             )
             .build()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
-        } else {
-            @Suppress("DEPRECATION") startForeground(NOTIF_ID, notif)
+        when {
+            Build.VERSION.SDK_INT >= 34 -> {
+                val type = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or
+                    (if (withProjection) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION else 0)
+                startForeground(NOTIF_ID, notif, type)
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && withProjection ->
+                startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+            else ->
+                @Suppress("DEPRECATION") startForeground(NOTIF_ID, notif)
         }
     }
 
@@ -137,7 +161,18 @@ class FloatingBubbleService : Service() {
     }
 
     private fun onBubbleTap() {
-        val cap = capture ?: return
+        val cap = capture
+        if (cap == null) {
+            // First tap of this session — ask for screen share now; the
+            // grant flows back as ACTION_GRANT_AND_CAPTURE and finishes
+            // this very capture. (SYSTEM_ALERT_WINDOW exempts us from the
+            // background-activity-start restriction.)
+            startActivity(
+                Intent(this, ProjectionConsentActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            return
+        }
         // Hide the bubble so it isn't in the screenshot, grab one frame, show overlay.
         bubble?.visibility = View.INVISIBLE
         cap.captureOnce { bmp ->
@@ -145,8 +180,11 @@ class FloatingBubbleService : Service() {
             if (bmp != null) {
                 SelectionOverlayView.show(this, windowManager, bmp)
             } else {
+                // Dead grant — detach so the next tap re-asks instead of
+                // failing forever.
+                detachProjection()
                 android.widget.Toast.makeText(
-                    this, "截屏失败：投屏授权可能已失效，请回 nodx 重新启动悬浮球",
+                    this, "投屏已失效，再点一次悬浮球重新授权",
                     android.widget.Toast.LENGTH_LONG
                 ).show()
             }

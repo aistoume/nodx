@@ -1,10 +1,8 @@
 package solutions.aicon.nodx
 
 import android.Manifest
-import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -35,9 +33,6 @@ import kotlinx.coroutines.withContext
  */
 class MainActivity : AppCompatActivity() {
 
-    private val projectionManager by lazy {
-        getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-    }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private lateinit var keyInput: EditText
     private lateinit var geminiInput: EditText
@@ -84,15 +79,6 @@ class MainActivity : AppCompatActivity() {
     // blocking — we just ask once on startup.
     private val notifPermLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
-
-    private val projectionLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-                startBubble(result.resultCode, result.data!!)
-            } else {
-                toast("需要屏幕录制授权才能截屏（点「启动」可重试）")
-            }
-        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -164,7 +150,7 @@ class MainActivity : AppCompatActivity() {
         root.addView(recentEmpty)
 
         root.addView(TextView(this).apply {
-            text = "点悬浮球截屏 → 框选 → 动作轮（🔍解释/搜索 · 💡保存 · 🛒购物 · 🎨生成）。打开本页会自动请求启动，只需在系统弹窗点「开始」。"
+            text = "打开本页悬浮球自动就位（零弹窗）。点悬浮球截屏 → 框选 → 动作轮（🔍解释/搜索 · 💡保存 · 🛒购物 · 🎨生成）。每个会话首次截屏时系统会弹一次「分享屏幕」，之后随便截。"
             setPadding(0, 40, 0, 0)
         })
         setContentView(root)
@@ -184,15 +170,15 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Auto-start: keys ready + overlay granted + bubble not running →
-     * jump straight to the system consent (the one tap Android insists
-     * on). Attempted once per activity lifetime so cancelling the dialog
-     * doesn't loop it.
+     * start the bubble service directly. No dialogs here — the screen
+     * share consent is deferred to the first bubble tap of the session.
      */
     private fun maybeAutoStart() {
         if (autoStartAttempted || FloatingBubbleService.isRunning) return
         if (Prefs.anthropicKey(this).isBlank() || !Settings.canDrawOverlays(this)) return
         autoStartAttempted = true
-        projectionLauncher.launch(projectionManager.createScreenCaptureIntent())
+        startBubbleService()
+        toast("悬浮球已就位 — 首次截屏时会请求屏幕分享")
     }
 
     private fun refreshRecent() {
@@ -229,18 +215,14 @@ class MainActivity : AppCompatActivity() {
             autoStartAttempted = false // let onResume pick it up after the grant
             return
         }
-        projectionLauncher.launch(projectionManager.createScreenCaptureIntent())
+        startBubbleService()
+        toast("悬浮球已启动 — 首次截屏时会请求屏幕分享")
     }
 
-    private fun startBubble(resultCode: Int, data: Intent) {
-        val svc = Intent(this, FloatingBubbleService::class.java).apply {
-            putExtra(FloatingBubbleService.EXTRA_RESULT_CODE, resultCode)
-            putExtra(FloatingBubbleService.EXTRA_RESULT_DATA, data)
-        }
+    private fun startBubbleService() {
+        val svc = Intent(this, FloatingBubbleService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(svc)
         else startService(svc)
-        toast("悬浮球已启动")
-        moveTaskToBack(true)
     }
 
     override fun onDestroy() {
