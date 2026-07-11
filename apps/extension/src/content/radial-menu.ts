@@ -17,6 +17,8 @@
  * content-script world without shipping React/Preact.
  */
 
+import type { WheelAction, WheelItem } from '../shared/wheel.js';
+
 export type RadialChoice =
   | 'explain'
   | 'search'
@@ -130,6 +132,57 @@ export const TEXT_OPTIONS: RadialOption[] = [
   },
   { emoji: '🎨', label: '', title: '生成', angleDeg: 270, bg: 'rgba(168, 85, 247, 0.95)', choice: 'txt-generate' },
 ];
+
+/** Fixed spoke colours by position (up/right/down/left). */
+const WHEEL_BG = [
+  'rgba(59, 130, 246, 0.95)',
+  'rgba(217, 119, 6, 0.95)',
+  'rgba(16, 185, 129, 0.95)',
+  'rgba(168, 85, 247, 0.95)',
+];
+
+/**
+ * Show the user-customized wheel (wheel-config v1 spokes) and resolve
+ * with the picked WheelAction. Internally reuses showRadialMenu: each
+ * leaf gets a synthetic key ('w0', 'w1-0', …) mapped back to its action.
+ */
+export function showWheelMenu(
+  viewX: number,
+  viewY: number,
+  spokes: WheelItem[],
+): Promise<WheelAction | 'cancel'> {
+  const actions = new Map<string, WheelAction>();
+  // Synthetic keys aren't part of the closed RadialChoice union — the cast
+  // is contained here and resolved back through the map below.
+  const asKey = (id: string) => id as unknown as LeafChoice;
+
+  const options: RadialOption[] = spokes.map((s, i) => {
+    const base = {
+      emoji: s.emoji,
+      label: s.label,
+      title: s.label || undefined,
+      angleDeg: i * 90,
+      bg: WHEEL_BG[i]!,
+    };
+    if (s.children.length > 0) {
+      return {
+        ...base,
+        children: s.children.map((c, j) => {
+          const id = `w${i}-${j}`;
+          if (c.action) actions.set(id, c.action);
+          return { key: asKey(id), emoji: c.emoji, label: c.label };
+        }),
+      };
+    }
+    const id = `w${i}`;
+    if (s.action) actions.set(id, s.action);
+    return { ...base, choice: asKey(id) };
+  });
+
+  return showRadialMenu(viewX, viewY, options).then((picked) =>
+    picked === 'cancel' ? 'cancel' : (actions.get(picked as string) ?? 'cancel'),
+  );
+}
 
 const MENU_ID = '__nodx_radial_menu__';
 const OUTER_RADIUS = 92; // level-1 button distance from centre

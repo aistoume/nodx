@@ -19,3 +19,23 @@ select { width: auto; min-width: 200px; }
 .hbox { display: flex; gap: 6px; align-items: center; margin-top: 10px; font-size: 13px; }
 .saved { font-size: 12px; color: #10B981; margin-top: 16px; }
 .loading { padding: 40px; text-align: center; color: #888; }
+
+/* Action-wheel editor */
+.wheel-spoke { padding: 10px 12px; margin: 10px 0; background: #f7f7f5; border-radius: 8px; }
+.wheel-spoke strong { font-size: 13px; }
+.wheel-spoke .radios { margin: 6px 0; }
+.wheel-item input, .wheel-item select { font-size: 13px; padding: 6px 8px; }
+.wheel-item input { width: auto; flex: 1; }
+.wheel-item .wheel-emoji, .wheel-spoke .wheel-emoji { flex: 0 0 72px; width: 72px; }
+.wheel-item textarea {
+  width: 100%; margin-top: 6px; padding: 6px 8px; font-size: 13px;
+  border: 1px solid #ddd; border-radius: 6px; resize: vertical; font-family: inherit;
+}
+.wheel-child { display: flex; gap: 8px; align-items: flex-start; margin: 8px 0 8px 16px; }
+.wheel-child > .wheel-item { flex: 1; }
+.wheel-spoke button, .wheel-child button {
+  padding: 5px 10px; font-size: 12px; border: 1px solid #ddd; border-radius: 6px;
+  background: #fff; cursor: pointer;
+}
+.wheel-spoke button:disabled { opacity: 0.4; cursor: default; }
+.wheel-error { color: #DC2626; }

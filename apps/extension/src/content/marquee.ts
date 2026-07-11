@@ -32,7 +32,13 @@ import {
   setBoxMenuHandler,
   syncHighlightsFromStorage,
 } from './highlights-layer.js';
-import { showRadialMenu } from './radial-menu.js';
+import { showWheelMenu } from './radial-menu.js';
+import {
+  DEFAULT_EXPLAIN_PROMPT,
+  DEFAULT_IMAGE_SEARCH_PREFIX,
+  getWheelConfig,
+  type WheelAction,
+} from '../shared/wheel.js';
 import { showHandoffModal } from './handoff-modal.js';
 import {
   copyImageToClipboard,
@@ -179,56 +185,91 @@ async function handleCrop(
     const menuX = rect.x + rect.w / 2;
     const menuY = rect.y + rect.h / 2;
 
-    const choice = await showRadialMenu(menuX, menuY);
-    if (choice === 'cancel') return;
+    const { spokes } = await getWheelConfig();
+    const action = await showWheelMenu(menuX, menuY, spokes);
+    if (action === 'cancel') return;
 
-    switch (choice) {
-      case 'save':
-        await runSave(cropped, rect);
-        break;
-      case 'explain':
-        // 直接把图丢给 Sonnet 问「这是什么」，答案流回侧栏卡片。
-        // 保留完整的 highlight 保存链路（黄框、桌面同步）以便日后复看。
-        await runExplain(cropped, rect);
-        break;
-      case 'search':
-        // 放大镜二级·搜索：有网页原图 → Lens 视觉搜；否则 AI 认图 → 图片搜(udm=2)。
-        runSearch(cropped.dataUrl, rect);
-        break;
-      case 'shopping-google':
-        // 购物二级·Google Shopping：AI 认图 → Shopping(udm=28)。
-        runShopping(cropped.dataUrl, 'google', rect);
-        break;
-      case 'shopping-amazon':
-        // 购物二级·Amazon：AI 认图 → amazon.com/s?k=。
-        runShopping(cropped.dataUrl, 'amazon', rect);
-        break;
-      case 'generate': {
-        // Sonnet writes a subject description from the screenshot; the
-        // shared generator then turns that subject into the 2×2 grid image.
-        const busy = showToast(
-          'Sonnet 正在写生成 prompt… (15-40s)',
-          { spinner: true, persistent: true },
-        );
-        let base = '';
-        try {
-          base = await generatePromptViaServiceWorker(cropped.dataUrl);
-          busy.close();
-          await runGenerateFromSubject(base, rect);
-        } catch (e) {
-          busy.close();
-          const msg = e instanceof Error ? e.message : String(e);
-          console.error('[nodx Lens] generate failed:', e);
-          showToast(`生成失败: ${msg}`);
-          // If we at least got the base prompt, offer the manual hand-off
-          // (this also keeps showGenerateHandoff referenced).
-          if (base) showGenerateHandoff(cropped.dataUrl, base);
-        }
-        break;
-      }
-    }
+    await routeWheelAction(action, cropped, rect);
   } catch (e) {
     showToast(`Failed: ${e instanceof Error ? e.message : e}`);
+  }
+}
+
+/**
+ * Route a picked wheel action — shared by the fresh-marquee flow and box
+ * re-activation (`onBox` set). The wheel is user-customized, so routing
+ * is by action KIND with user params, not by fixed button identity:
+ *
+ *   prompt   → Sonnet vision with the custom prompt, streamed into the
+ *              highlight's QA card (解释/翻译/OCR… are all this kind)
+ *   search   → default 图片搜 prefix keeps the Lens fast-path; any other
+ *              URL goes AI-认图 → urlPrefix + query
+ *   save     → fresh crop saves a highlight; existing box forwards to nodx
+ *   generate → Sonnet writes the subject prompt → Gemini 2×2 grid
+ */
+async function routeWheelAction(
+  action: WheelAction,
+  cropped: { dataUrl: string; width: number; height: number },
+  rect: MarqueeRect,
+  onBox?: Highlight,
+): Promise<void> {
+  switch (action.kind) {
+    case 'prompt':
+      if (onBox) await explainHighlight(onBox, action.prompt);
+      else await runExplain(cropped, rect, action.prompt);
+      break;
+    case 'search':
+      if (action.urlPrefix === DEFAULT_IMAGE_SEARCH_PREFIX) {
+        runSearch(cropped.dataUrl, rect, onBox);
+      } else {
+        aiSearchOpen(
+          cropped.dataUrl,
+          action.urlPrefix,
+          '已搜索',
+          rect,
+          { kind: 'search', label: '自定义搜索' },
+          onBox,
+        );
+      }
+      break;
+    case 'save':
+      if (onBox) {
+        // Already captured — 保存 on an existing box means "send to nodx".
+        if (onBox.syncedToNodx) {
+          showToast('✓ 已在 nodx 灵感池');
+        } else {
+          const busy = showToast('发送到 nodx…', { spinner: true, persistent: true });
+          await forwardToDesktop(onBox);
+          busy.close();
+          showToast('✓ 已发送到 nodx');
+        }
+      } else {
+        await runSave(cropped, rect);
+      }
+      break;
+    case 'generate': {
+      // Sonnet writes a subject description from the screenshot; the
+      // shared generator then turns that subject into the 2×2 grid image.
+      const busy = showToast(
+        'Sonnet 正在写生成 prompt… (15-40s)',
+        { spinner: true, persistent: true },
+      );
+      let base = '';
+      try {
+        base = await generatePromptViaServiceWorker(cropped.dataUrl);
+        busy.close();
+        await runGenerateFromSubject(base, rect, onBox);
+      } catch (e) {
+        busy.close();
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error('[nodx Lens] generate failed:', e);
+        showToast(`生成失败: ${msg}`);
+        // If we at least got the base prompt, offer the manual hand-off
+        // (this also keeps showGenerateHandoff referenced).
+        if (base) showGenerateHandoff(cropped.dataUrl, base);
+      }
+      break;
+    }
   }
 }
 
@@ -434,37 +475,6 @@ function runSearch(dataUrl: string, rect: MarqueeRect, onBox?: Highlight): void 
     { kind: 'search', label: '以图搜索 · 图片' },
     onBox,
   );
-}
-
-/**
- * 购物：Sonnet 认出商品 → 用关键词打开购物站（Google Shopping 或 Amazon）。
- * 每次跳转都会在侧栏留一条「购物」记录，方便回看。
- */
-function runShopping(
-  dataUrl: string,
-  site: 'google' | 'amazon',
-  rect: MarqueeRect,
-  onBox?: Highlight,
-): void {
-  if (site === 'google') {
-    aiSearchOpen(
-      dataUrl,
-      'https://www.google.com/search?udm=28&q=',
-      '已在 Google Shopping 搜',
-      rect,
-      { kind: 'shopping', label: 'Google Shopping' },
-      onBox,
-    );
-  } else {
-    aiSearchOpen(
-      dataUrl,
-      'https://www.amazon.com/s?k=',
-      '已在 Amazon 搜',
-      rect,
-      { kind: 'shopping', label: 'Amazon' },
-      onBox,
-    );
-  }
 }
 
 /**
@@ -915,6 +925,7 @@ async function downscaleDataUrl(dataUrl: string, maxEdge: number): Promise<strin
 async function runExplain(
   cropped: { dataUrl: string; width: number; height: number },
   rect: MarqueeRect,
+  prompt: string,
 ): Promise<void> {
   // 1) Create the highlight + paint the yellow box (same as save).
   const highlight: Highlight = {
@@ -937,7 +948,7 @@ async function runExplain(
   };
   await addHighlight(highlight);
   drawHighlight(highlight);
-  await explainHighlight(highlight);
+  await explainHighlight(highlight, prompt);
 }
 
 /**
@@ -951,8 +962,9 @@ async function reactivateBox(
   h: Highlight,
   center: { x: number; y: number },
 ): Promise<void> {
-  const choice = await showRadialMenu(center.x, center.y);
-  if (choice === 'cancel') return;
+  const { spokes } = await getWheelConfig();
+  const action = await showWheelMenu(center.x, center.y, spokes);
+  if (action === 'cancel') return;
 
   // Viewport-space rect of the box — search needs it for elementFromPoint,
   // records use its dims.
@@ -962,54 +974,12 @@ async function reactivateBox(
     w: h.region.width,
     h: h.region.height,
   };
-  const dataUrl = h.thumbnailDataUrl;
-
-  switch (choice) {
-    case 'explain':
-      await explainHighlight(h);
-      break;
-    case 'search':
-      runSearch(dataUrl, rect, h);
-      break;
-    case 'shopping-google':
-      runShopping(dataUrl, 'google', rect, h);
-      break;
-    case 'shopping-amazon':
-      runShopping(dataUrl, 'amazon', rect, h);
-      break;
-    case 'generate': {
-      // The crop is already on hand — go straight to prompt-writing.
-      const busy = showToast('Sonnet 正在写生成 prompt… (15-40s)', {
-        spinner: true,
-        persistent: true,
-      });
-      let base = '';
-      try {
-        base = await generatePromptViaServiceWorker(dataUrl);
-        busy.close();
-        await runGenerateFromSubject(base, rect, h);
-      } catch (e) {
-        busy.close();
-        showToast(`生成失败: ${e instanceof Error ? e.message : e}`);
-        if (base) showGenerateHandoff(dataUrl, base);
-      }
-      break;
-    }
-    case 'save': {
-      // Already captured — 保存 on an existing box means "send to nodx".
-      if (h.syncedToNodx) {
-        showToast('✓ 已在 nodx 灵感池');
-      } else {
-        const busy = showToast('发送到 nodx…', { spinner: true, persistent: true });
-        await forwardToDesktop(h);
-        busy.close();
-        showToast('✓ 已发送到 nodx');
-      }
-      break;
-    }
-    default:
-      break;
-  }
+  await routeWheelAction(
+    action,
+    { dataUrl: h.thumbnailDataUrl, width: h.imageWidth, height: h.imageHeight },
+    rect,
+    h,
+  );
 }
 
 /**
@@ -1018,7 +988,10 @@ async function reactivateBox(
  * (runExplain) and by re-running explain from a box's action menu — both
  * append to the same card, so one region never spawns a duplicate.
  */
-async function explainHighlight(highlight: Highlight): Promise<void> {
+async function explainHighlight(
+  highlight: Highlight,
+  prompt: string = DEFAULT_EXPLAIN_PROMPT,
+): Promise<void> {
   const cropped = {
     dataUrl: highlight.thumbnailDataUrl,
     width: highlight.imageWidth,
@@ -1031,8 +1004,9 @@ async function explainHighlight(highlight: Highlight): Promise<void> {
     highlightId: highlight.id,
   });
 
-  // Seed the auto-question in streaming state, then kick off Sonnet.
-  const question = '这是什么？简洁回答（2–4 句），关键数字/文字精确引用。';
+  // Seed the (user-customizable) question in streaming state, then kick
+  // off Sonnet.
+  const question = prompt;
   const seed = await appendQA(highlight.url, highlight.id, question);
   if (!seed) return;
 
