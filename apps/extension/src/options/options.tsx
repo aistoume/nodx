@@ -245,7 +245,127 @@ function App() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Action-wheel editor — edits the shared wheel-config v1 (see shared/wheel.ts).
 // Explicit save (not autosave) so half-typed prompts/URLs never go live.
+// A live WheelPreview mirrors the real radial menu's visuals as you type.
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** Fixed spoke colours by position — same values as radial-menu.ts. */
+const WHEEL_BG = [
+  'rgba(59, 130, 246, 0.95)',
+  'rgba(217, 119, 6, 0.95)',
+  'rgba(16, 185, 129, 0.95)',
+  'rgba(168, 85, 247, 0.95)',
+];
+
+function polar(angleDeg: number, r: number): { x: number; y: number } {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: Math.sin(rad) * r, y: -Math.cos(rad) * r };
+}
+
+/**
+ * Live rendering of the wheel, faithful to the in-page radial menu:
+ * dashed ring, coloured circular buttons, submenu fan with dashed
+ * connectors, ✕/↩ centre. Click a submenu spoke to expand its children.
+ */
+function WheelPreview({
+  spokes,
+  expanded,
+  onExpand,
+}: {
+  spokes: WheelItem[];
+  expanded: number | null;
+  onExpand: (i: number | null) => void;
+}) {
+  const SIZE = 400;
+  const C = SIZE / 2;
+  const OUTER = 88;
+  const SUB = 152;
+  const BTN = 64;
+  const SPREAD = 32;
+
+  // Guard: the expanded spoke may have lost its children mid-edit.
+  const expIdx =
+    expanded != null && (spokes[expanded]?.children.length ?? 0) > 0 ? expanded : null;
+  const exp = expIdx != null ? spokes[expIdx]! : null;
+
+  const childPos = (j: number, count: number) => {
+    const offset = count === 1 ? 0 : (j - (count - 1) / 2) * 2 * SPREAD;
+    return polar(expIdx! * 90 + offset, SUB);
+  };
+
+  const button = (
+    item: WheelItem,
+    x: number,
+    y: number,
+    bg: string,
+    extra: { dim?: boolean; onClick?: () => void },
+  ) => (
+    <div
+      className={'wp-btn' + (extra.dim ? ' wp-dim' : '') + (extra.onClick ? ' wp-click' : '')}
+      style={{
+        left: `${C + x - BTN / 2}px`,
+        top: `${C + y - BTN / 2}px`,
+        width: `${BTN}px`,
+        height: `${BTN}px`,
+        background: bg,
+      }}
+      onClick={extra.onClick}
+    >
+      <span className="wp-emoji">{item.emoji || '❓'}</span>
+      {item.label && <span className="wp-label">{item.label}</span>}
+    </div>
+  );
+
+  return (
+    <div className="wheel-preview" style={{ width: `${SIZE}px`, height: `${SIZE}px` }}>
+      <div
+        className="wp-ring"
+        style={{
+          left: `${C - OUTER}px`,
+          top: `${C - OUTER}px`,
+          width: `${OUTER * 2}px`,
+          height: `${OUTER * 2}px`,
+        }}
+      />
+      {exp && (
+        <svg className="wp-lines" width={SIZE} height={SIZE}>
+          {exp.children.map((_, j) => {
+            const p = polar(expIdx! * 90, OUTER);
+            const c = childPos(j, exp.children.length);
+            return (
+              <line
+                key={j}
+                x1={C + p.x}
+                y1={C + p.y}
+                x2={C + c.x}
+                y2={C + c.y}
+                stroke="rgba(24,24,27,0.4)"
+                stroke-width="2"
+                stroke-dasharray="4 4"
+              />
+            );
+          })}
+        </svg>
+      )}
+      {spokes.map((s, i) => {
+        const p = polar(i * 90, OUTER);
+        const isExp = expIdx === i;
+        const dimmed = expIdx != null;
+        return button(s, p.x, p.y, WHEEL_BG[i]!, {
+          dim: dimmed,
+          onClick:
+            s.children.length > 0 ? () => onExpand(isExp ? null : i) : undefined,
+        });
+      })}
+      {exp?.children.map((c, j) => {
+        const p = childPos(j, exp.children.length);
+        return button(c, p.x, p.y, WHEEL_BG[expIdx!]!, {});
+      })}
+      <div className="wp-centre wp-click" onClick={() => onExpand(null)}>
+        {expIdx == null ? '✕' : '↩'}
+      </div>
+    </div>
+  );
+}
 
 const KIND_ORDER = ['prompt', 'search', 'save', 'generate'] as const;
 type KindKey = (typeof KIND_ORDER)[number];
@@ -335,6 +455,7 @@ function ItemFields({
 function WheelEditor({ onSaved }: { onSaved: () => void }) {
   const [cfg, setCfg] = useState<WheelConfigV1 | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [previewExpanded, setPreviewExpanded] = useState<number | null>(null);
 
   useEffect(() => {
     void getWheelConfig().then(setCfg);
@@ -366,13 +487,27 @@ function WheelEditor({ onSaved }: { onSaved: () => void }) {
   };
 
   return (
-    <section>
+    <section className="wheel-section">
       <label>{t('wheelSection')}</label>
       <p className="hint">{t('wheelHelp')}</p>
+      <div className="wheel-body">
+        <div className="wheel-preview-col">
+          <WheelPreview
+            spokes={cfg.spokes}
+            expanded={previewExpanded}
+            onExpand={setPreviewExpanded}
+          />
+          <p className="hint">{t('wheelPreviewHint')}</p>
+        </div>
+        <div className="wheel-editors">
       {cfg.spokes.map((spoke, i) => {
         const isSub = spoke.children.length > 0;
         return (
-          <div key={i} className="wheel-spoke">
+          <div
+            key={i}
+            className="wheel-spoke"
+            style={{ borderLeft: `4px solid ${WHEEL_BG[i]!}` }}
+          >
             <strong>{posName[i]}</strong>
             <div className="radios">
               <label>
@@ -479,6 +614,7 @@ function WheelEditor({ onSaved }: { onSaved: () => void }) {
       <div className="hbox">
         <button
           type="button"
+          className="wheel-primary"
           onClick={() => {
             if (!validate()) {
               setError(t('wheelInvalid'));
@@ -502,6 +638,8 @@ function WheelEditor({ onSaved }: { onSaved: () => void }) {
         >
           {t('wheelResetBtn')}
         </button>
+      </div>
+        </div>
       </div>
     </section>
   );
