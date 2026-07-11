@@ -34,13 +34,28 @@ class MainActivity : AppCompatActivity() {
     private lateinit var keyInput: EditText
     private lateinit var geminiInput: EditText
 
-    /** A collapsible BYOK row: masked "saved" status line ↔ editable field. */
-    private fun addKeyRow(root: LinearLayout, label: String, hintText: String, saved: String): EditText {
+    /**
+     * A collapsible BYOK row: masked "saved" status line ↔ editable field.
+     * Persists on EVERY keystroke — saving must not depend on the user
+     * remembering to hit the start button afterwards.
+     */
+    private fun addKeyRow(
+        root: LinearLayout, label: String, hintText: String,
+        saved: String, persist: (String) -> Unit,
+    ): EditText {
         val input = EditText(this).apply {
             hint = hintText
             setText(saved)
             visibility = if (saved.isBlank()) View.VISIBLE else View.GONE
         }
+        input.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val t = s?.toString()?.trim().orEmpty()
+                if (t.isNotBlank()) persist(t)
+            }
+        })
         root.addView(TextView(this).apply {
             text = "$label 已保存（…${saved.takeLast(4)}）— 点此修改"
             visibility = if (saved.isBlank()) View.GONE else View.VISIBLE
@@ -78,19 +93,15 @@ class MainActivity : AppCompatActivity() {
         // Saved keys stay collapsed to a masked status line — the field only
         // reappears when the user explicitly asks to change it.
         keyInput = addKeyRow(
-            root, "🔑 Anthropic key", "Anthropic API key (sk-ant-...)", Prefs.anthropicKey(this)
-        )
+            root, "🔑 Anthropic key", "Anthropic API key (sk-ant-...)",
+            Prefs.anthropicKey(this),
+        ) { Prefs.setAnthropicKey(this, it) }
         geminiInput = addKeyRow(
-            root, "🎨 Google AI key", "Google AI key（🎨生成用，AIza…，可留空）", Prefs.geminiKey(this)
-        )
+            root, "🎨 Google AI key", "Google AI key（🎨生成用，AIza…，可留空）",
+            Prefs.geminiKey(this),
+        ) { Prefs.setGeminiKey(this, it) }
         val start = Button(this).apply { text = "启动 nodx 悬浮球" }
         start.setOnClickListener {
-            if (keyInput.visibility == View.VISIBLE) {
-                Prefs.setAnthropicKey(this, keyInput.text.toString().trim())
-            }
-            if (geminiInput.visibility == View.VISIBLE) {
-                Prefs.setGeminiKey(this, geminiInput.text.toString().trim())
-            }
             if (Prefs.anthropicKey(this).isBlank()) {
                 toast("请先填 Anthropic key")
                 return@setOnClickListener
