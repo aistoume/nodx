@@ -29,6 +29,7 @@ class FloatingBubbleService : Service() {
     companion object {
         const val EXTRA_RESULT_CODE = "result_code"
         const val EXTRA_RESULT_DATA = "result_data"
+        const val ACTION_STOP = "solutions.aicon.nodx.STOP"
         private const val CHANNEL_ID = "nodx_bubble"
         private const val NOTIF_ID = 1001
 
@@ -45,6 +46,11 @@ class FloatingBubbleService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            // 通知栏「停止」/ 主界面停止按钮 → 结束录屏会话。
+            stopSelf()
+            return START_NOT_STICKY
+        }
         val code = intent?.getIntExtra(EXTRA_RESULT_CODE, 0) ?: 0
         @Suppress("DEPRECATION")
         val data = intent?.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
@@ -78,10 +84,18 @@ class FloatingBubbleService : Service() {
                 NotificationChannel(CHANNEL_ID, getString(R.string.channel_name), NotificationManager.IMPORTANCE_LOW)
             )
         }
+        val stopPending = android.app.PendingIntent.getService(
+            this, 0,
+            Intent(this, FloatingBubbleService::class.java).setAction(ACTION_STOP),
+            android.app.PendingIntent.FLAG_IMMUTABLE
+        )
         val notif: Notification = Notification.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notif_title))
             .setContentText(getString(R.string.notif_text))
             .setSmallIcon(R.drawable.ic_bubble)
+            .addAction(
+                Notification.Action.Builder(null, getString(R.string.notif_stop), stopPending).build()
+            )
             .build()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)

@@ -123,6 +123,20 @@ class MainActivity : AppCompatActivity() {
                 ensureOverlayThenProjection()
             }
         })
+        root.addView(Button(this).apply {
+            text = "🛑 停止悬浮球（结束录屏）"
+            setOnClickListener {
+                if (FloatingBubbleService.isRunning) {
+                    startService(
+                        Intent(this@MainActivity, FloatingBubbleService::class.java)
+                            .setAction(FloatingBubbleService.ACTION_STOP)
+                    )
+                    toast("已停止，录屏会话已结束")
+                } else {
+                    toast("悬浮球未在运行")
+                }
+            }
+        })
 
         // ── 最近添加：横排预览，点图看大图；「收集库 ▸」进全量网格 ──
         val header = LinearLayout(this).apply {
