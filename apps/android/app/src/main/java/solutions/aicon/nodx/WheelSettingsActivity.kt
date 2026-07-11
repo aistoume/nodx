@@ -36,6 +36,9 @@ class WheelSettingsActivity : AppCompatActivity() {
         )
     }
 
+    /** Ping the live preview whenever any form value changes. */
+    private var onFormChanged: () -> Unit = {}
+
     /** One emoji+label+kind+param row — used for spokes and children alike. */
     private inner class ItemEditor(prefill: WheelItem?) {
         val root = LinearLayout(this@WheelSettingsActivity).apply { orientation = LinearLayout.VERTICAL }
@@ -75,10 +78,19 @@ class WheelSettingsActivity : AppCompatActivity() {
                 }
             )
             kind.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) =
-                    syncParam()
+                override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                    syncParam(); onFormChanged()
+                }
                 override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
             }
+            val watcher = object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+                override fun afterTextChanged(s: android.text.Editable?) = onFormChanged()
+            }
+            emoji.addTextChangedListener(watcher)
+            label.addTextChangedListener(watcher)
+            param.addTextChangedListener(watcher)
             syncParam()
         }
 
@@ -110,6 +122,21 @@ class WheelSettingsActivity : AppCompatActivity() {
                 Kind.GENERATE -> WheelAction.Generate
             }
             return WheelItem(e, label.text.toString().trim(), action)
+        }
+
+        /** No-toast variant for the live preview: never fails, fills gaps. */
+        fun buildLenient(children: List<WheelItem> = emptyList()): WheelItem {
+            val e = emoji.text.toString().trim().ifEmpty { "❓" }
+            val l = label.text.toString().trim()
+            if (children.isNotEmpty()) return WheelItem(e, l, null, children)
+            val p = param.text.toString().trim()
+            val action = when (Kind.entries[kind.selectedItemPosition]) {
+                Kind.PROMPT -> WheelAction.Prompt(p)
+                Kind.SEARCH -> WheelAction.Search(p)
+                Kind.SAVE -> WheelAction.Save
+                Kind.GENERATE -> WheelAction.Generate
+            }
+            return WheelItem(e, l, action)
         }
     }
 
@@ -159,6 +186,7 @@ class WheelSettingsActivity : AppCompatActivity() {
                 addChildBtn.visibility = if (sub) View.VISIBLE else View.GONE
                 self.showActionUi(!sub)
                 if (sub && childEditors.isEmpty()) addChild(null)
+                onFormChanged()
             }
             if (prefill.children.isNotEmpty()) {
                 prefill.children.forEach { addChild(it) }
@@ -178,12 +206,14 @@ class WheelSettingsActivity : AppCompatActivity() {
             wrap.addView(Button(this@WheelSettingsActivity).apply {
                 text = getString(R.string.wheel_remove)
                 setOnClickListener {
-                    if (childEditors.size > 1) { childEditors.remove(editor); childrenBox.removeView(wrap) }
-                    else toast(getString(R.string.wheel_err_child))
+                    if (childEditors.size > 1) {
+                        childEditors.remove(editor); childrenBox.removeView(wrap); onFormChanged()
+                    } else toast(getString(R.string.wheel_err_child))
                 }
             })
             childEditors.add(editor)
             childrenBox.addView(wrap)
+            onFormChanged()
         }
 
         fun build(): WheelItem? {
@@ -194,6 +224,48 @@ class WheelSettingsActivity : AppCompatActivity() {
             } else {
                 self.build()
             }
+        }
+
+        fun buildLenient(): WheelItem =
+            if (modeGroup.checkedRadioButtonId == rbChildren.id) {
+                self.buildLenient(childEditors.map { it.buildLenient() })
+            } else {
+                self.buildLenient()
+            }
+    }
+
+    /**
+     * Live preview — literally the shipping RadialMenu rendered into a
+     * small canvas from the form's current (lenient) state. Tapping a
+     * submenu spoke fans it out; ↩ collapses; picks are inert here.
+     */
+    private inner class WheelPreviewView(context: android.content.Context) : View(context) {
+        var provider: (() -> List<WheelItem>)? = null
+        private var menu: RadialMenu? = null
+
+        fun refresh() { menu = null; invalidate() }
+
+        override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) { menu = null }
+
+        override fun onDraw(canvas: android.graphics.Canvas) {
+            super.onDraw(canvas)
+            canvas.drawColor(android.graphics.Color.argb(14, 128, 128, 128))
+            val items = provider?.invoke() ?: return
+            if (menu == null && width > 0 && height > 0) {
+                menu = RadialMenu(context, width, height, width / 2f, height / 2f, items)
+            }
+            menu?.draw(canvas)
+        }
+
+        @android.annotation.SuppressLint("ClickableViewAccessibility")
+        override fun onTouchEvent(e: android.view.MotionEvent): Boolean {
+            if (e.action == android.view.MotionEvent.ACTION_UP) {
+                when (menu?.onTap(e.x, e.y)) {
+                    is RadialMenu.Hit.Expanded, RadialMenu.Hit.Back -> invalidate()
+                    else -> {}
+                }
+            }
+            return true
         }
     }
 
@@ -210,11 +282,28 @@ class WheelSettingsActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(32, 32, 32, 64)
         }
+        // Live preview on top — the real RadialMenu drawn from form state.
+        val preview = WheelPreviewView(this)
+        list.addView(
+            preview,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                (340 * resources.displayMetrics.density).toInt(),
+            ),
+        )
+        list.addView(TextView(this).apply {
+            text = getString(R.string.wheel_preview_hint)
+            textSize = 12f
+            setPadding(0, 12, 0, 24)
+        })
+
         val titles = listOf(
             R.string.wheel_pos_up, R.string.wheel_pos_right,
             R.string.wheel_pos_down, R.string.wheel_pos_left,
         )
         spokeEditors = config.mapIndexed { i, spoke -> SpokeEditor(list, titles[i], spoke) }
+        preview.provider = { spokeEditors.map { it.buildLenient() } }
+        onFormChanged = { preview.refresh() }
         list.addView(Button(this).apply {
             text = getString(R.string.wheel_save)
             setOnClickListener {

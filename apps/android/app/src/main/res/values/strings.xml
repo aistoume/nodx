@@ -79,4 +79,5 @@
     <string name="wheel_err_emoji">Every button needs an emoji icon</string>
     <string name="wheel_err_param">A prompt/URL parameter is missing</string>
     <string name="wheel_err_child">A submenu needs at least 1 sub-item</string>
+    <string name="wheel_preview_hint">Live preview — mirrors your edits; tap a submenu spoke to fan it out, tap ↩ to collapse.</string>
 </resources>

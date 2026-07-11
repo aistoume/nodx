@@ -79,4 +79,5 @@
     <string name="wheel_err_emoji">每个按钮都需要 emoji 图标</string>
     <string name="wheel_err_param">提示词 / URL 参数没填</string>
     <string name="wheel_err_child">子菜单至少要 1 个子项</string>
+    <string name="wheel_preview_hint">实时预览 — 编辑即时反映；点带子菜单的辐条展开，点 ↩ 收回。</string>
 </resources>

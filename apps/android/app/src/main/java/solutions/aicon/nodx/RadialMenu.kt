@@ -23,7 +23,14 @@ import kotlin.math.sin
  * 1 and ↩ (back) at level 2. Pure model+draw+hit-test — the owning View
  * routes touches and invalidates.
  */
-class RadialMenu(context: Context, screenW: Int, screenH: Int, wantX: Float, wantY: Float) {
+class RadialMenu(
+    context: Context,
+    screenW: Int,
+    screenH: Int,
+    wantX: Float,
+    wantY: Float,
+    items: List<WheelItem> = WheelConfig.load(context),
+) {
 
     private class Option(
         val emoji: String,
@@ -64,7 +71,7 @@ class RadialMenu(context: Context, screenW: Int, screenH: Int, wantX: Float, wan
     private val spokeColors = intArrayOf(
         0xF23B82F6.toInt(), 0xF2D97706.toInt(), 0xF210B981.toInt(), 0xF2A855F7.toInt(),
     )
-    private val options: List<Option> = WheelConfig.load(context).mapIndexed { i, item ->
+    private val options: List<Option> = items.mapIndexed { i, item ->
         val color = spokeColors[i]
         Option(
             item.emoji, item.label, i * 90f, color,
