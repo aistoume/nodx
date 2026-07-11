@@ -46,10 +46,19 @@ class RadialMenu(context: Context, screenW: Int, screenH: Int, wantX: Float, wan
     private val density = context.resources.displayMetrics.density
     private fun dp(v: Float) = v * density
 
-    private val outerRadius = dp(88f)
-    private val subRadius = dp(150f)
-    private val buttonR = dp(32f)   // 64dp button
-    private val centreR = dp(20f)   // 40dp centre
+    // Design sizes assume a ~420dp-wide screen. On narrower/denser screens
+    // (e.g. Galaxy A16 is 384dp wide) the full wheel wouldn't fit and the
+    // centre clamp range inverts — scale everything down to fit instead.
+    private val scale: Float = run {
+        val wantPad = dp(150f + 32f + 12f)              // subRadius + buttonR + margin
+        minOf(1f, minOf(screenW, screenH) / 2f / wantPad)
+    }
+    private fun sdp(v: Float) = dp(v) * scale
+
+    private val outerRadius = sdp(88f)
+    private val subRadius = sdp(150f)
+    private val buttonR = sdp(32f)  // 64dp button
+    private val centreR = sdp(20f)  // 40dp centre
     private val subSpread = 32f     // ± degrees children fan from parent
 
     // Colours match the extension's rgba(...,0.95) spokes.
@@ -71,7 +80,8 @@ class RadialMenu(context: Context, screenW: Int, screenH: Int, wantX: Float, wan
     val cy: Float
 
     init {
-        val pad = subRadius + buttonR + dp(12f)
+        // Never let the clamp range invert, whatever the screen/rounding.
+        val pad = minOf(subRadius + buttonR + sdp(12f), screenW / 2f, screenH / 2f)
         cx = wantX.coerceIn(pad, screenW - pad)
         cy = wantY.coerceIn(pad, screenH - pad)
     }
@@ -94,14 +104,14 @@ class RadialMenu(context: Context, screenW: Int, screenH: Int, wantX: Float, wan
         pathEffect = DashPathEffect(floatArrayOf(dp(4f), dp(4f)), 0f)
     }
     private val emojiPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textAlign = Paint.Align.CENTER; textSize = dp(24f)
+        textAlign = Paint.Align.CENTER; textSize = sdp(24f)
     }
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textAlign = Paint.Align.CENTER; textSize = dp(10f); color = Color.WHITE; isFakeBoldText = true
+        textAlign = Paint.Align.CENTER; textSize = sdp(10f); color = Color.WHITE; isFakeBoldText = true
     }
     private val centrePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(230, 24, 24, 27) }
     private val centreGlyph = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textAlign = Paint.Align.CENTER; textSize = dp(16f); color = Color.WHITE
+        textAlign = Paint.Align.CENTER; textSize = sdp(16f); color = Color.WHITE
     }
 
     private fun posOf(angleDeg: Float, radius: Float): Pair<Float, Float> {
@@ -145,8 +155,8 @@ class RadialMenu(context: Context, screenW: Int, screenH: Int, wantX: Float, wan
         if (opt.label.isEmpty()) {
             canvas.drawText(opt.emoji, x, y - (emojiPaint.ascent() + emojiPaint.descent()) / 2f, emojiPaint)
         } else {
-            canvas.drawText(opt.emoji, x, y - dp(4f), emojiPaint)
-            canvas.drawText(opt.label, x, y + dp(14f), labelPaint)
+            canvas.drawText(opt.emoji, x, y - sdp(4f), emojiPaint)
+            canvas.drawText(opt.label, x, y + sdp(14f), labelPaint)
         }
     }
 
