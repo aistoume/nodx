@@ -13,8 +13,10 @@ import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import android.graphics.BitmapFactory
 import kotlinx.coroutines.withContext
 import solutions.aicon.nodx.ai.AnthropicClient
+import solutions.aicon.nodx.ai.GeminiClient
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.URLEncoder
@@ -45,8 +47,7 @@ object Actions {
             RadialMenu.Choice.SHOPPING_AMAZON ->
                 aiSearchOpen(context, crop, "https://www.amazon.com/s?k=", "已在 Amazon 搜")
             RadialMenu.Choice.SAVE -> save(context, crop)
-            RadialMenu.Choice.GENERATE ->
-                toast(context, "🎨 生成暂未接入（需 Gemini 图像模型）")
+            RadialMenu.Choice.GENERATE -> generate(context, crop)
         }
     }
 
@@ -81,28 +82,93 @@ object Actions {
     /** 💡 保存：crop → 相册 Pictures/nodx（API 29+ 走 MediaStore，28- 存应用目录）。 */
     private fun save(context: Context, crop: Bitmap) {
         CoroutineScope(Dispatchers.IO).launch {
-            val name = "nodx-${System.currentTimeMillis()}.png"
-            val ok = runCatching {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    val values = ContentValues().apply {
-                        put(MediaStore.Images.Media.DISPLAY_NAME, name)
-                        put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-                        put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/nodx")
-                    }
-                    val uri = context.contentResolver.insert(
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values
-                    ) ?: error("MediaStore insert 失败")
-                    context.contentResolver.openOutputStream(uri)!!.use {
-                        crop.compress(Bitmap.CompressFormat.PNG, 100, it)
-                    }
-                } else {
-                    val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "nodx")
-                    dir.mkdirs()
-                    File(dir, name).outputStream().use { crop.compress(Bitmap.CompressFormat.PNG, 100, it) }
-                }
-            }.isSuccess
-            mainToast(context, if (ok) "💡 已存入相册 Pictures/nodx（app 收集库可查看）" else "保存失败")
+            val uri = storeToGallery(context, crop, "nodx")
+            mainToast(context, if (uri != null) "💡 已存入相册 Pictures/nodx（app 收集库可查看）" else "保存失败")
         }
+    }
+
+    /**
+     * 🎨 生成 — the extension's chain, ported: Sonnet writes a vivid subject
+     * prompt from the crop → Gemini renders the 2×2 four-style grid →
+     * downscale → gallery (= 收集库) → open in the system viewer.
+     */
+    private fun generate(context: Context, crop: Bitmap) {
+        val aKey = Prefs.anthropicKey(context)
+        val gKey = Prefs.geminiKey(context)
+        if (aKey.isBlank()) { toast(context, "请先在主界面填 Anthropic key"); return }
+        if (gKey.isBlank()) {
+            toast(context, "🎨 生成需要 Google AI key — 回 nodx 主界面填（aistudio.google.com 免费申请）", long = true)
+            return
+        }
+        val b64 = toBase64Png(crop)
+        toast(context, "🎨 Sonnet 正在写生成 prompt…（15–40s）", long = true)
+        CoroutineScope(Dispatchers.IO).launch {
+            val subject = runCatching { AnthropicClient.describeForGeneration(aKey, b64) }
+                .getOrElse { mainToast(context, "写 prompt 失败: ${it.message}", long = true); return@launch }
+            mainToast(context, "🎨 Gemini 出图中…（一张图·2×2 四格）", long = true)
+            val bytes = runCatching { GeminiClient.generateImage(gKey, buildGridPrompt(subject)) }
+                .getOrElse { mainToast(context, "生成失败: ${it.message}", long = true); return@launch }
+            val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                ?: run { mainToast(context, "生成结果解码失败"); return@launch }
+            val uri = storeToGallery(context, downscale(bmp, 640), "nodx-gen")
+            withContext(Dispatchers.Main) {
+                if (uri == null) { toast(context, "🎨 生成成功但保存失败"); return@withContext }
+                toast(context, "🎨 已生成并存入收集库")
+                if (uri.scheme == "content") runCatching {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW).setDataAndType(uri, "image/*")
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    )
+                }
+            }
+        }
+    }
+
+    /** Same 2×2 four-style grid instruction as the extension's buildGridPrompt. */
+    private fun buildGridPrompt(subject: String): String =
+        """Create ONE single image composed as a clean 2×2 grid of four equal quadrants. Each quadrant shows the SAME subject rendered in a different visual style. Keep the subject identical across all four quadrants.
+
+Subject: $subject
+
+- Top-left quadrant: a realistic e-commerce PRODUCT PHOTOGRAPH of the subject as a physical, purchasable object on a plain seamless white studio background, soft even lighting, sharp focus, realistic materials.
+- Top-right quadrant: a hand-drawn ink-and-watercolour illustration.
+- Bottom-left quadrant: a polished 3D render with soft global illumination and subtle reflections.
+- Bottom-right quadrant: minimalist black line art on a plain white background, a few clean strokes, no shading.
+
+Lay the four quadrants out as an even, clearly separated 2×2 grid. Keep it a small, compact graphic."""
+
+    private fun downscale(b: Bitmap, maxEdge: Int): Bitmap {
+        val longest = maxOf(b.width, b.height)
+        if (longest <= maxEdge) return b
+        val s = maxEdge.toFloat() / longest
+        return Bitmap.createScaledBitmap(b, (b.width * s).toInt(), (b.height * s).toInt(), true)
+    }
+
+    /** Write a PNG into Pictures/nodx; returns its content Uri (file Uri on API <29). */
+    private fun storeToGallery(context: Context, bmp: Bitmap, prefix: String): android.net.Uri? {
+        val name = "$prefix-${System.currentTimeMillis()}.png"
+        return runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, name)
+                    put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                    put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/nodx")
+                }
+                val uri = context.contentResolver.insert(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values
+                ) ?: error("MediaStore insert 失败")
+                context.contentResolver.openOutputStream(uri)!!.use {
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, it)
+                }
+                uri
+            } else {
+                val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "nodx")
+                dir.mkdirs()
+                val f = File(dir, name)
+                f.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                Uri.fromFile(f)
+            }
+        }.getOrNull()
     }
 
     /**

@@ -29,6 +29,17 @@ object AnthropicClient {
             "Identify the single product shown in this image. Reply with ONLY a concise shopping search query — brand + product name + key attribute (e.g. \"Seven Minerals aloe vera gel 12oz\"). 3-8 words, no punctuation, no quotes, no explanation. If it is not obviously a buyable product, still return the best short search term for the main object.",
         ).trim().removeSurrounding("\"").removeSurrounding("'").replace(Regex("\\s+"), " ").trim()
 
+    /**
+     * Write a vivid image-generation prompt from the crop — same prompt and
+     * model tier (Sonnet, vision quality matters) as the extension's
+     * generatePromptFromImage.
+     */
+    fun describeForGeneration(apiKey: String, imageBase64: String, model: String = "claude-sonnet-5"): String =
+        visionCall(
+            apiKey, model, imageBase64,
+            "Look at this image carefully. Write a detailed, vivid image-generation prompt (English, one paragraph, 60–120 words) that captures the subject, composition, style, colours, lighting, mood, and any distinctive details. The prompt should be usable in Midjourney / DALL-E / Gemini image generation. Do NOT prefix with 'a prompt for' — just write the prompt itself.",
+        ).trim()
+
     private fun visionCall(apiKey: String, model: String, imageBase64: String, prompt: String): String {
         val content = JSONArray()
             .put(JSONObject().put("type", "image").put("source",

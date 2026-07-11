@@ -32,6 +32,24 @@ class MainActivity : AppCompatActivity() {
         getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     }
     private lateinit var keyInput: EditText
+    private lateinit var geminiInput: EditText
+
+    /** A collapsible BYOK row: masked "saved" status line ↔ editable field. */
+    private fun addKeyRow(root: LinearLayout, label: String, hintText: String, saved: String): EditText {
+        val input = EditText(this).apply {
+            hint = hintText
+            setText(saved)
+            visibility = if (saved.isBlank()) View.VISIBLE else View.GONE
+        }
+        root.addView(TextView(this).apply {
+            text = "$label 已保存（…${saved.takeLast(4)}）— 点此修改"
+            visibility = if (saved.isBlank()) View.GONE else View.VISIBLE
+            setPadding(0, 24, 0, 24)
+            setOnClickListener { visibility = View.GONE; input.visibility = View.VISIBLE }
+        })
+        root.addView(input)
+        return input
+    }
 
     // Android 13+: without this the foreground-service notification is
     // silently hidden (the service itself still runs). Result is not
@@ -57,26 +75,21 @@ class MainActivity : AppCompatActivity() {
         root.addView(TextView(this).apply {
             text = "nodx · 系统级思考助手"; textSize = 20f
         })
-        // Saved key stays collapsed to a masked status line — the field only
+        // Saved keys stay collapsed to a masked status line — the field only
         // reappears when the user explicitly asks to change it.
-        val saved = Prefs.anthropicKey(this)
-        keyInput = EditText(this).apply {
-            hint = "Anthropic API key (sk-ant-...)"
-            setText(saved)
-            visibility = if (saved.isBlank()) View.VISIBLE else View.GONE
-        }
-        val keyStatus = TextView(this).apply {
-            text = "🔑 API key 已保存（…${saved.takeLast(4)}）— 点此修改"
-            visibility = if (saved.isBlank()) View.GONE else View.VISIBLE
-            setPadding(0, 24, 0, 24)
-            setOnClickListener { visibility = View.GONE; keyInput.visibility = View.VISIBLE }
-        }
-        root.addView(keyStatus)
-        root.addView(keyInput)
+        keyInput = addKeyRow(
+            root, "🔑 Anthropic key", "Anthropic API key (sk-ant-...)", Prefs.anthropicKey(this)
+        )
+        geminiInput = addKeyRow(
+            root, "🎨 Google AI key", "Google AI key（🎨生成用，AIza…，可留空）", Prefs.geminiKey(this)
+        )
         val start = Button(this).apply { text = "启动 nodx 悬浮球" }
         start.setOnClickListener {
             if (keyInput.visibility == View.VISIBLE) {
                 Prefs.setAnthropicKey(this, keyInput.text.toString().trim())
+            }
+            if (geminiInput.visibility == View.VISIBLE) {
+                Prefs.setGeminiKey(this, geminiInput.text.toString().trim())
             }
             if (Prefs.anthropicKey(this).isBlank()) {
                 toast("请先填 Anthropic key")
