@@ -85,6 +85,10 @@ class MainActivity : AppCompatActivity() {
             ensureOverlayThenProjection()
         }
         root.addView(start)
+        root.addView(Button(this).apply {
+            text = "📁 收集库（已保存的截图）"
+            setOnClickListener { startActivity(Intent(this@MainActivity, GalleryActivity::class.java)) }
+        })
         root.addView(TextView(this).apply {
             text = "步骤：① 授予“显示在其他应用上层” ② 允许屏幕录制 → 悬浮球出现，点它截屏 → 框选 → 动作轮（🔍解释/搜索 · 💡保存 · 🛒购物 · 🎨生成）。"
             setPadding(0, 40, 0, 0)

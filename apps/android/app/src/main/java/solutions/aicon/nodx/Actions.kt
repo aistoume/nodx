@@ -101,7 +101,7 @@ object Actions {
                     File(dir, name).outputStream().use { crop.compress(Bitmap.CompressFormat.PNG, 100, it) }
                 }
             }.isSuccess
-            mainToast(context, if (ok) "💡 已存入相册 Pictures/nodx" else "保存失败")
+            mainToast(context, if (ok) "💡 已存入相册 Pictures/nodx（app 收集库可查看）" else "保存失败")
         }
     }
 
