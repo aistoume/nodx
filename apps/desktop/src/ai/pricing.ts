@@ -7,7 +7,9 @@ import { MODELS } from '@nodx/ai';
  */
 export const PRICE_PER_MTOK: Record<string, { input: number; output: number }> =
   {
-    [MODELS.sonnet]: { input: 3, output: 15 },
+    // MODELS.sonnet = claude-opus-4-8 since 2026-07-08 (~5x the old
+    // sonnet-4-6 rates). Stale $3/$15 here was under-reporting cost 5x.
+    [MODELS.sonnet]: { input: 15, output: 75 },
     [MODELS.haiku]: { input: 1, output: 5 },
   };
 
