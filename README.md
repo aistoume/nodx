@@ -1,16 +1,73 @@
+<div align="center">
+
+<img src=".github/assets/hero.png" alt="nodx — AI 陪你想，而不是替你想 / A decision-thinking workspace where AI helps you think more, not less" width="100%" />
+
+<br/>
+
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
+[![Release](https://img.shields.io/github/v/release/aistoume/nodx?color=f59e0b)](https://github.com/aistoume/nodx/releases)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-nodx%20Lens-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/ipljkbefemodjbihcnmmaallcfndmild)
+[![Platforms](https://img.shields.io/badge/platforms-macOS%20·%20Chrome%20·%20Android-111827)](https://aicon.solutions/nodx/)
+
+**[Website](https://aicon.solutions/nodx/)** · **[Download desktop](https://github.com/aistoume/nodx/releases)** · **[Chrome extension](https://chromewebstore.google.com/detail/ipljkbefemodjbihcnmmaallcfndmild)** · **[Demo videos](https://www.youtube.com/playlist?list=PLLuJxzl3vakU)**
+
+</div>
+
+---
+
 # nodx
 
 > AI-assisted decision-thinking workspace. The user drives the depth; AI organises the result.
 
-A local-first desktop app that helps managers turn fuzzy decision questions into structured, actionable thinking. Instead of one-shot chat, nodx walks the user through:
+A local-first desktop app that helps managers turn fuzzy decision questions into structured, actionable thinking — plus a Chrome extension and an Android app that turn anything you *see* into AI action and feed it back into your thinking. Instead of one-shot chat, nodx walks you through:
 
-1. **Survey** — AI proposes 5–7 candidate factors; user picks 3–5 (or types their own).
+1. **Survey** — AI proposes 5–7 candidate factors; you pick 3–5 (or type your own).
 2. **First-principles decomposition** — selected factors expand into essence + sub-questions.
-3. **Thinking document** — Sonnet drafts a Google-Doc-style markdown deliverable based on the decomposition. Editable in-place via TipTap.
-4. **Selection refinement** — highlight any passage to ask AI for a deeper version, accept / reject the proposed replacement.
-5. **Annotations** — yellow notes / blue explanations / (later) green atomic actions / purple cross-references float on the right margin, anchored to the selected text.
+3. **Thinking document** — AI drafts a Google-Doc-style markdown deliverable. Editable in-place, with Mermaid diagrams and AI illustrations.
+4. **Expert-panel debates** — 3–5 auto-cast experts (devil's advocate mandatory) argue your question over multiple rounds and converge on a Local Maximum with confidence and dissent conditions.
+5. **A thinking library that compounds** — finished decisions are abstracted and indexed; new questions retrieve similar past cases and only debate the diff.
 
-The "chat" channel sits at the bottom of the document for free-form follow-up; the document is the artefact.
+## 🎬 See it in action
+
+| nodx Lens for Chrome — 40s tour | nodx Lens Android 1.0 |
+|:---:|:---:|
+| [<img src="https://img.youtube.com/vi/7nnm_P5aZ5k/maxresdefault.jpg" alt="nodx Lens — turn anything you see on a webpage into AI action" />](https://youtu.be/7nnm_P5aZ5k) | [<img src="https://img.youtube.com/vi/V-QNjle1uBk/maxresdefault.jpg" alt="nodx Lens Android — box anything on your phone, AI explains, shops & generates" />](https://youtu.be/V-QNjle1uBk) |
+
+<sub>More on the [Nodx playlist ▸](https://www.youtube.com/playlist?list=PLLuJxzl3vakU)</sub>
+
+## The ecosystem
+
+| App | What it does | Status |
+|---|---|---|
+| 🖥 [**nodx desktop**](./apps/desktop) | The thinking workspace: Survey → decomposition → document → expert panels → auto-recursion → case library | macOS release on the [Releases page](https://github.com/aistoume/nodx/releases) |
+| 🌐 [**nodx Lens**](./apps/extension) | Chrome MV3 extension: select text or box any page region → customizable action wheel (explain / search / shop / generate / save) | [Chrome Web Store](https://chromewebstore.google.com/detail/ipljkbefemodjbihcnmmaallcfndmild) · v1.0 |
+| 🤖 [**Lens for Android**](./apps/android) | Same action wheel, system-wide on your phone via a floating bubble | v1.0 — [APK on the website](https://aicon.solutions/nodx/lens/), Play listing in review |
+| 🧲 [**Lens for Mac**](./apps/lens-mac) | ⌥+E select-to-explain anywhere on macOS | merged into nodx desktop |
+| 🏠 [**Website**](./apps/web) | aicon.solutions — downloads, docs, pricing | live |
+
+## 🎡 nodx Lens — the action wheel
+
+Select text or box any region; the same four-spoke wheel appears. Every spoke — icon, name, colour, action, prompt, submenu — is editable, with a live preview.
+
+| | |
+|:---:|:---:|
+| <img src=".github/assets/lens-wheel.png" alt="Action wheel over a boxed page region" /> <br/><sub>Box any region → the wheel appears</sub> | <img src=".github/assets/lens-box-hub.png" alt="Capture boxes stay on the page as action hubs" /> <br/><sub>Boxes stay on the page as re-usable action hubs</sub> |
+| <img src=".github/assets/lens-wheel-editor.png" alt="Wheel editor with live preview" /> <br/><sub>Customize every spoke, live preview while you edit</sub> | <img src=".github/assets/lens-sidepanel.png" alt="Side panel with per-capture Q&A threads and history" /> <br/><sub>The side panel remembers every capture and Q&A thread</sub> |
+
+## 🤖 Lens for Android
+
+<div align="center">
+<img src=".github/assets/android-banner.png" alt="nodx Lens for Android — box anything on your screen" width="720" />
+</div>
+
+<table align="center"><tr>
+<td><img src=".github/assets/android-1-runtab.png" alt="Android run tab" width="200"/></td>
+<td><img src=".github/assets/android-2-bubble-on-page.png" alt="Floating bubble over any app" width="200"/></td>
+<td><img src=".github/assets/android-3-wheel-over-apple.png" alt="Action wheel over a boxed region" width="200"/></td>
+<td><img src=".github/assets/android-4-home-with-log.png" alt="Home with action log" width="200"/></td>
+</tr></table>
+
+Floating bubble → box anything on screen → the same wheel: explain, search, shop, generate. Works system-wide via the accessibility screen-capture path (no per-session re-authorization).
 
 ## Status
 
@@ -21,12 +78,14 @@ Post-M1, mid-M2. Highlights:
 - ✅ Expert-panel debate engine (multi-expert, devil's advocate, Local-Maximum convergence, merge/replace back into the doc)
 - ✅ CBR thinking library: abstraction → embedding index → retrieve → fork-and-adapt; "debate only the diff" panels
 - ✅ Auto-recursion engine: PM AI spawns sub-discussions until actionable, Auto-Run with per-layer preview + rollback
-- ✅ Replay ("nothing gets lost"): recap cards, reasoning traces, open-question 卡点 across sessions
+- ✅ Replay ("nothing gets lost"): recap cards, reasoning traces, open-question blockers across sessions
 - ✅ React Flow network graph with material nodes, blank canvases, material synthesis, thinking/execution node splits
+- ✅ Images in thinking: Mermaid diagrams, inspiration-pool images, AI-generated illustrations in the document
 - ✅ Decision-report export + `.nodx` data bundles (full-fidelity subtree transfer)
 - ✅ i18n (zh/en), ⌥+E system-wide capture, Windows CI
-- ✅ **nodx Lens** Chrome extension 0.9 (`apps/extension`): action wheel on text or region — explain / search / shop / generate, box-as-action-hub, side-panel history
-- ⏳ Auto-recursion Sprint C, drafts drawer, @-mentions UI; Safari + Android ports in planning
+- ✅ **nodx Lens 1.0**: fully customizable wheel, 5 AI providers (Claude / GPT / Gemini / OpenRouter / local gateway), 13 search presets, quick model switcher
+- ✅ **Android 1.0**: floating bubble, wheel, action log, 4 providers
+- ⏳ Auto-recursion Sprint C, drafts drawer, @-mentions UI; Safari port in planning
 
 Product spec and design docs are maintained in a private companion repo.
 
@@ -64,6 +123,8 @@ Workspaces:
 | [`packages/models`](./packages/models) | Zod-typed domain entities — Topic / Message / Comment / Edge / DraftItem / TopicDocument |
 | [`packages/ai`](./packages/ai) | Versioned prompt builders, output schemas, gateway client (`complete` / `completeText` / `pingGateway`) |
 | [`apps/desktop`](./apps/desktop) | The Tauri/React app the user sees |
+| [`apps/extension`](./apps/extension) | nodx Lens Chrome MV3 extension |
+| [`apps/android`](./apps/android) | Lens for Android (Kotlin) |
 | [`workers/ai-gateway`](./workers/ai-gateway) | The Cloudflare Worker that holds the Anthropic key and forwards prompts |
 
 ## Quick start
@@ -155,8 +216,8 @@ cd apps/desktop/src-tauri && cargo check
 | Styling | Tailwind v4 (Oxide) | CSS-native `@theme`, no JS config, fast builds |
 | Editor | TipTap 2 + ProseMirror | richest collab story for v3 (Yjs integration) |
 | Local DB | SQLite via Tauri SQL plugin | offline-first, foreign keys, triggers |
-| AI gateway | Cloudflare Workers | edge-deploy, SSE streaming, generous free tier |
-| AI providers | Anthropic Sonnet 4.6 + Haiku 4.5 | structured reasoning + cheap hot-path |
+| AI gateway | Cloudflare Workers / in-proc Rust | edge-deploy or fully local, SSE streaming |
+| AI providers | Claude (Opus 4.8 core, Haiku 4.5 light) + Gemini (embeddings, image gen) | structured reasoning + cheap hot-path |
 | Sync (future) | Yjs over WebSocket → Supabase Realtime | CRDT, mature React story |
 
 Full rationale in the private product spec.
@@ -166,9 +227,13 @@ Full rationale in the private product spec.
 ```
 nodx/
 ├── apps/
-│   └── desktop/           # Tauri 2.11 + React 19 frontend
-│       ├── src/           #   TipTap doc, Survey card, right-panel anchors
-│       └── src-tauri/     #   Rust backend, SQLite migrations
+│   ├── desktop/           # Tauri 2.11 + React 19 — the thinking workspace
+│   │   ├── src/           #   TipTap doc, Survey card, panels, network graph
+│   │   └── src-tauri/     #   Rust backend, SQLite migrations, in-proc AI gateway
+│   ├── extension/         # nodx Lens — Chrome MV3 extension
+│   ├── android/           # Lens for Android (Kotlin, floating bubble + wheel)
+│   ├── lens-mac/          # ⌥+E select-to-explain (merged into desktop)
+│   └── web/               # aicon.solutions static site
 ├── packages/
 │   ├── models/            # Zod schemas
 │   └── ai/                # Prompt templates + gateway client
