@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>nodx Pricing — Free forever core, Pro when you're ready</title>
+    <meta name="description" content="nodx pricing: the thinking workspace core is free forever (bring your own key). Pro adds no-key AI, sync, and mobile. Team brings a shared thinking library." />
+    <link rel="icon" type="image/png" href="/icons/icon-128.png" />
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      .price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-top: 28px; }
+      .price-card { border: 1px solid #e5e5e2; border-radius: 14px; padding: 26px 24px; background: #fff; display: flex; flex-direction: column; }
+      .price-card.featured { border: 2px solid #f59e0b; box-shadow: 0 12px 40px rgba(245, 158, 11, 0.15); position: relative; }
+      .price-card.featured::before { content: "EARLY BIRD"; position: absolute; top: -11px; left: 24px; background: #f59e0b; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 999px; letter-spacing: 0.06em; }
+      .price-tier { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; }
+      .price-amount { font-size: 38px; font-weight: 800; margin: 10px 0 2px; color: #111827; }
+      .price-amount small { font-size: 14px; font-weight: 500; color: #6b7280; }
+      .price-note { font-size: 13px; color: #6b7280; min-height: 36px; }
+      .price-card ul { list-style: none; padding: 0; margin: 18px 0; flex: 1; }
+      .price-card li { padding: 6px 0; font-size: 14px; color: #374151; }
+      .price-card li::before { content: "✓ "; color: #059669; font-weight: 700; }
+      .price-card li.soon::before { content: "◷ "; color: #9ca3af; }
+      .price-card li.soon { color: #9ca3af; }
+      .strike { text-decoration: line-through; color: #9ca3af; font-size: 20px; font-weight: 600; margin-right: 6px; }
+    </style>
+  </head>
+  <body>
+    <header class="container">
+      <a class="brand" href="/">
+        <span class="brand-mark">A</span>
+        <span class="brand-text">Aicon Solutions</span>
+      </a>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/nodx/">nodx</a>
+        <a href="/nodx/pricing/">Pricing</a>
+        <a class="x-link" href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏</a>
+      </nav>
+    </header>
+
+    <div class="breadcrumb container">
+      <a href="/">Aicon</a> <span>›</span>
+      <a href="/nodx/">nodx</a> <span>›</span>
+      <strong>Pricing</strong>
+    </div>
+
+    <section class="hero container">
+      <div class="hero-text" style="max-width: 720px;">
+        <h1>The core is free.<br /><span class="accent">Forever.</span></h1>
+        <p class="lead">
+          Everything that makes nodx nodx — the action wheel, expert-panel debates,
+          the thinking library — runs on your machine with your own AI key, free and
+          open source. <strong>Pro</strong> removes the friction; <strong>Team</strong>
+          makes thinking compound across your whole organization.
+        </p>
+      </div>
+    </section>
+
+    <section class="container" style="padding-bottom: 60px;">
+      <div class="price-grid">
+
+        <div class="price-card">
+          <div class="price-tier">Free</div>
+          <div class="price-amount">$0<small> / forever</small></div>
+          <div class="price-note">Bring your own API key (Anthropic / OpenAI / Google)</div>
+          <ul>
+            <li>nodx Lens for Chrome — full action wheel</li>
+            <li>nodx desktop — full thinking workspace</li>
+            <li>Expert-panel debates &amp; auto-recursion</li>
+            <li>Personal thinking library (CBR)</li>
+            <li>100% local-first, zero telemetry</li>
+            <li>Open source (Apache-2.0)</li>
+          </ul>
+          <a class="btn ghost" href="/nodx/" style="text-align:center;">Get started →</a>
+        </div>
+
+        <div class="price-card featured">
+          <div class="price-tier" style="color:#b45309;">Pro</div>
+          <div class="price-amount"><span class="strike">$10</span>$5<small> / month · first year</small></div>
+          <div class="price-note">No API key needed — AI included. Early-bird price locks in for your first year.</div>
+          <ul>
+            <li>Everything in Free</li>
+            <li><strong>No-key mode</strong> — built-in AI allowance, zero setup</li>
+            <li>Cloud sync across devices</li>
+            <li>Mobile app (Android first)</li>
+            <li>Image generation allowance</li>
+            <li>Priority support</li>
+          </ul>
+          <a class="btn primary" href="/nodx/pricing/join/" style="text-align:center;">
+            <span>Reserve early-bird price →</span>
+            <small>No payment now · first 500 seats</small>
+          </a>
+        </div>
+
+        <div class="price-card">
+          <div class="price-tier">Team</div>
+          <div class="price-amount">$20<small> / seat / month</small></div>
+          <div class="price-note">For teams that want decisions to compound, not evaporate</div>
+          <ul>
+            <li>Everything in Pro</li>
+            <li class="soon">Shared thinking library — fork past decisions</li>
+            <li class="soon">Team expert panels on your own cases</li>
+            <li class="soon">Decision provenance &amp; review trail</li>
+            <li class="soon">Member management</li>
+          </ul>
+          <a class="btn ghost" href="mailto:ais.yb.mo@gmail.com?subject=nodx%20Team%20—%20design%20partner&body=Team%20size%3A%0AWhat%20decisions%20does%20your%20team%20make%20repeatedly%3F%0A" style="text-align:center;">Become a design partner →</a>
+        </div>
+
+      </div>
+
+      <p style="text-align:center; margin-top: 32px; font-size: 13px; color: #6b7280;">
+        Why bring-your-own-key stays free forever: your queries go to your provider,
+        not through us. Pro exists for people who'd rather never think about API keys.
+      </p>
+    </section>
+
+    <footer class="container">
+      <div class="footer-row">
+        <div>
+          <strong>nodx</strong> · part of <a href="/">Aicon Solutions</a>
+          <p>Where AI helps you think more, not less.</p>
+        </div>
+        <div class="footer-links">
+          <a href="/">Aicon</a> ·
+          <a href="/nodx/">nodx</a> ·
+          <a href="/support.html">Support</a> ·
+          <a href="/privacy.html">Privacy</a> ·
+          <a href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏 @LaoMo9394</a>
+        </div>
+      </div>
+      <div class="copyright">© 2026 Aicon Solutions</div>
+    </footer>
+  </body>
+</html>
