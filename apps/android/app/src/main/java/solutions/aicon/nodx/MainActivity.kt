@@ -104,6 +104,14 @@ class MainActivity : AppCompatActivity() {
             addView(nav)
         }
         setContentView(root)
+        // targetSdk 35 forces edge-to-edge: without this the bottom tab bar
+        // sits under the system gesture/nav bar. Pad the root by the real
+        // system-bar insets (top = status bar, bottom = nav bar).
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            v.setPadding(0, bars.top, 0, bars.bottom)
+            insets
+        }
         selectTab(0)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -140,7 +148,7 @@ class MainActivity : AppCompatActivity() {
     private fun buildRunTab(): View {
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(64, 140, 64, 64)
+            setPadding(64, 48, 64, 64)
         }
         box.addView(TextView(this).apply {
             text = getString(R.string.app_title); textSize = 20f
@@ -190,7 +198,7 @@ class MainActivity : AppCompatActivity() {
     private fun buildHistoryTab(): View {
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(64, 80, 64, 64)
+            setPadding(64, 48, 64, 64)
         }
         val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         header.addView(TextView(this).apply {
@@ -235,7 +243,7 @@ class MainActivity : AppCompatActivity() {
     private fun buildSettingsTab(): View {
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(64, 80, 64, 64)
+            setPadding(64, 48, 64, 64)
         }
         box.addView(TextView(this).apply {
             text = getString(R.string.provider_label)
