@@ -82,6 +82,8 @@
     <string name="result_title_explain">💡 nodx · answer</string>
     <string name="log_title">Activity log</string>
     <string name="recent_log">🕘 Log ▸</string>
+    <string name="log_section">🕘 Activity log</string>
+    <string name="btn_log_all">🕘  View all records  ▸</string>
     <string name="log_empty">Nothing yet — actions from the bubble land here.</string>
     <string name="log_kind_prompt">💬 Answer</string>
     <string name="log_kind_search">🔍 Search</string>

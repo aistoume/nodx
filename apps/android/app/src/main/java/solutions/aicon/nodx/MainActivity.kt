@@ -37,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var keyArea: LinearLayout
     private lateinit var recentRow: LinearLayout
     private lateinit var recentEmpty: TextView
+    private lateinit var logBox: LinearLayout
 
     /** Auto-launch the projection consent at most once per app entry. */
     private var autoStartAttempted = false
@@ -225,11 +226,6 @@ class MainActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         })
         header.addView(TextView(this).apply {
-            text = getString(R.string.recent_log); textSize = 14f
-            setPadding(0, 0, 48, 0)
-            setOnClickListener { startActivity(Intent(this@MainActivity, ActionLogActivity::class.java)) }
-        })
-        header.addView(TextView(this).apply {
             text = getString(R.string.recent_more); textSize = 14f
             setOnClickListener { startActivity(Intent(this@MainActivity, GalleryActivity::class.java)) }
         })
@@ -244,6 +240,21 @@ class MainActivity : AppCompatActivity() {
             visibility = View.GONE
         }
         root.addView(recentEmpty)
+
+        // ── 操作记录：主页直接显示最近 3 条 + 显眼的全量入口 ──
+        root.addView(TextView(this).apply {
+            text = getString(R.string.log_section); textSize = 16f
+            setPadding(0, 48, 0, 12)
+        })
+        logBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(logBox)
+        root.addView(Button(this).apply {
+            text = getString(R.string.btn_log_all)
+            textSize = 16f
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, ActionLogActivity::class.java))
+            }
+        })
 
         root.addView(TextView(this).apply {
             text = getString(R.string.main_instructions)
@@ -265,6 +276,7 @@ class MainActivity : AppCompatActivity() {
             else R.string.btn_access
         )
         refreshRecent()
+        refreshLog()
         maybeAutoStart()
     }
 
@@ -279,6 +291,99 @@ class MainActivity : AppCompatActivity() {
         autoStartAttempted = true
         startBubbleService()
         toast(getString(R.string.toast_bubble_ready))
+    }
+
+    private fun refreshLog() {
+        scope.launch {
+            val entries = withContext(Dispatchers.IO) {
+                ActionLog.list(this@MainActivity).take(3)
+            }
+            val thumbs = withContext(Dispatchers.IO) {
+                entries.associate { e ->
+                    e.id to e.thumb?.let {
+                        runCatching { android.graphics.BitmapFactory.decodeFile(it) }.getOrNull()
+                    }
+                }
+            }
+            logBox.removeAllViews()
+            if (entries.isEmpty()) {
+                logBox.addView(TextView(this@MainActivity).apply {
+                    text = getString(R.string.log_empty); textSize = 12f
+                })
+                return@launch
+            }
+            entries.forEach { e -> logBox.addView(logRow(e, thumbs[e.id])) }
+        }
+    }
+
+    /** Compact log row: thumb + badge/title/preview; tap = reopen/reread. */
+    private fun logRow(e: ActionLog.Entry, thumb: android.graphics.Bitmap?): View {
+        val d = resources.displayMetrics.density
+        fun dpi(v: Int) = (v * d).toInt()
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dpi(8), dpi(8), dpi(8), dpi(8))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(android.graphics.Color.argb(12, 128, 128, 128))
+                cornerRadius = dpi(10).toFloat()
+            }
+        }
+        row.addView(ImageView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dpi(56), dpi(56)).apply { rightMargin = dpi(10) }
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            if (thumb != null) setImageBitmap(thumb)
+            else setImageResource(android.R.drawable.ic_menu_gallery)
+        })
+        val col = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val badge = when (e.kind) {
+            ActionLog.KIND_PROMPT -> getString(R.string.log_kind_prompt)
+            ActionLog.KIND_SEARCH -> getString(R.string.log_kind_search)
+            ActionLog.KIND_GENERATE -> getString(R.string.log_kind_generate)
+            else -> getString(R.string.log_kind_save)
+        }
+        col.addView(TextView(this).apply {
+            text = badge; textSize = 11f
+            setTextColor(android.graphics.Color.GRAY)
+        })
+        val preview = e.title.ifBlank { e.detail }
+        if (preview.isNotBlank()) col.addView(TextView(this).apply {
+            text = preview; textSize = 13f; maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        row.addView(col)
+        row.setOnClickListener {
+            when {
+                e.url != null -> runCatching {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(e.url)))
+                }
+                e.detail.isNotBlank() ->
+                    androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle(badge)
+                        .setMessage(e.detail)
+                        .setPositiveButton(R.string.result_copy) { _, _ ->
+                            val cm = getSystemService(CLIPBOARD_SERVICE)
+                                as android.content.ClipboardManager
+                            cm.setPrimaryClip(
+                                android.content.ClipData.newPlainText("nodx", e.detail)
+                            )
+                            toast(getString(R.string.result_copied))
+                        }
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show()
+                else -> startActivity(Intent(this, ActionLogActivity::class.java))
+            }
+        }
+        // spacing wrapper
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(row)
+            addView(View(this@MainActivity).apply {
+                layoutParams = LinearLayout.LayoutParams(1, dpi(8))
+            })
+        }
     }
 
     private fun refreshRecent() {
