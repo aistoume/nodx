@@ -16,7 +16,9 @@
     <string name="btn_stop">🛑 Stop bubble (end screen capture)</string>
     <string name="toast_stopped">Stopped — screen-capture session ended</string>
     <string name="toast_not_running">Bubble is not running</string>
-    <string name="toast_need_key">Please enter your Anthropic key first</string>
+    <string name="toast_need_key">Please enter the API key for the selected provider first</string>
+    <string name="toast_clipboard_empty">Clipboard is empty</string>
+    <string name="btn_paste">📋 Paste</string>
     <string name="toast_bubble_ready">Bubble is up — screen share will be requested on the first capture</string>
     <string name="toast_grant_overlay">Please allow "Display over other apps", then come back — it continues automatically</string>
 
@@ -71,6 +73,7 @@
     <string name="wheel_kind_generate">Generate image (Gemini)</string>
     <string name="wheel_param_prompt_hint">Prompt sent with the screenshot</string>
     <string name="wheel_param_url_hint">URL prefix (keyword appended), e.g. https://www.google.com/search?q=</string>
+    <string name="wheel_preset_custom">Custom URL…</string>
     <string name="wheel_add_child">＋ Add sub-item</string>
     <string name="wheel_remove">✕ Remove</string>
     <string name="wheel_save">Save wheel</string>

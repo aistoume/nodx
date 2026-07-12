@@ -117,6 +117,32 @@ class WheelItem(
     }
 }
 
+/**
+ * Common search/shopping destinations for the "AI identify → open URL"
+ * action — mirrors the extension's shared/search-presets.ts so ordinary
+ * users pick from a list; hand-editing the URL prefix stays available as
+ * the advanced path ("Custom URL…").
+ */
+object SearchPresets {
+    val ITEMS: List<Pair<String, String>> = listOf(
+        "Google Search" to "https://www.google.com/search?q=",
+        "Google Images" to "https://www.google.com/search?udm=2&q=",
+        "Google Shopping" to "https://www.google.com/search?udm=28&q=",
+        "Amazon" to "https://www.amazon.com/s?k=",
+        "eBay" to "https://www.ebay.com/sch/i.html?_nkw=",
+        "Taobao 淘宝" to "https://s.taobao.com/search?q=",
+        "JD 京东" to "https://search.jd.com/Search?keyword=",
+        "Xiaohongshu 小红书" to "https://www.xiaohongshu.com/search_result?keyword=",
+        "Bing" to "https://www.bing.com/search?q=",
+        "YouTube" to "https://www.youtube.com/results?search_query=",
+        "X (Twitter)" to "https://x.com/search?q=",
+        "Wikipedia" to "https://en.wikipedia.org/w/index.php?search=",
+        "Perplexity" to "https://www.perplexity.ai/search?q=",
+    )
+    val LABELS = ITEMS.map { it.first }
+    val URLS = ITEMS.map { it.second }
+}
+
 object WheelConfig {
     private const val FILE = "nodx"
     private const val KEY = "wheel_config_v1"

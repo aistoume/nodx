@@ -16,7 +16,9 @@
     <string name="btn_stop">🛑 停止悬浮球（结束录屏）</string>
     <string name="toast_stopped">已停止，录屏会话已结束</string>
     <string name="toast_not_running">悬浮球未在运行</string>
-    <string name="toast_need_key">请先填 Anthropic key</string>
+    <string name="toast_need_key">请先填当前提供方的 API key</string>
+    <string name="toast_clipboard_empty">剪贴板是空的</string>
+    <string name="btn_paste">📋 粘贴</string>
     <string name="toast_bubble_ready">悬浮球已就位 — 首次截屏时会请求屏幕分享</string>
     <string name="toast_grant_overlay">请授予“显示在其他应用上层”，授完回来会自动继续</string>
 
@@ -71,6 +73,7 @@
     <string name="wheel_kind_generate">生成图片（Gemini）</string>
     <string name="wheel_param_prompt_hint">随截图一起发送的提示词</string>
     <string name="wheel_param_url_hint">URL 前缀（末尾自动拼关键词），如 https://www.google.com/search?q=</string>
+    <string name="wheel_preset_custom">自定义 URL…</string>
     <string name="wheel_add_child">＋ 添加子项</string>
     <string name="wheel_remove">✕ 删除</string>
     <string name="wheel_save">保存动作轮</string>

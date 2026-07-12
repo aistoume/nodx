@@ -164,3 +164,16 @@ select { width: auto; min-width: 200px; }
   padding: 0 2px;
 }
 .color-reset:hover { color: #d97706; }
+
+.wheel-preset {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.wheel-preset:focus { outline: 0; border-color: #f59e0b; }

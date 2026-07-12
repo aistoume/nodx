@@ -34,8 +34,7 @@ import kotlinx.coroutines.withContext
 class MainActivity : AppCompatActivity() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private lateinit var keyInput: EditText
-    private lateinit var geminiInput: EditText
+    private lateinit var keyArea: LinearLayout
     private lateinit var recentRow: LinearLayout
     private lateinit var recentEmpty: TextView
 
@@ -50,11 +49,10 @@ class MainActivity : AppCompatActivity() {
     private fun addKeyRow(
         root: LinearLayout, label: String, hintText: String,
         saved: String, persist: (String) -> Unit,
-    ): EditText {
+    ) {
         val input = EditText(this).apply {
             hint = hintText
             setText(saved)
-            visibility = if (saved.isBlank()) View.VISIBLE else View.GONE
         }
         input.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
@@ -64,15 +62,56 @@ class MainActivity : AppCompatActivity() {
                 if (t.isNotBlank()) persist(t)
             }
         })
+        // Editable row = field + 📋 paste (typing a long key on a phone is
+        // miserable — one tap pastes whatever was copied from the desktop).
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            visibility = if (saved.isBlank()) View.VISIBLE else View.GONE
+        }
+        row.addView(
+            input,
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+        )
+        row.addView(Button(this).apply {
+            text = getString(R.string.btn_paste)
+            setOnClickListener {
+                val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                val clip = cm.primaryClip?.getItemAt(0)
+                    ?.coerceToText(this@MainActivity)?.toString()?.trim()
+                if (clip.isNullOrBlank()) toast(getString(R.string.toast_clipboard_empty))
+                else input.setText(clip)
+            }
+        })
         root.addView(TextView(this).apply {
             text = getString(R.string.key_saved_fmt, label, saved.takeLast(4))
             visibility = if (saved.isBlank()) View.GONE else View.VISIBLE
             setPadding(0, 24, 0, 24)
-            setOnClickListener { visibility = View.GONE; input.visibility = View.VISIBLE }
+            setOnClickListener { visibility = View.GONE; row.visibility = View.VISIBLE }
         })
-        root.addView(input)
-        return input
+        root.addView(row)
     }
+
+    /** Only the ACTIVE provider's key row is shown — no more two stacked
+     *  fields fighting for space on a 384dp screen. */
+    private fun renderKeyArea() {
+        keyArea.removeAllViews()
+        if (Prefs.provider(this) == Prefs.PROVIDER_GEMINI) {
+            addKeyRow(
+                keyArea, getString(R.string.label_gemini_key), getString(R.string.hint_gemini_key),
+                Prefs.geminiKey(this),
+            ) { Prefs.setGeminiKey(this, it) }
+        } else {
+            addKeyRow(
+                keyArea, getString(R.string.label_anthropic_key), getString(R.string.hint_anthropic_key),
+                Prefs.anthropicKey(this),
+            ) { Prefs.setAnthropicKey(this, it) }
+        }
+    }
+
+    /** The selected provider's key — start/auto-start gate on THIS one. */
+    private fun activeKey(): String =
+        if (Prefs.provider(this) == Prefs.PROVIDER_GEMINI) Prefs.geminiKey(this)
+        else Prefs.anthropicKey(this)
 
     // Android 13+: without this the foreground-service notification is
     // silently hidden (the service itself still runs). Result is not
@@ -89,51 +128,41 @@ class MainActivity : AppCompatActivity() {
         root.addView(TextView(this).apply {
             text = getString(R.string.app_title); textSize = 20f
         })
-        // Saved keys stay collapsed to a masked status line — the field only
-        // reappears when the user explicitly asks to change it.
-        keyInput = addKeyRow(
-            root, getString(R.string.label_anthropic_key), getString(R.string.hint_anthropic_key),
-            Prefs.anthropicKey(this),
-        ) { Prefs.setAnthropicKey(this, it) }
-        geminiInput = addKeyRow(
-            root, getString(R.string.label_gemini_key), getString(R.string.hint_gemini_key),
-            Prefs.geminiKey(this),
-        ) { Prefs.setGeminiKey(this, it) }
-
-        // Provider switch — Gemini's AI-Studio tier is free, so the whole
-        // app can run on just the Google key.
-        val providerRow = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.HORIZONTAL
-        }
-        providerRow.addView(TextView(this).apply {
+        // Provider — a full-width dropdown (the old horizontal radio pair
+        // wrapped/cramped on narrow screens). Gemini's AI-Studio tier is
+        // free, so the whole app can run on just the Google key.
+        root.addView(TextView(this).apply {
             text = getString(R.string.provider_label)
-            setPadding(0, 24, 16, 0)
+            setPadding(0, 32, 0, 8)
         })
-        val providerGroup = android.widget.RadioGroup(this).apply {
-            orientation = android.widget.RadioGroup.HORIZONTAL
-        }
-        val rbAnthropic = android.widget.RadioButton(this).apply {
-            text = getString(R.string.provider_anthropic); id = View.generateViewId()
-        }
-        val rbGemini = android.widget.RadioButton(this).apply {
-            text = getString(R.string.provider_gemini); id = View.generateViewId()
-        }
-        providerGroup.addView(rbAnthropic); providerGroup.addView(rbGemini)
-        providerGroup.check(
-            if (Prefs.provider(this) == Prefs.PROVIDER_GEMINI) rbGemini.id else rbAnthropic.id
-        )
-        providerGroup.setOnCheckedChangeListener { _, checked ->
-            Prefs.setProvider(
-                this,
-                if (checked == rbGemini.id) Prefs.PROVIDER_GEMINI else Prefs.PROVIDER_ANTHROPIC,
+        val providerSpinner = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(
+                this@MainActivity, android.R.layout.simple_spinner_dropdown_item,
+                listOf(getString(R.string.provider_anthropic), getString(R.string.provider_gemini)),
             )
         }
-        providerRow.addView(providerGroup)
-        root.addView(providerRow)
+        root.addView(providerSpinner)
+        keyArea = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(keyArea)
+        providerSpinner.setSelection(if (Prefs.provider(this) == Prefs.PROVIDER_GEMINI) 1 else 0)
+        providerSpinner.onItemSelectedListener =
+            object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long,
+                ) {
+                    Prefs.setProvider(
+                        this@MainActivity,
+                        if (pos == 1) Prefs.PROVIDER_GEMINI else Prefs.PROVIDER_ANTHROPIC,
+                    )
+                    renderKeyArea()
+                }
+                override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
+            }
+        renderKeyArea()
         root.addView(Button(this).apply {
             text = getString(R.string.btn_start)
             setOnClickListener {
-                if (Prefs.anthropicKey(this@MainActivity).isBlank()) {
+                if (activeKey().isBlank()) {
                     toast(getString(R.string.toast_need_key))
                     return@setOnClickListener
                 }
@@ -213,7 +242,7 @@ class MainActivity : AppCompatActivity() {
      */
     private fun maybeAutoStart() {
         if (autoStartAttempted || FloatingBubbleService.isRunning) return
-        if (Prefs.anthropicKey(this).isBlank() || !Settings.canDrawOverlays(this)) return
+        if (activeKey().isBlank() || !Settings.canDrawOverlays(this)) return
         autoStartAttempted = true
         startBubbleService()
         toast(getString(R.string.toast_bubble_ready))

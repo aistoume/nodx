@@ -70,6 +70,19 @@ class WheelSettingsActivity : AppCompatActivity() {
                 listOf(getString(R.string.wheel_layout_single), getString(R.string.wheel_layout_grid)),
             )
         }
+        /**
+         * Only for kind=SEARCH: common destinations so ordinary users never
+         * hand-write a URL prefix; the last entry ("Custom URL…") reveals
+         * the raw param field for advanced use.
+         */
+        val preset = Spinner(this@WheelSettingsActivity).apply {
+            adapter = ArrayAdapter(
+                this@WheelSettingsActivity, android.R.layout.simple_spinner_dropdown_item,
+                SearchPresets.LABELS + getString(R.string.wheel_preset_custom),
+            )
+        }
+        private val presetCustomIdx = SearchPresets.URLS.size
+
         val param = EditText(this@WheelSettingsActivity)
 
         /** Custom colour "#rrggbb"; null = position default. */
@@ -140,6 +153,7 @@ class WheelSettingsActivity : AppCompatActivity() {
                 addView(colorStrip)
             })
             root.addView(kind)
+            root.addView(preset)
             root.addView(layout)
             root.addView(param)
             val prefillAction = prefill?.action
@@ -162,6 +176,7 @@ class WheelSettingsActivity : AppCompatActivity() {
                     else -> ""
                 }
             )
+            syncPresetFromParam()
             lastKind = Kind.entries[kind.selectedItemPosition]
             kind.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) {
@@ -172,6 +187,18 @@ class WheelSettingsActivity : AppCompatActivity() {
                         stash[lastKind] = param.text.toString()
                         param.setText(stash[newKind] ?: defaultParamFor(newKind))
                         lastKind = newKind
+                        if (newKind == Kind.SEARCH) syncPresetFromParam()
+                    }
+                    syncParam(); onFormChanged()
+                }
+                override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
+            }
+            preset.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                    // Picking a preset writes its URL into param (kept as the
+                    // single source of truth); "Custom URL…" just reveals it.
+                    if (pos < presetCustomIdx && param.text.toString().trim() != SearchPresets.URLS[pos]) {
+                        param.setText(SearchPresets.URLS[pos])
                     }
                     syncParam(); onFormChanged()
                 }
@@ -196,24 +223,41 @@ class WheelSettingsActivity : AppCompatActivity() {
             syncParam()
         }
 
+        /** Point the preset spinner at whatever URL param currently holds. */
+        private fun syncPresetFromParam() {
+            val idx = SearchPresets.URLS.indexOf(param.text.toString().trim())
+            preset.setSelection(if (idx >= 0) idx else presetCustomIdx)
+        }
+
         private fun syncParam() {
             if (kind.visibility != View.VISIBLE) {
-                param.visibility = View.GONE; layout.visibility = View.GONE; return
+                param.visibility = View.GONE; layout.visibility = View.GONE
+                preset.visibility = View.GONE; return
             }
             when (Kind.entries[kind.selectedItemPosition]) {
                 Kind.PROMPT -> {
                     param.visibility = View.VISIBLE; layout.visibility = View.GONE
+                    preset.visibility = View.GONE
                     param.hint = getString(R.string.wheel_param_prompt_hint)
                 }
                 Kind.SEARCH -> {
-                    param.visibility = View.VISIBLE; layout.visibility = View.GONE
+                    preset.visibility = View.VISIBLE; layout.visibility = View.GONE
+                    // URL field is the advanced path — hidden while a preset
+                    // is selected, shown for "Custom URL…".
+                    param.visibility =
+                        if (preset.selectedItemPosition == presetCustomIdx) View.VISIBLE
+                        else View.GONE
                     param.hint = getString(R.string.wheel_param_url_hint)
                 }
                 Kind.GENERATE -> {
                     param.visibility = View.VISIBLE; layout.visibility = View.VISIBLE
+                    preset.visibility = View.GONE
                     param.hint = getString(R.string.wheel_param_style_hint)
                 }
-                else -> { param.visibility = View.GONE; layout.visibility = View.GONE }
+                else -> {
+                    param.visibility = View.GONE; layout.visibility = View.GONE
+                    preset.visibility = View.GONE
+                }
             }
         }
 

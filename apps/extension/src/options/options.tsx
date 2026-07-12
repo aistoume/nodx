@@ -9,6 +9,7 @@ import {
 } from '../shared/settings.js';
 import { setLocale, t, type Language } from '../shared/i18n.js';
 import { IMAGE_GEN_MODELS, MODELS } from '../shared/model-catalog.js';
+import { SEARCH_PRESETS } from '../shared/search-presets.js';
 import {
   DEFAULT_EXPLAIN_PROMPT,
   DEFAULT_GRID_STYLE_PROMPT,
@@ -618,6 +619,13 @@ function ItemFields({
   // Stash the action per kind so switching away and back restores what the
   // user had typed (instead of wiping the prompt/URL).
   const [stash, setStash] = useState<Partial<Record<KindKey, WheelAction>>>({});
+  // Search destinations come from a preset dropdown; the raw URL prefix is
+  // the advanced path ("Custom URL…"). `customUrl` keeps custom mode open
+  // even while the typed URL happens to match a preset.
+  const [customUrl, setCustomUrl] = useState(false);
+  const urlPrefix = item.action?.kind === 'search' ? item.action.urlPrefix : '';
+  const isCustomUrl = customUrl || !SEARCH_PRESETS.some((p) => p.url === urlPrefix);
+  const CUSTOM = '__custom__';
   return (
     <div className="wheel-item">
       <div className="hbox">
@@ -698,7 +706,29 @@ function ItemFields({
           </select>
         </div>
       )}
-      {needsParam && (
+      {kind === 'search' && (
+        <div className="hbox">
+          <select
+            className="wheel-preset"
+            value={isCustomUrl ? CUSTOM : urlPrefix}
+            onChange={(e) => {
+              const v = (e.target as HTMLSelectElement).value;
+              if (v === CUSTOM) {
+                setCustomUrl(true);
+              } else {
+                setCustomUrl(false);
+                onChange({ ...item, action: { kind: 'search', urlPrefix: v } });
+              }
+            }}
+          >
+            {SEARCH_PRESETS.map((p) => (
+              <option key={p.url} value={p.url}>{p.label}</option>
+            ))}
+            <option value={CUSTOM}>{t('wheelPresetCustom')}</option>
+          </select>
+        </div>
+      )}
+      {needsParam && (kind !== 'search' || isCustomUrl) && (
         <textarea
           rows={kind === 'search' ? 1 : kind === 'generate' ? 5 : 3}
           value={paramOf(item.action)}
