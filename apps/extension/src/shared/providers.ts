@@ -114,7 +114,12 @@ export async function callOpenAI(
     body: JSON.stringify({
       model,
       stream: true,
-      max_tokens: 800,
+      // GPT-5.x dropped `max_tokens` on chat completions in favour of
+      // `max_completion_tokens` (which also covers hidden reasoning
+      // tokens — give it headroom). OpenRouter still speaks `max_tokens`.
+      ...(baseUrl.includes('api.openai.com')
+        ? { max_completion_tokens: 4096 }
+        : { max_tokens: 800 }),
       messages: [{ role: 'user', content: userContent }],
     }),
   });
