@@ -66,12 +66,17 @@
     "macOS": {
       "minimumSystemVersion": "12.0",
       "entitlements": null
+    },
+    "iOS": {
+      "developmentTeam": "29V2T5RPN3"
     }
   },
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["nodx"]
+        "schemes": [
+          "nodx"
+        ]
       }
     }
   }
