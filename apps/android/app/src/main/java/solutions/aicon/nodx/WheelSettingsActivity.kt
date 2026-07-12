@@ -1,6 +1,7 @@
 package solutions.aicon.nodx
 
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -40,6 +41,15 @@ class WheelSettingsActivity : AppCompatActivity() {
     private var onFormChanged: () -> Unit = {}
 
     private companion object {
+        /** Same emoji library as the extension options page. */
+        val PRESET_ICONS = listOf(
+            "🔍", "🔎", "📖", "💡", "🛒", "🏷", "📦", "🎨",
+            "🧠", "📝", "🌐", "🔤", "🖼️", "📷", "🎬", "🎵",
+            "📊", "📈", "🧾", "💬", "❓", "✅", "⭐", "❤️",
+            "🔥", "⚡", "🚀", "🛠️", "🔧", "🧪", "🩺", "⚖️",
+            "🗺️", "🧭", "⏰", "💰", "🏠", "🍔", "👕", "🚗",
+        )
+
         /** Preset swatches — first slot in the strip is "↺ 默认" (null). */
         val COLOR_PALETTE = listOf(
             "#3b82f6", "#d97706", "#10b981", "#a855f7",
@@ -51,9 +61,46 @@ class WheelSettingsActivity : AppCompatActivity() {
     /** One emoji+label+kind+param row — used for spokes and children alike. */
     private inner class ItemEditor(prefill: WheelItem?) {
         val root = LinearLayout(this@WheelSettingsActivity).apply { orientation = LinearLayout.VERTICAL }
-        val emoji = EditText(this@WheelSettingsActivity).apply {
-            hint = getString(R.string.wheel_emoji_hint); setText(prefill?.emoji ?: "")
+
+        /** Icon value (emoji or data:URL) — set via the icon-library dialog. */
+        var iconValue: String = prefill?.emoji ?: ""
+        private val iconBtn = TextView(this@WheelSettingsActivity).apply {
+            textSize = 24f
+            gravity = android.view.Gravity.CENTER
+            setOnClickListener {
+                showIconPicker(iconValue) { picked ->
+                    iconValue = picked
+                    refreshIconBtn()
+                    onFormChanged()
+                }
+            }
         }
+
+        private fun refreshIconBtn() {
+            val d = resources.displayMetrics.density
+            if (iconValue.startsWith("data:")) {
+                val bmp = runCatching {
+                    val bytes = android.util.Base64.decode(
+                        iconValue.substringAfter("base64,", ""), android.util.Base64.DEFAULT,
+                    )
+                    android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                }.getOrNull()
+                iconBtn.text = if (bmp == null) "❓" else ""
+                iconBtn.background = bmp?.let {
+                    android.graphics.drawable.BitmapDrawable(resources, it)
+                } ?: iconBoxBg(d)
+            } else {
+                iconBtn.text = iconValue.ifEmpty { "❓" }
+                iconBtn.background = iconBoxBg(d)
+            }
+        }
+
+        private fun iconBoxBg(d: Float) = android.graphics.drawable.GradientDrawable().apply {
+            setColor(Color.argb(18, 128, 128, 128))
+            cornerRadius = 8 * d
+            setStroke((1 * d).toInt(), Color.argb(60, 128, 128, 128))
+        }
+
         val label = EditText(this@WheelSettingsActivity).apply {
             hint = getString(R.string.wheel_label_hint); setText(prefill?.label ?: "")
         }
@@ -142,9 +189,16 @@ class WheelSettingsActivity : AppCompatActivity() {
             else WheelAction.DEFAULT_GRID_STYLE_PROMPT
 
         init {
-            val row = LinearLayout(this@WheelSettingsActivity).apply { orientation = LinearLayout.HORIZONTAL }
-            row.addView(emoji, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            row.addView(label, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2f))
+            val row = LinearLayout(this@WheelSettingsActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+            }
+            val side = (48 * resources.displayMetrics.density).toInt()
+            row.addView(iconBtn, LinearLayout.LayoutParams(side, side).apply {
+                rightMargin = (8 * resources.displayMetrics.density).toInt()
+            })
+            refreshIconBtn()
+            row.addView(label, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             root.addView(row)
             renderColorStrip()
             root.addView(android.widget.HorizontalScrollView(this@WheelSettingsActivity).apply {
@@ -217,7 +271,6 @@ class WheelSettingsActivity : AppCompatActivity() {
                 override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
                 override fun afterTextChanged(s: android.text.Editable?) = onFormChanged()
             }
-            emoji.addTextChangedListener(watcher)
             label.addTextChangedListener(watcher)
             param.addTextChangedListener(watcher)
             syncParam()
@@ -269,7 +322,7 @@ class WheelSettingsActivity : AppCompatActivity() {
 
         /** null = validation failure (a toast was shown). */
         fun build(children: List<WheelItem> = emptyList()): WheelItem? {
-            val e = emoji.text.toString().trim()
+            val e = iconValue.trim()
             if (e.isEmpty()) { toast(getString(R.string.wheel_err_emoji)); return null }
             if (children.isNotEmpty()) {
                 return WheelItem(e, label.text.toString().trim(), null, children, colorHex)
@@ -287,7 +340,7 @@ class WheelSettingsActivity : AppCompatActivity() {
 
         /** No-toast variant for the live preview: never fails, fills gaps. */
         fun buildLenient(children: List<WheelItem> = emptyList()): WheelItem {
-            val e = emoji.text.toString().trim().ifEmpty { "❓" }
+            val e = iconValue.trim().ifEmpty { "❓" }
             val l = label.text.toString().trim()
             if (children.isNotEmpty()) return WheelItem(e, l, null, children, colorHex)
             val p = param.text.toString().trim()
@@ -432,6 +485,81 @@ class WheelSettingsActivity : AppCompatActivity() {
     }
 
     private lateinit var spokeEditors: List<SpokeEditor>
+
+    /** Which icon button the in-flight gallery pick belongs to. */
+    private var pendingIconSink: ((String) -> Unit)? = null
+
+    private val pickIconImage = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        val sink = pendingIconSink
+        pendingIconSink = null
+        if (uri == null || sink == null) return@registerForActivityResult
+        val dataUrl = runCatching { iconDataUrl(uri) }.getOrNull()
+        if (dataUrl == null) toast(getString(R.string.icon_load_failed)) else sink(dataUrl)
+    }
+
+    /** Centre-crop → 64×64 PNG → data:URL (the wheel's portable icon format). */
+    private fun iconDataUrl(uri: Uri): String {
+        val bmp = contentResolver.openInputStream(uri)!!.use {
+            android.graphics.BitmapFactory.decodeStream(it)
+        } ?: error("decode failed")
+        val side = minOf(bmp.width, bmp.height)
+        val square = android.graphics.Bitmap.createBitmap(
+            bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side,
+        )
+        val small = android.graphics.Bitmap.createScaledBitmap(square, 64, 64, true)
+        val baos = java.io.ByteArrayOutputStream()
+        small.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, baos)
+        return "data:image/png;base64," +
+            android.util.Base64.encodeToString(baos.toByteArray(), android.util.Base64.NO_WRAP)
+    }
+
+    /** Icon library dialog: preset emoji grid + gallery upload + manual entry. */
+    private fun showIconPicker(current: String, sink: (String) -> Unit) {
+        val d = resources.displayMetrics.density
+        val cell = (44 * d).toInt()
+        val grid = android.widget.GridLayout(this).apply {
+            columnCount = 8
+            setPadding((8 * d).toInt(), (8 * d).toInt(), (8 * d).toInt(), 0)
+        }
+        lateinit var dialog: androidx.appcompat.app.AlertDialog
+        PRESET_ICONS.forEach { icon ->
+            grid.addView(TextView(this).apply {
+                text = icon
+                textSize = 24f
+                gravity = android.view.Gravity.CENTER
+                layoutParams = android.widget.GridLayout.LayoutParams().apply {
+                    width = cell; height = cell
+                }
+                setOnClickListener { sink(icon); dialog.dismiss() }
+            })
+        }
+        dialog = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.icon_pick_title))
+            .setView(ScrollView(this).apply { addView(grid) })
+            .setNeutralButton(getString(R.string.icon_upload)) { _, _ ->
+                pendingIconSink = sink
+                pickIconImage.launch("image/*")
+            }
+            .setPositiveButton(getString(R.string.icon_manual)) { _, _ ->
+                val input = EditText(this).apply {
+                    hint = getString(R.string.icon_manual_hint)
+                    if (!current.startsWith("data:")) setText(current)
+                }
+                androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.icon_manual))
+                    .setView(input)
+                    .setPositiveButton(android.R.string.ok) { _, _ ->
+                        val v = input.text.toString().trim()
+                        if (v.isNotEmpty()) sink(v)
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

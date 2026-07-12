@@ -78,6 +78,11 @@
     <string name="wheel_param_prompt_hint">随截图一起发送的提示词</string>
     <string name="wheel_param_url_hint">URL 前缀（末尾自动拼关键词），如 https://www.google.com/search?q=</string>
     <string name="wheel_preset_custom">自定义 URL…</string>
+    <string name="icon_pick_title">选择图标</string>
+    <string name="icon_upload">从相册选…</string>
+    <string name="icon_manual">输入 emoji</string>
+    <string name="icon_manual_hint">emoji，如 🔍</string>
+    <string name="icon_load_failed">图片读取失败</string>
     <string name="wheel_add_child">＋ 添加子项</string>
     <string name="wheel_remove">✕ 删除</string>
     <string name="wheel_save">保存动作轮</string>

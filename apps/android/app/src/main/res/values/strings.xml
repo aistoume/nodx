@@ -78,6 +78,11 @@
     <string name="wheel_param_prompt_hint">Prompt sent with the screenshot</string>
     <string name="wheel_param_url_hint">URL prefix (keyword appended), e.g. https://www.google.com/search?q=</string>
     <string name="wheel_preset_custom">Custom URL…</string>
+    <string name="icon_pick_title">Pick an icon</string>
+    <string name="icon_upload">From gallery…</string>
+    <string name="icon_manual">Type emoji</string>
+    <string name="icon_manual_hint">Emoji, e.g. 🔍</string>
+    <string name="icon_load_failed">Couldn\'t load that image</string>
     <string name="wheel_add_child">＋ Add sub-item</string>
     <string name="wheel_remove">✕ Remove</string>
     <string name="wheel_save">Save wheel</string>
