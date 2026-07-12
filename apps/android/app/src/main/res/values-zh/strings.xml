@@ -10,6 +10,10 @@
     <string name="hint_gemini_key">Google AI key（🎨生成/免费模式；AQ.… 或 AIza…）</string>
     <string name="label_anthropic_key">🔑 Anthropic key</string>
     <string name="label_gemini_key">🎨 Google AI key</string>
+    <string name="label_openai_key">🔑 OpenAI key</string>
+    <string name="label_openrouter_key">🔑 OpenRouter key</string>
+    <string name="hint_openai_key">OpenAI API key（sk-…）</string>
+    <string name="hint_openrouter_key">OpenRouter key（sk-or-…，openrouter.ai/keys 免费领）</string>
     <string name="key_saved_fmt">%1$s 已保存（…%2$s）— 点此修改</string>
 
     <string name="btn_start">启动 nodx 悬浮球</string>
@@ -89,5 +93,7 @@
     <string name="provider_label">AI 提供方：</string>
     <string name="provider_anthropic">Anthropic（付费 key）</string>
     <string name="provider_gemini">Gemini — 免费额度</string>
+    <string name="provider_openai">OpenAI（GPT）</string>
+    <string name="provider_openrouter">OpenRouter — 免费模型</string>
     <string name="toast_need_gemini_key">免费模式用 Google AI key — 在上方填入（aistudio.google.com 免费申请）</string>
 </resources>

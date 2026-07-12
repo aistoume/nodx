@@ -17,6 +17,7 @@ import android.graphics.BitmapFactory
 import kotlinx.coroutines.withContext
 import solutions.aicon.nodx.ai.AnthropicClient
 import solutions.aicon.nodx.ai.GeminiClient
+import solutions.aicon.nodx.ai.OpenAIClient
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.URLEncoder
@@ -38,15 +39,24 @@ import java.net.URLEncoder
 object Actions {
 
     /**
-     * Vision call routed by the provider setting: Anthropic (paid key) or
-     * Gemini (free AI-Studio tier, reuses the image-gen key). Blocking —
-     * call from Dispatchers.IO.
+     * Vision call routed by the provider setting — same four families as
+     * the extension (nodx-local excluded: the phone can't reach a desktop
+     * loopback gateway). Blocking — call from Dispatchers.IO.
      */
     private fun vision(context: Context, b64: String, prompt: String, quality: Boolean = false): String =
-        if (Prefs.provider(context) == Prefs.PROVIDER_GEMINI) {
-            GeminiClient.visionText(Prefs.geminiKey(context), b64, prompt)
-        } else {
-            AnthropicClient.explain(
+        when (Prefs.provider(context)) {
+            Prefs.PROVIDER_GEMINI ->
+                GeminiClient.visionText(Prefs.geminiKey(context), b64, prompt)
+            Prefs.PROVIDER_OPENAI -> OpenAIClient.visionText(
+                Prefs.openaiKey(context), b64, prompt,
+                model = if (quality) "gpt-5.6-sol" else "gpt-5.6-luna",
+            )
+            Prefs.PROVIDER_OPENROUTER -> OpenAIClient.visionText(
+                Prefs.openrouterKey(context), b64, prompt,
+                // Auto-picks a vision-capable free model per request.
+                model = "openrouter/free", baseUrl = OpenAIClient.OPENROUTER_BASE,
+            )
+            else -> AnthropicClient.explain(
                 Prefs.anthropicKey(context), b64, prompt,
                 model = if (quality) "claude-sonnet-5" else "claude-haiku-4-5",
             )
@@ -54,13 +64,15 @@ object Actions {
 
     /** True when the active provider's key is present; toasts otherwise. */
     private fun ensureKey(context: Context): Boolean {
-        val gemini = Prefs.provider(context) == Prefs.PROVIDER_GEMINI
-        val ok = if (gemini) Prefs.geminiKey(context).isNotBlank()
-        else Prefs.anthropicKey(context).isNotBlank()
+        val provider = Prefs.provider(context)
+        val ok = Prefs.keyFor(context, provider).isNotBlank()
         if (!ok) {
             toast(
                 context,
-                context.getString(if (gemini) R.string.toast_need_gemini_key else R.string.toast_need_key),
+                context.getString(
+                    if (provider == Prefs.PROVIDER_GEMINI) R.string.toast_need_gemini_key
+                    else R.string.toast_need_key
+                ),
                 long = true,
             )
         }

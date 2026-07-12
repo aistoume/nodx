@@ -91,17 +91,24 @@ class MainActivity : AppCompatActivity() {
         root.addView(row)
     }
 
-    /** Only the ACTIVE provider's key row is shown — no more two stacked
+    /** Only the ACTIVE provider's key row is shown — no more stacked
      *  fields fighting for space on a 384dp screen. */
     private fun renderKeyArea() {
         keyArea.removeAllViews()
-        if (Prefs.provider(this) == Prefs.PROVIDER_GEMINI) {
-            addKeyRow(
+        when (Prefs.provider(this)) {
+            Prefs.PROVIDER_GEMINI -> addKeyRow(
                 keyArea, getString(R.string.label_gemini_key), getString(R.string.hint_gemini_key),
                 Prefs.geminiKey(this),
             ) { Prefs.setGeminiKey(this, it) }
-        } else {
-            addKeyRow(
+            Prefs.PROVIDER_OPENAI -> addKeyRow(
+                keyArea, getString(R.string.label_openai_key), getString(R.string.hint_openai_key),
+                Prefs.openaiKey(this),
+            ) { Prefs.setOpenaiKey(this, it) }
+            Prefs.PROVIDER_OPENROUTER -> addKeyRow(
+                keyArea, getString(R.string.label_openrouter_key), getString(R.string.hint_openrouter_key),
+                Prefs.openrouterKey(this),
+            ) { Prefs.setOpenrouterKey(this, it) }
+            else -> addKeyRow(
                 keyArea, getString(R.string.label_anthropic_key), getString(R.string.hint_anthropic_key),
                 Prefs.anthropicKey(this),
             ) { Prefs.setAnthropicKey(this, it) }
@@ -109,9 +116,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** The selected provider's key — start/auto-start gate on THIS one. */
-    private fun activeKey(): String =
-        if (Prefs.provider(this) == Prefs.PROVIDER_GEMINI) Prefs.geminiKey(this)
-        else Prefs.anthropicKey(this)
+    private fun activeKey(): String = Prefs.keyFor(this, Prefs.provider(this))
+
+    /** Spinner order — must match the adapter labels in onCreate. */
+    private val providerIds = listOf(
+        Prefs.PROVIDER_ANTHROPIC, Prefs.PROVIDER_OPENAI,
+        Prefs.PROVIDER_GEMINI, Prefs.PROVIDER_OPENROUTER,
+    )
 
     // Android 13+: without this the foreground-service notification is
     // silently hidden (the service itself still runs). Result is not
@@ -138,22 +149,24 @@ class MainActivity : AppCompatActivity() {
         val providerSpinner = android.widget.Spinner(this).apply {
             adapter = android.widget.ArrayAdapter(
                 this@MainActivity, android.R.layout.simple_spinner_dropdown_item,
-                listOf(getString(R.string.provider_anthropic), getString(R.string.provider_gemini)),
+                listOf(
+                    getString(R.string.provider_anthropic),
+                    getString(R.string.provider_openai),
+                    getString(R.string.provider_gemini),
+                    getString(R.string.provider_openrouter),
+                ),
             )
         }
         root.addView(providerSpinner)
         keyArea = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(keyArea)
-        providerSpinner.setSelection(if (Prefs.provider(this) == Prefs.PROVIDER_GEMINI) 1 else 0)
+        providerSpinner.setSelection(providerIds.indexOf(Prefs.provider(this)).coerceAtLeast(0))
         providerSpinner.onItemSelectedListener =
             object : android.widget.AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(
                     p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long,
                 ) {
-                    Prefs.setProvider(
-                        this@MainActivity,
-                        if (pos == 1) Prefs.PROVIDER_GEMINI else Prefs.PROVIDER_ANTHROPIC,
-                    )
+                    Prefs.setProvider(this@MainActivity, providerIds[pos])
                     renderKeyArea()
                 }
                 override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}

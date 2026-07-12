@@ -10,6 +10,10 @@
     <string name="hint_gemini_key">Google AI key (🎨 generate / free mode; AQ.… or AIza…)</string>
     <string name="label_anthropic_key">🔑 Anthropic key</string>
     <string name="label_gemini_key">🎨 Google AI key</string>
+    <string name="label_openai_key">🔑 OpenAI key</string>
+    <string name="label_openrouter_key">🔑 OpenRouter key</string>
+    <string name="hint_openai_key">OpenAI API key (sk-…)</string>
+    <string name="hint_openrouter_key">OpenRouter key (sk-or-…, free at openrouter.ai/keys)</string>
     <string name="key_saved_fmt">%1$s saved (…%2$s) — tap to change</string>
 
     <string name="btn_start">Start nodx bubble</string>
@@ -89,5 +93,7 @@
     <string name="provider_label">AI provider:</string>
     <string name="provider_anthropic">Anthropic (paid key)</string>
     <string name="provider_gemini">Gemini — free tier</string>
+    <string name="provider_openai">OpenAI (GPT)</string>
+    <string name="provider_openrouter">OpenRouter — free models</string>
     <string name="toast_need_gemini_key">Free mode uses your Google AI key — add it above (free at aistudio.google.com)</string>
 </resources>
