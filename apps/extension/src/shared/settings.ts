@@ -14,7 +14,10 @@ export function providerNeedsApiKey(p: Provider): boolean {
 export interface Settings {
   language: Language;          // 'auto' | 'zh' | 'en'
   provider: Provider;
+  /** The ACTIVE provider's key — derived from `apiKeys` on every read. */
   apiKey: string;
+  /** Per-provider keys, so switching providers keeps each one's key. */
+  apiKeys: Partial<Record<Provider, string>>;
   model: {
     explain: string;
     deepen: string;
@@ -40,6 +43,7 @@ const DEFAULT_SETTINGS: Settings = {
   language: 'auto',
   provider: 'anthropic',
   apiKey: '',
+  apiKeys: {},
   model: {
     explain: 'claude-haiku-4-5',
     deepen: 'claude-sonnet-5',
@@ -82,10 +86,23 @@ export async function getSettings(): Promise<Settings> {
     deepen: upgradeModel(s.model.deepen),
   };
   s.imageGen = { ...s.imageGen, model: upgradeModel(s.imageGen.model) };
+  // Per-provider keys; migrate the legacy single apiKey to the stored
+  // provider's slot, then derive the active key.
+  const keys = { ...(s.apiKeys ?? {}) };
+  if (Object.keys(keys).length === 0 && s.apiKey) keys[s.provider] = s.apiKey;
+  s.apiKeys = keys;
+  s.apiKey = keys[s.provider] ?? '';
   return s;
 }
 
-export async function setSettings(s: Partial<Settings>): Promise<void> {
+export async function setSettings(patch: Partial<Settings>): Promise<void> {
   const current = await getSettings();
-  await chrome.storage.local.set({ settings: { ...current, ...s } });
+  const next: Settings = { ...current, ...patch };
+  // An apiKey edit belongs to whichever provider the patch lands on;
+  // switching providers re-derives apiKey from that provider's slot.
+  const keys = { ...current.apiKeys };
+  if (patch.apiKey !== undefined) keys[next.provider] = patch.apiKey;
+  next.apiKeys = keys;
+  next.apiKey = keys[next.provider] ?? '';
+  await chrome.storage.local.set({ settings: next });
 }

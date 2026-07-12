@@ -126,6 +126,8 @@ function App() {
                       explain: MODELS[p].explain[0],
                       deepen: MODELS[p].deepen[0],
                     },
+                    // Swap in this provider's remembered key (may be empty).
+                    apiKey: s.apiKeys[p] ?? '',
                   })
                 }
               />{' '}
@@ -148,7 +150,17 @@ function App() {
         <input
           type="password"
           value={settings.apiKey}
-          placeholder="sk-..."
+          placeholder={
+            settings.provider === 'openrouter'
+              ? 'sk-or-v1-…'
+              : settings.provider === 'google'
+                ? 'AIza…'
+                : settings.provider === 'openai'
+                  ? 'sk-…'
+                  : settings.provider === 'nodx'
+                    ? '(optional gateway token)'
+                    : 'sk-ant-…'
+          }
           onInput={(e) => void save({ apiKey: (e.target as HTMLInputElement).value })}
         />
         <p className="hint">{helps.help}</p>
