@@ -66,7 +66,11 @@ function keyFormatWarning(p: Provider, key: string): string | null {
     case 'anthropic':
       return k.startsWith('sk-ant-') ? null : '⚠ Expected an Anthropic key (sk-ant-…)';
     case 'google':
-      return k.startsWith('AIza') ? null : '⚠ Expected a Google AI key (AIza…)';
+      // Google is migrating Standard keys (AIza…) to Auth keys (AQ.…);
+      // both are live during the transition.
+      return k.startsWith('AQ.') || k.startsWith('AIza')
+        ? null
+        : '⚠ Expected a Google AI key (AQ.… or AIza…)';
     case 'openai':
       return k.startsWith('sk-') && !k.startsWith('sk-ant-') && !k.startsWith('sk-or-')
         ? null
@@ -179,7 +183,7 @@ function App() {
             settings.provider === 'openrouter'
               ? 'sk-or-v1-…'
               : settings.provider === 'google'
-                ? 'AIza…'
+                ? 'AQ.… / AIza…'
                 : settings.provider === 'openai'
                   ? 'sk-…'
                   : settings.provider === 'nodx'
@@ -234,7 +238,7 @@ function App() {
         <input
           type="password"
           value={settings.imageGen.apiKey}
-          placeholder="AIza…"
+          placeholder="AQ.… / AIza…"
           onInput={(e) =>
             void save({
               imageGen: {

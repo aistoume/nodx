@@ -7,7 +7,7 @@
     <string name="notif_stop">Stop</string>
 
     <string name="hint_anthropic_key">Anthropic API key (sk-ant-…)</string>
-    <string name="hint_gemini_key">Google AI key (for 🎨 generate, AIza…, optional)</string>
+    <string name="hint_gemini_key">Google AI key (🎨 generate / free mode; AQ.… or AIza…)</string>
     <string name="label_anthropic_key">🔑 Anthropic key</string>
     <string name="label_gemini_key">🎨 Google AI key</string>
     <string name="key_saved_fmt">%1$s saved (…%2$s) — tap to change</string>

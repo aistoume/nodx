@@ -7,7 +7,7 @@
     <string name="notif_stop">停止</string>
 
     <string name="hint_anthropic_key">Anthropic API key (sk-ant-…)</string>
-    <string name="hint_gemini_key">Google AI key（🎨生成用，AIza…，可留空）</string>
+    <string name="hint_gemini_key">Google AI key（🎨生成/免费模式；AQ.… 或 AIza…）</string>
     <string name="label_anthropic_key">🔑 Anthropic key</string>
     <string name="label_gemini_key">🎨 Google AI key</string>
     <string name="key_saved_fmt">%1$s 已保存（…%2$s）— 点此修改</string>
