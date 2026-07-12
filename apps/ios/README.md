@@ -60,5 +60,8 @@ no dependencies, no signing needed for the simulator.
 | `ResultCard.swift` | answer sheet (ResultCard) |
 | `SettingsView.swift` / `HistoryView.swift` / `Prefs.swift` | settings/history/prefs |
 
-Not yet ported (v2): wheel editor (custom spokes), Share Extension entry,
-app icon.
+App icon: AI sparkle (amber, nodx palette) over a faint thinking-network
+watermark — source design in the session scratchpad `ios-icon-star.mjs`
+(variant F), 1024px in `nodx/Assets.xcassets/AppIcon.appiconset`.
+
+Not yet ported (v2): wheel editor (custom spokes), Share Extension entry.
