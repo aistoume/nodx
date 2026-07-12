@@ -18,7 +18,7 @@
 
 import { getSettings } from '../shared/settings.js';
 import { buildExplainPrompt, buildDeepenPrompt } from '../shared/prompts.js';
-import { callAI, callAnthropic, callOpenAI, callGoogle, generateGeminiImage } from '../shared/providers.js';
+import { callAI, generateGeminiImage } from '../shared/providers.js';
 import { recordExplanation } from '../shared/history.js';
 import { resolveLocale, t, setLocale } from '../shared/i18n.js';
 
@@ -72,18 +72,7 @@ async function handle(
       }
     };
 
-    let full = '';
-    switch (settings.provider) {
-      case 'anthropic':
-        full = await callAnthropic(settings.apiKey, model, prompt, onChunk, signal);
-        break;
-      case 'openai':
-        full = await callOpenAI(settings.apiKey, model, prompt, onChunk, signal);
-        break;
-      case 'google':
-        full = await callGoogle(settings.apiKey, model, prompt, onChunk, signal);
-        break;
-    }
+    const full = await callAI(settings.provider, settings.apiKey, model, prompt, onChunk, signal);
 
     await recordExplanation({
       selectedText: msg.text,

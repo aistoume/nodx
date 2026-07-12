@@ -37,7 +37,12 @@ const MODELS: Record<Provider, { explain: string[]; deepen: string[]; help: stri
   google: {
     explain: ['gemini-3.5-flash', 'gemini-3.1-flash-lite'],
     deepen: ['gemini-3-pro', 'gemini-3.5-flash'],
-    help: 'Get a Google AI key at aistudio.google.com/app/apikey',
+    help: 'Get a Google AI key at aistudio.google.com/app/apikey — the AI Studio tier is free',
+  },
+  openrouter: {
+    explain: ['openrouter/free', 'google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free'],
+    deepen: ['openrouter/free', 'google/gemma-4-31b-it:free', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free'],
+    help: 'FREE — get a key at openrouter.ai/keys. :free models cost nothing (~20 req/min, 200/day); openrouter/free auto-picks a vision-capable free model',
   },
 };
 
@@ -102,7 +107,7 @@ function App() {
       <section>
         <label>{t('aiProvider')}</label>
         <div className="radios">
-          {(['anthropic', 'openai', 'google'] as Provider[]).map((p) => (
+          {(['anthropic', 'openai', 'google', 'openrouter'] as Provider[]).map((p) => (
             <label key={p}>
               <input
                 type="radio"
@@ -119,7 +124,13 @@ function App() {
                   })
                 }
               />{' '}
-              {p === 'anthropic' ? t('providerAnthropic') : p === 'openai' ? t('providerOpenAI') : t('providerGoogle')}
+              {p === 'anthropic'
+                ? t('providerAnthropic')
+                : p === 'openai'
+                  ? t('providerOpenAI')
+                  : p === 'google'
+                    ? t('providerGoogle')
+                    : t('providerOpenRouter')}
             </label>
           ))}
         </div>

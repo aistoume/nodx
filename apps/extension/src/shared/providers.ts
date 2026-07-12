@@ -93,16 +93,18 @@ export async function callOpenAI(
   onChunk: ChunkCallback,
   signal?: AbortSignal,
   image?: AnthropicImageInput,
+  baseUrl: string = 'https://api.openai.com/v1',
 ): Promise<string> {
   // With an image the user message becomes a multi-part content array
-  // (image_url data URL + text).
+  // (image_url data URL + text). Also serves OpenAI-compatible providers
+  // (OpenRouter) via `baseUrl`.
   const userContent: unknown = image
     ? [
         { type: 'image_url', image_url: { url: `data:${image.mime};base64,${image.base64}` } },
         { type: 'text', text: prompt },
       ]
     : prompt;
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     signal,
     headers: {
@@ -119,7 +121,8 @@ export async function callOpenAI(
 
   if (!res.ok || !res.body) {
     const errBody = await res.text().catch(() => '');
-    throw new Error(`OpenAI ${res.status}: ${errBody.slice(0, 200)}`);
+    const who = baseUrl.includes('openrouter') ? 'OpenRouter' : 'OpenAI';
+    throw new Error(`${who} ${res.status}: ${errBody.slice(0, 200)}`);
   }
 
   let full = '';
@@ -193,7 +196,7 @@ export async function callGoogle(
 // user picked in settings.
 // ============================================================================
 
-export type ProviderName = 'anthropic' | 'openai' | 'google';
+export type ProviderName = 'anthropic' | 'openai' | 'google' | 'openrouter';
 
 export async function callAI(
   provider: ProviderName,
@@ -209,6 +212,10 @@ export async function callAI(
       return callAnthropic(apiKey, model, prompt, onChunk, signal, image);
     case 'openai':
       return callOpenAI(apiKey, model, prompt, onChunk, signal, image);
+    case 'openrouter':
+      // OpenAI-compatible; free-tier models carry the `:free` suffix and
+      // `openrouter/free` auto-picks a capable free model per request.
+      return callOpenAI(apiKey, model, prompt, onChunk, signal, image, 'https://openrouter.ai/api/v1');
     case 'google':
       return callGoogle(apiKey, model, prompt, onChunk, signal, image);
   }
