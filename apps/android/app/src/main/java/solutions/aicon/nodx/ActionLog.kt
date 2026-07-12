@@ -63,14 +63,17 @@ object ActionLog {
                 f.outputStream().use { scaled.compress(Bitmap.CompressFormat.PNG, 90, it) }
                 thumbPath = f.absolutePath
             }
+            // NOTE: absent keys, not JSONObject.NULL — optString() turns a
+            // stored NULL into the literal string "null", which then looks
+            // like a real URL/path on read.
             val o = JSONObject()
                 .put("id", id)
                 .put("kind", kind)
                 .put("title", title)
                 .put("detail", detail)
-                .put("url", url ?: JSONObject.NULL)
-                .put("thumb", thumbPath ?: JSONObject.NULL)
                 .put("createdAt", System.currentTimeMillis())
+            if (url != null) o.put("url", url)
+            if (thumbPath != null) o.put("thumb", thumbPath)
             logFile(c).appendText(o.toString() + "\n")
             prune(c)
         }
@@ -88,8 +91,8 @@ object ActionLog {
                     o.getString("kind"),
                     o.optString("title"),
                     o.optString("detail"),
-                    o.optString("url").takeIf { it.isNotBlank() },
-                    o.optString("thumb").takeIf { it.isNotBlank() },
+                    o.optString("url").takeIf { it.isNotBlank() && it != "null" },
+                    o.optString("thumb").takeIf { it.isNotBlank() && it != "null" },
                     o.optLong("createdAt"),
                 )
             }.getOrNull()
