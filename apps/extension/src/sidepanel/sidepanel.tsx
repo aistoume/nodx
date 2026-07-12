@@ -179,13 +179,6 @@ function App() {
           <button class="action-btn" onClick={startScreenshot}>
             📸 Screenshot region
           </button>
-          <button
-            class="action-btn action-btn-secondary"
-            onClick={() => chrome.runtime.openOptionsPage()}
-            title="API keys, models, action wheel"
-          >
-            ⚙ Settings
-          </button>
         </div>
         <label class="sync-row">
           <input type="checkbox" checked={syncToNodx} onChange={toggleSync} />

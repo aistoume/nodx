@@ -64,19 +64,6 @@ html, body, #root {
 .action-btn:hover { opacity: 0.92; }
 .action-btn:disabled { opacity: 0.5; cursor: default; }
 
-/* Secondary action — visible settings entry next to the primary CTA */
-.action-btn-secondary {
-  flex: 0 0 auto;
-  background: #fff;
-  color: #555;
-  border: 1px solid #ddd;
-}
-.action-btn-secondary:hover {
-  opacity: 1;
-  color: #d97706;
-  border-color: #d97706;
-}
-
 .settings-link {
   display: inline-flex;
   align-items: center;
