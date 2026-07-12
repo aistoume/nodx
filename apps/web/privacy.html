@@ -145,6 +145,45 @@
         </ul>
       </div>
 
+      <div class="product-section">
+        <h2>nodx Lens for Android</h2>
+        <p class="meta">Applies to v1.0.0 and later (sideload APK and Google Play).</p>
+
+        <h3>What stays on your device</h3>
+        <ul>
+          <li>Your AI provider API keys (Anthropic / OpenAI / Google / OpenRouter) — stored in app-private <code>SharedPreferences</code>, never transmitted anywhere except directly to that provider</li>
+          <li>Saved screenshots and generated images (your device's photo library, <code>Pictures/nodx</code>)</li>
+          <li>The activity log — prompts, AI answers, search queries and links, with thumbnails — stored in app-private storage, capped at 200 entries, delete any entry with a long-press</li>
+          <li>Your action-wheel customisation</li>
+        </ul>
+
+        <h3>What leaves your device</h3>
+        <p>
+          Exactly one kind of traffic: when you tap the bubble and pick an
+          action, the cropped screenshot region and your prompt are sent over
+          HTTPS <strong>directly to the AI provider you selected</strong>,
+          authenticated with your own key. There is no nodx server, no
+          analytics, no crash reporting, no ads SDK.
+        </p>
+
+        <h3>System permissions we request</h3>
+        <ul>
+          <li><strong>Display over other apps</strong> — draws the floating bubble, the region selector, and the result card.</li>
+          <li><strong>Screen capture (MediaProjection)</strong> — captures one frame when you tap the bubble. Android asks for your consent per session.</li>
+          <li>
+            <strong>Accessibility service (optional)</strong> — the "long-lived
+            capture" toggle. If you enable the <em>nodx screenshot</em> service,
+            the app uses the accessibility <code>takeScreenshot</code> API so you
+            are not re-asked for screen-share consent after every lock/unlock.
+            The service declares no event types, reads no window content, and
+            captures <em>only</em> at the moment you tap the bubble. It is used
+            for no other purpose. You can leave it off and use per-session
+            consent instead.
+          </li>
+          <li><strong>Notifications</strong> — the persistent notification Android requires for the bubble's foreground service, which also hosts the Stop button.</li>
+        </ul>
+      </div>
+
       <!-- ── Other Aicon products ────────────────────────────────────── -->
       <div class="product-section">
         <h2>LaoMOS · Still Employed? and future products</h2>
