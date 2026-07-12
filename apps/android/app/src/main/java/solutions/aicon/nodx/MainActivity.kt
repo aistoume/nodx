@@ -451,20 +451,7 @@ class MainActivity : AppCompatActivity() {
                 e.url != null -> runCatching {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(e.url)))
                 }
-                e.detail.isNotBlank() ->
-                    androidx.appcompat.app.AlertDialog.Builder(this)
-                        .setTitle(badge)
-                        .setMessage(e.detail)
-                        .setPositiveButton(R.string.result_copy) { _, _ ->
-                            val cm = getSystemService(CLIPBOARD_SERVICE)
-                                as android.content.ClipboardManager
-                            cm.setPrimaryClip(
-                                android.content.ClipData.newPlainText("nodx", e.detail)
-                            )
-                            toast(getString(R.string.result_copied))
-                        }
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .show()
+                e.detail.isNotBlank() -> LogDialogs.showDetail(this, badge, e, thumb)
                 else -> startActivity(Intent(this, ActionLogActivity::class.java))
             }
         }

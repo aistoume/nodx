@@ -123,16 +123,7 @@ class ActionLogActivity : AppCompatActivity() {
                 e.url != null -> runCatching {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(e.url)))
                 }
-                e.detail.isNotBlank() -> AlertDialog.Builder(this)
-                    .setTitle(kindBadge(e.kind))
-                    .setMessage(if (e.title.isBlank()) e.detail else "${e.title}\n\n${e.detail}")
-                    .setPositiveButton(R.string.result_copy) { _, _ ->
-                        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        cm.setPrimaryClip(ClipData.newPlainText("nodx", e.detail))
-                        Toast.makeText(this, R.string.result_copied, Toast.LENGTH_SHORT).show()
-                    }
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .show()
+                e.detail.isNotBlank() -> LogDialogs.showDetail(this, kindBadge(e.kind), e, thumb)
             }
         }
         row.setOnLongClickListener {
