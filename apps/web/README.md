@@ -28,12 +28,12 @@ This folder needs to live in its own repo so Cloudflare Pages can deploy it.
 
 ```bash
 # 1. Pick a name (suggested: aicon-web)
-mkdir /Users/youbinmo/Develop/aicon-web
-cd /Users/youbinmo/Develop/aicon-web
+mkdir ~/Develop/aicon-web
+cd ~/Develop/aicon-web
 
-# 2. Copy this directory into the repo root
-cp -R /Users/youbinmo/Develop/nodx/nodx/apps/web/* .
-cp /Users/youbinmo/Develop/nodx/nodx/apps/web/.* . 2>/dev/null || true
+# 2. Copy this directory into the repo root (adjust the monorepo path)
+cp -R <monorepo>/apps/web/* .
+cp <monorepo>/apps/web/.* . 2>/dev/null || true
 
 # 3. Init git + push
 git init
@@ -125,7 +125,7 @@ Sub-pages live at the file paths you'd expect:
 ## Local preview before pushing
 
 ```bash
-cd /Users/youbinmo/Develop/nodx/nodx/apps/web
+cd apps/web
 python3 -m http.server 8000
 # open http://localhost:8000/
 ```

@@ -11,7 +11,7 @@
 set -euo pipefail
 
 MONO_WEB="$(cd "$(dirname "$0")/.." && pwd)"
-TARGET="${AICON_WEB_DIR:-/Users/youbinmo/Develop/aicon-web}"
+TARGET="${AICON_WEB_DIR:-$HOME/Develop/aicon-web}"
 
 if [ ! -d "$TARGET/.git" ]; then
   echo "✗ $TARGET is not a git repo."

@@ -356,7 +356,7 @@ Privacy policy URL: `<把 Gist 的 raw URL 贴这里>`
    一次性 $5 注册费
 
 2. 准备 .zip 包
-   cd /Users/youbinmo/Develop/nodx/nodx/apps/extension
+   cd apps/extension
    pnpm build
    cd dist
    zip -r ../nodx-lens-v0.1.0.zip .

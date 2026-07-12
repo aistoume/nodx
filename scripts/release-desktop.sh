@@ -10,7 +10,7 @@
 #     APPLE_SIGNING_IDENTITY) for notarization. Otherwise this builds a signed-
 #     but-not-notarized DMG that still works (Gatekeeper will warn once).
 #   - `gh` CLI installed + authenticated for `aistoume/nodx`.
-#   - aicon-web standalone repo cloned at /Users/youbinmo/Develop/aicon-web (the
+#   - aicon-web standalone repo cloned at ~/Develop/aicon-web (the
 #     sync script will rsync apps/web → there and git push).
 
 set -euo pipefail
