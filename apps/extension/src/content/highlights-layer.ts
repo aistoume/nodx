@@ -20,6 +20,7 @@
  */
 
 import {
+  deleteHighlight,
   listForUrl,
   normalizeUrl,
   subscribe,
@@ -308,13 +309,55 @@ function makeBox(h: Highlight): HTMLDivElement {
   });
   box.appendChild(chip);
 
+  // Delete button — top-left, revealed on hover so deleting never needs a
+  // trip to the side panel. Single click removes the highlight (same
+  // behaviour as the side panel's ✕).
+  const del = document.createElement('div');
+  del.textContent = '✕';
+  del.title = '删除此框选 / Delete this highlight';
+  Object.assign(del.style, {
+    position: 'absolute',
+    top: '-10px',
+    left: '-10px',
+    width: '20px',
+    height: '20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(24, 24, 27, 0.85)',
+    color: '#fff',
+    borderRadius: '50%',
+    fontSize: '11px',
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+    pointerEvents: 'auto',
+    cursor: 'pointer',
+    opacity: '0',
+    transition: 'opacity 0.15s, background 0.15s',
+  } as CSSStyleDeclaration);
+  del.addEventListener('mouseenter', () => {
+    del.style.background = 'rgba(220, 38, 38, 0.95)';
+  });
+  del.addEventListener('mouseleave', () => {
+    del.style.background = 'rgba(24, 24, 27, 0.85)';
+  });
+  del.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    box.remove(); // instant feedback; storage change re-renders the rest
+    void deleteHighlight(h.url, h.id);
+  });
+  box.appendChild(del);
+
   // Hover: darken; click: re-open the action menu on this box (fallback:
   // side panel when no handler is installed).
   box.addEventListener('mouseenter', () => {
     box.style.background = 'rgba(245, 158, 11, 0.20)';
+    del.style.opacity = '1';
   });
   box.addEventListener('mouseleave', () => {
     box.style.background = 'rgba(245, 158, 11, 0.10)';
+    del.style.opacity = '0';
   });
   box.addEventListener('click', (e) => {
     e.preventDefault();
