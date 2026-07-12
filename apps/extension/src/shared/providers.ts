@@ -172,7 +172,9 @@ export async function callGoogle(
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       contents: [{ role: 'user', parts }],
-      generationConfig: { maxOutputTokens: 800 },
+      // Gemini 3.x thinks by default and thought tokens share this cap —
+      // 800 starved the actual answer.
+      generationConfig: { maxOutputTokens: 2048 },
     }),
   });
 
@@ -184,12 +186,19 @@ export async function callGoogle(
   let full = '';
   await readSse(res.body, (_event, data) => {
     const obj = safeParse<{
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
+      candidates?: {
+        content?: { parts?: { text?: string; thought?: boolean }[] };
+      }[];
     }>(data);
-    const txt = obj?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (txt) {
-      full += txt;
-      onChunk(txt);
+    // Gemini 3.x interleaves `thought: true` reasoning parts with answer
+    // parts — walk ALL parts and keep only real answer text (reading just
+    // parts[0] leaked reasoning and dropped answer chunks).
+    for (const part of obj?.candidates?.[0]?.content?.parts ?? []) {
+      if (part?.thought) continue;
+      if (part?.text) {
+        full += part.text;
+        onChunk(part.text);
+      }
     }
   });
   return full;

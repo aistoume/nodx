@@ -53,7 +53,10 @@ object GeminiClient {
                 ?: error("Gemini: no content returned")
             val sb = StringBuilder()
             for (i in 0 until parts.length()) {
-                parts.optJSONObject(i)?.optString("text")?.let { sb.append(it) }
+                val part = parts.optJSONObject(i) ?: continue
+                // Gemini 3.x interleaves thought parts — answer text only.
+                if (part.optBoolean("thought")) continue
+                sb.append(part.optString("text"))
             }
             return sb.toString().ifBlank { "(no text)" }
         }
