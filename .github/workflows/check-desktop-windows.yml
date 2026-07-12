@@ -1,0 +1,66 @@
+# Windows keep-green check for nodx desktop.
+#
+# The full installer build (build-desktop-windows.yml) only runs on tags /
+# manual dispatch. This lighter check runs on every push that touches the
+# desktop app, so Windows breakage (a mac-only dependency slipping in, an
+# un-gated CGEvent call, …) is caught the day it lands instead of at the
+# next release.
+#
+# cargo check compiles the whole dependency graph for the MSVC target but
+# skips codegen/linking/bundling — a few minutes instead of ~10.
+
+name: Check desktop (Windows)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/desktop/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/check-desktop-windows.yml'
+  pull_request:
+    paths:
+      - 'apps/desktop/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+
+jobs:
+  check:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Frontend must typecheck+build — tauri build embeds it.
+      - name: Build frontend
+        run: pnpm --filter @nodx/desktop build
+
+      - name: cargo check (MSVC)
+        working-directory: apps/desktop/src-tauri
+        run: cargo check --locked
+        env:
+          CARGO_BUILD_JOBS: 2
