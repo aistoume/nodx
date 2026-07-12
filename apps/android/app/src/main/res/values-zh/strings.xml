@@ -83,4 +83,8 @@
     <string name="wheel_layout_single">生成单图</string>
     <string name="wheel_layout_grid">生成 2×2 四格</string>
     <string name="wheel_param_style_hint">生成风格提示词 — {subject} 会被替换为 AI 认图出的主体描述</string>
+    <string name="provider_label">AI 提供方：</string>
+    <string name="provider_anthropic">Anthropic（付费 key）</string>
+    <string name="provider_gemini">Gemini — 免费额度</string>
+    <string name="toast_need_gemini_key">免费模式用 Google AI key — 在上方填入（aistudio.google.com 免费申请）</string>
 </resources>

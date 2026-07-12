@@ -99,6 +99,37 @@ class MainActivity : AppCompatActivity() {
             root, getString(R.string.label_gemini_key), getString(R.string.hint_gemini_key),
             Prefs.geminiKey(this),
         ) { Prefs.setGeminiKey(this, it) }
+
+        // Provider switch — Gemini's AI-Studio tier is free, so the whole
+        // app can run on just the Google key.
+        val providerRow = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+        }
+        providerRow.addView(TextView(this).apply {
+            text = getString(R.string.provider_label)
+            setPadding(0, 24, 16, 0)
+        })
+        val providerGroup = android.widget.RadioGroup(this).apply {
+            orientation = android.widget.RadioGroup.HORIZONTAL
+        }
+        val rbAnthropic = android.widget.RadioButton(this).apply {
+            text = getString(R.string.provider_anthropic); id = View.generateViewId()
+        }
+        val rbGemini = android.widget.RadioButton(this).apply {
+            text = getString(R.string.provider_gemini); id = View.generateViewId()
+        }
+        providerGroup.addView(rbAnthropic); providerGroup.addView(rbGemini)
+        providerGroup.check(
+            if (Prefs.provider(this) == Prefs.PROVIDER_GEMINI) rbGemini.id else rbAnthropic.id
+        )
+        providerGroup.setOnCheckedChangeListener { _, checked ->
+            Prefs.setProvider(
+                this,
+                if (checked == rbGemini.id) Prefs.PROVIDER_GEMINI else Prefs.PROVIDER_ANTHROPIC,
+            )
+        }
+        providerRow.addView(providerGroup)
+        root.addView(providerRow)
         root.addView(Button(this).apply {
             text = getString(R.string.btn_start)
             setOnClickListener {

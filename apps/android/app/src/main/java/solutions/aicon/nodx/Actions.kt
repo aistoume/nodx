@@ -37,6 +37,36 @@ import java.net.URLEncoder
  */
 object Actions {
 
+    /**
+     * Vision call routed by the provider setting: Anthropic (paid key) or
+     * Gemini (free AI-Studio tier, reuses the image-gen key). Blocking —
+     * call from Dispatchers.IO.
+     */
+    private fun vision(context: Context, b64: String, prompt: String, quality: Boolean = false): String =
+        if (Prefs.provider(context) == Prefs.PROVIDER_GEMINI) {
+            GeminiClient.visionText(Prefs.geminiKey(context), b64, prompt)
+        } else {
+            AnthropicClient.explain(
+                Prefs.anthropicKey(context), b64, prompt,
+                model = if (quality) "claude-sonnet-5" else "claude-haiku-4-5",
+            )
+        }
+
+    /** True when the active provider's key is present; toasts otherwise. */
+    private fun ensureKey(context: Context): Boolean {
+        val gemini = Prefs.provider(context) == Prefs.PROVIDER_GEMINI
+        val ok = if (gemini) Prefs.geminiKey(context).isNotBlank()
+        else Prefs.anthropicKey(context).isNotBlank()
+        if (!ok) {
+            toast(
+                context,
+                context.getString(if (gemini) R.string.toast_need_gemini_key else R.string.toast_need_key),
+                long = true,
+            )
+        }
+        return ok
+    }
+
     fun run(context: Context, action: WheelAction, crop: Bitmap) {
         when (action) {
             is WheelAction.Prompt -> explain(context, crop, action.prompt)
@@ -48,26 +78,27 @@ object Actions {
 
     /** kind=prompt：vision call with the (user-customizable) prompt → toast. */
     private fun explain(context: Context, crop: Bitmap, prompt: String) {
+        if (!ensureKey(context)) return
         val b64 = toBase64Png(crop)
         toast(context, context.getString(R.string.act_recognizing))
         CoroutineScope(Dispatchers.IO).launch {
-            val apiKey = Prefs.anthropicKey(context)
-            if (apiKey.isBlank()) { mainToast(context, context.getString(R.string.toast_need_key)); return@launch }
-            val answer = runCatching {
-                AnthropicClient.explain(apiKey, b64, prompt)
-            }.getOrElse { context.getString(R.string.act_call_failed, it.message) }
+            val answer = runCatching { vision(context, b64, prompt) }
+                .getOrElse { context.getString(R.string.act_call_failed, it.message) }
             mainToast(context, answer.take(300), long = true)
         }
     }
 
-    /** kind=search: Haiku names the image → open browser at `urlPrefix<query>`. */
+    /** kind=search: AI names the image → open browser at `urlPrefix<query>`. */
     private fun aiSearchOpen(context: Context, crop: Bitmap, urlPrefix: String, okMsgRes: Int) {
+        if (!ensureKey(context)) return
         val b64 = toBase64Png(crop)
         toast(context, context.getString(R.string.act_identifying))
         CoroutineScope(Dispatchers.IO).launch {
-            val apiKey = Prefs.anthropicKey(context)
-            if (apiKey.isBlank()) { mainToast(context, context.getString(R.string.toast_need_key)); return@launch }
-            val query = runCatching { AnthropicClient.identify(apiKey, b64) }.getOrNull()
+            val query = runCatching {
+                vision(context, b64, AnthropicClient.IDENTIFY_PROMPT)
+                    .trim().removeSurrounding("\"").removeSurrounding("'")
+                    .replace(Regex("\\s+"), " ").trim()
+            }.getOrNull()
             if (query.isNullOrBlank()) { mainToast(context, context.getString(R.string.act_no_subject)); return@launch }
             withContext(Dispatchers.Main) {
                 openUrl(context, urlPrefix + URLEncoder.encode(query, "UTF-8"))
@@ -93,9 +124,8 @@ object Actions {
      * downscale → gallery (= 收集库) → open in the system viewer.
      */
     private fun generate(context: Context, crop: Bitmap, action: WheelAction.Generate) {
-        val aKey = Prefs.anthropicKey(context)
         val gKey = Prefs.geminiKey(context)
-        if (aKey.isBlank()) { toast(context, context.getString(R.string.toast_need_key)); return }
+        if (!ensureKey(context)) return
         if (gKey.isBlank()) {
             toast(context, context.getString(R.string.gen_need_key), long = true)
             return
@@ -103,8 +133,9 @@ object Actions {
         val b64 = toBase64Png(crop)
         toast(context, context.getString(R.string.gen_writing_prompt), long = true)
         CoroutineScope(Dispatchers.IO).launch {
-            val subject = runCatching { AnthropicClient.describeForGeneration(aKey, b64) }
-                .getOrElse { mainToast(context, context.getString(R.string.gen_prompt_failed, it.message), long = true); return@launch }
+            val subject = runCatching {
+                vision(context, b64, AnthropicClient.DESCRIBE_PROMPT, quality = true).trim()
+            }.getOrElse { mainToast(context, context.getString(R.string.gen_prompt_failed, it.message), long = true); return@launch }
             mainToast(context, context.getString(R.string.gen_rendering), long = true)
             val bytes = runCatching {
                 GeminiClient.generateImage(gKey, action.stylePrompt.replace("{subject}", subject))

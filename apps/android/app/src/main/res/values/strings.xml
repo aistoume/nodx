@@ -83,4 +83,8 @@
     <string name="wheel_layout_single">Single image</string>
     <string name="wheel_layout_grid">2×2 four-style grid</string>
     <string name="wheel_param_style_hint">Style prompt — {subject} is replaced by the AI\'s description of the crop</string>
+    <string name="provider_label">AI provider:</string>
+    <string name="provider_anthropic">Anthropic (paid key)</string>
+    <string name="provider_gemini">Gemini — free tier</string>
+    <string name="toast_need_gemini_key">Free mode uses your Google AI key — add it above (free at aistudio.google.com)</string>
 </resources>
