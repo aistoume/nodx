@@ -95,14 +95,25 @@ export async function getSettings(): Promise<Settings> {
   return s;
 }
 
-export async function setSettings(patch: Partial<Settings>): Promise<void> {
-  const current = await getSettings();
-  const next: Settings = { ...current, ...patch };
-  // An apiKey edit belongs to whichever provider the patch lands on;
-  // switching providers re-derives apiKey from that provider's slot.
-  const keys = { ...current.apiKeys };
-  if (patch.apiKey !== undefined) keys[next.provider] = patch.apiKey;
-  next.apiKeys = keys;
-  next.apiKey = keys[next.provider] ?? '';
-  await chrome.storage.local.set({ settings: next });
+// Writes are serialized: rapid successive saves (one per keystroke in the
+// options page) must apply in order, or an earlier read-modify-write can
+// land after a later one and silently revert the newer value.
+let writeChain: Promise<void> = Promise.resolve();
+
+export function setSettings(patch: Partial<Settings>): Promise<void> {
+  const run = async () => {
+    const current = await getSettings();
+    const next: Settings = { ...current, ...patch };
+    // An apiKey edit belongs to whichever provider the patch lands on;
+    // switching providers re-derives apiKey from that provider's slot.
+    // Trim — pasted keys often carry stray whitespace/newlines, which
+    // upstreams reject as a malformed Authorization header.
+    const keys = { ...current.apiKeys };
+    if (patch.apiKey !== undefined) keys[next.provider] = patch.apiKey.trim();
+    next.apiKeys = keys;
+    next.apiKey = keys[next.provider] ?? '';
+    await chrome.storage.local.set({ settings: next });
+  };
+  writeChain = writeChain.then(run, run);
+  return writeChain;
 }

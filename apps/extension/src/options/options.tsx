@@ -54,6 +54,28 @@ const MODELS: Record<Provider, { explain: string[]; deepen: string[]; help: stri
 /** Image-gen models (gemini-2.5-flash-image shuts down 2026-08-17). */
 const IMAGE_GEN_MODELS = ['gemini-3.1-flash-image', 'gemini-3-pro-image'];
 
+/** Live sanity check: does the pasted key look like this provider's? */
+function keyFormatWarning(p: Provider, key: string): string | null {
+  const k = key.trim();
+  if (!k) return null;
+  switch (p) {
+    case 'openrouter':
+      return k.startsWith('sk-or-')
+        ? null
+        : '⚠ This is not an OpenRouter key (expected sk-or-v1-…) — create one at openrouter.ai/keys';
+    case 'anthropic':
+      return k.startsWith('sk-ant-') ? null : '⚠ Expected an Anthropic key (sk-ant-…)';
+    case 'google':
+      return k.startsWith('AIza') ? null : '⚠ Expected a Google AI key (AIza…)';
+    case 'openai':
+      return k.startsWith('sk-') && !k.startsWith('sk-ant-') && !k.startsWith('sk-or-')
+        ? null
+        : '⚠ Expected an OpenAI key (sk-…)';
+    default:
+      return null; // nodx: any/no token is fine
+  }
+}
+
 function App() {
   const [settings, setSettingsState] = useState<Settings | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -74,13 +96,14 @@ function App() {
   // narrowed value explicit.
   const s = settings;
   async function save(patch: Partial<Settings>) {
-    // Optimistic merge for instant feedback…
-    setSettingsState({ ...s, ...patch });
+    // Mirror setSettings' per-provider key derivation locally —
+    // synchronously, so rapid keystrokes never race an async reconcile.
+    const provider = patch.provider ?? s.provider;
+    const keys = { ...s.apiKeys };
+    if (patch.apiKey !== undefined) keys[provider] = patch.apiKey;
+    const apiKey = patch.apiKey !== undefined ? patch.apiKey : (keys[provider] ?? '');
+    setSettingsState({ ...s, ...patch, apiKeys: keys, apiKey });
     await setSettings(patch);
-    // …then reconcile with storage — per-provider apiKey derivation
-    // (apiKeys map) lives in setSettings/getSettings, and the local copy
-    // must reflect it or provider switches show stale/empty keys.
-    setSettingsState(await getSettings());
     setSavedAt(Date.now());
     if (patch.language !== undefined) {
       setLocale(patch.language);
@@ -165,6 +188,11 @@ function App() {
           }
           onInput={(e) => void save({ apiKey: (e.target as HTMLInputElement).value })}
         />
+        {keyFormatWarning(settings.provider, settings.apiKey) && (
+          <p className="hint wheel-error">
+            {keyFormatWarning(settings.provider, settings.apiKey)}
+          </p>
+        )}
         <p className="hint">{helps.help}</p>
       </section>
 
