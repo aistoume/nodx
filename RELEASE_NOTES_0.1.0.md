@@ -98,4 +98,4 @@ no nodx server in the data path.
 
 **Lens** (companion Chrome extension): coming to Chrome Web Store / already at https://aicon.solutions/nodx/lens/
 
-**Contact**: contact@aicon.solutions · 𝕏 @LaoMo9394
+**Contact**: ryan@aicon.solutions · 𝕏 @LaoMo9394

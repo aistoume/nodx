@@ -106,4 +106,4 @@ See `docs/inproc-gateway.md` for the full architecture writeup.
 
 **Repo**: https://github.com/aistoume/nodx (private)
 **Lens**: https://aicon.solutions/nodx/lens/
-**Contact**: contact@aicon.solutions · 𝕏 [@LaoMo9394](https://x.com/LaoMo9394)
+**Contact**: ryan@aicon.solutions · 𝕏 [@LaoMo9394](https://x.com/LaoMo9394)

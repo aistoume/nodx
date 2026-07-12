@@ -88,4 +88,4 @@ Then: highlight any text anywhere on your Mac → ⌥+E → 🎉
 
 **Repo**: https://github.com/aistoume/nodx (private)
 **Website**: https://aicon.solutions
-**Contact**: contact@aicon.solutions · 𝕏 [@LaoMo9394](https://x.com/LaoMo9394)
+**Contact**: ryan@aicon.solutions · 𝕏 [@LaoMo9394](https://x.com/LaoMo9394)
