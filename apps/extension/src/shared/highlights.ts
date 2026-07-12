@@ -154,6 +154,7 @@ export async function addHighlight(h: Highlight): Promise<void> {
   const bucket = await readBucket(h.url);
   bucket.highlights.unshift(h);
   await writeBucket(h.url, bucket);
+  void enforceStorageBudget();
 }
 
 export async function updateHighlight(
@@ -253,6 +254,7 @@ export async function addAction(h: Highlight): Promise<void> {
   list.unshift(h);
   if (list.length > ACTIONS_CAP) list.length = ACTIONS_CAP;
   await chrome.storage.local.set({ [ACTIONS_KEY]: list });
+  void enforceStorageBudget();
 }
 
 export async function deleteAction(id: string): Promise<void> {
@@ -291,4 +293,80 @@ export function subscribe(
   };
   chrome.storage.onChanged.addListener(listener);
   return () => chrome.storage.onChanged.removeListener(listener);
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Storage budget — with `unlimitedStorage` there is no browser quota, so we
+// enforce our own: when the store crosses BUDGET, evict the OLDEST items
+// (highlights across every page bucket + global action records, by
+// createdAt) until usage drops to TARGET. Runs fire-and-forget after every
+// write; cheap when under budget (one getBytesInUse call).
+// ─────────────────────────────────────────────────────────────────────────────
+
+const STORAGE_BUDGET_BYTES = 1024 * 1024 * 1024; // 1 GB
+const STORAGE_TARGET_BYTES = Math.floor(STORAGE_BUDGET_BYTES * 0.85);
+
+let budgetCheckInFlight = false;
+
+export async function enforceStorageBudget(): Promise<void> {
+  if (budgetCheckInFlight) return;
+  budgetCheckInFlight = true;
+  try {
+    let used = await chrome.storage.local.getBytesInUse(null);
+    if (used <= STORAGE_BUDGET_BYTES) return;
+
+    const all = await chrome.storage.local.get(null);
+
+    interface Victim {
+      id: string;
+      createdAt: number;
+      size: number;
+    }
+    const victims: Victim[] = [];
+    const sizeOf = (h: Highlight) => JSON.stringify(h).length;
+    for (const [key, value] of Object.entries(all)) {
+      if (key.startsWith(STORAGE_PREFIX)) {
+        for (const h of (value as Bucket).highlights ?? []) {
+          victims.push({ id: h.id, createdAt: h.createdAt ?? 0, size: sizeOf(h) });
+        }
+      } else if (key === ACTIONS_KEY) {
+        for (const h of (value as Highlight[]) ?? []) {
+          victims.push({ id: h.id, createdAt: h.createdAt ?? 0, size: sizeOf(h) });
+        }
+      }
+    }
+
+    victims.sort((a, b) => a.createdAt - b.createdAt);
+    const drop = new Set<string>();
+    for (const v of victims) {
+      if (used <= STORAGE_TARGET_BYTES) break;
+      drop.add(v.id);
+      used -= v.size;
+    }
+    if (drop.size === 0) return;
+
+    const writes: Record<string, unknown> = {};
+    const removes: string[] = [];
+    for (const [key, value] of Object.entries(all)) {
+      if (key.startsWith(STORAGE_PREFIX)) {
+        const b = value as Bucket;
+        const kept = (b.highlights ?? []).filter((h) => !drop.has(h.id));
+        if (kept.length !== (b.highlights ?? []).length) {
+          if (kept.length > 0) writes[key] = { ...b, highlights: kept };
+          else removes.push(key); // empty bucket → drop the key entirely
+        }
+      } else if (key === ACTIONS_KEY) {
+        const list = ((value as Highlight[]) ?? []).filter((h) => !drop.has(h.id));
+        writes[key] = list;
+      }
+    }
+    if (Object.keys(writes).length > 0) await chrome.storage.local.set(writes);
+    if (removes.length > 0) await chrome.storage.local.remove(removes);
+    console.info(`[nodx Lens] storage budget: evicted ${drop.size} oldest item(s)`);
+  } catch (e) {
+    console.warn('[nodx Lens] storage budget check failed:', e);
+  } finally {
+    budgetCheckInFlight = false;
+  }
 }
