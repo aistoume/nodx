@@ -27,6 +27,7 @@ import {
 } from './marquee.js';
 import { installHighlightsLayer } from './highlights-layer.js';
 import { showRadialMenu, TEXT_OPTIONS, type RadialChoice } from './radial-menu.js';
+import { mdToHtml } from '../shared/markdown.js';
 
 /**
  * Swallow "Extension context invalidated" globally (v0.8.3).
@@ -635,6 +636,9 @@ function startStream(
     } else if (msg.type === 'DONE') {
       body.classList.remove('loading');
       body.querySelector('.cursor')?.remove();
+      // Final render: convert the model's Markdown into readable HTML
+      // (mdToHtml escapes input first, so this is injection-safe).
+      body.innerHTML = mdToHtml(received);
       footer.style.display = 'flex';
       activePort = null;
       if (mode === 'short') {

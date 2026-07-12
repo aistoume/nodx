@@ -219,6 +219,20 @@ html, body, #root {
   white-space: pre-wrap;
   line-height: 1.5;
 }
+.qa .a.md { white-space: normal; }
+.qa .a.md ul, .qa .a.md ol { margin: 4px 0 4px 18px; }
+.qa .a.md li { margin: 2px 0; }
+.qa .a.md code {
+  background: rgba(0,0,0,0.07); padding: 0 4px; border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
+}
+.qa .a.md pre {
+  background: rgba(0,0,0,0.06); padding: 6px 8px; border-radius: 6px;
+  overflow-x: auto; margin: 4px 0;
+}
+.qa .a.md pre code { background: transparent; padding: 0; }
+.qa .a.md a { color: #b45309; }
+.qa .a.md .md-h { display: inline-block; margin-top: 4px; }
 .qa .a.streaming::after {
   content: '▍';
   color: #d97706;

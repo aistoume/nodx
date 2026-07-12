@@ -29,6 +29,7 @@ import {
   type Highlight,
 } from '../shared/highlights.js';
 import { callAI } from '../shared/providers.js';
+import { mdToHtml } from '../shared/markdown.js';
 import { postCaptureToNodx } from '../shared/capture.js';
 
 interface ActiveTabState {
@@ -504,9 +505,16 @@ function HighlightCard({
           {highlight.qa.map((q) => (
             <div class="qa" key={q.id}>
               <div class="q">{q.question}</div>
-              <div class={`a ${q.streaming ? 'streaming' : ''}`}>
-                {q.answer || (q.streaming ? '' : q.error ?? '')}
-              </div>
+              {q.answer ? (
+                <div
+                  class={`a md ${q.streaming ? 'streaming' : ''}`}
+                  dangerouslySetInnerHTML={{ __html: mdToHtml(q.answer) }}
+                />
+              ) : (
+                <div class={`a ${q.streaming ? 'streaming' : ''}`}>
+                  {q.streaming ? '' : q.error ?? ''}
+                </div>
+              )}
             </div>
           ))}
         </div>
