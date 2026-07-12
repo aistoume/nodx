@@ -210,18 +210,24 @@ export async function callNodxCli(
   onChunk: ChunkCallback,
   signal?: AbortSignal,
   image?: AnthropicImageInput,
+  token?: string,
 ): Promise<string> {
   const body: Record<string, unknown> = { model, prompt };
   if (image) {
     body.image_base64 = image.base64;
     body.image_mime = image.mime;
   }
+  // The desktop in-proc gateway requires its client token (the value of
+  // VITE_AI_CLIENT_TOKEN); the standalone CLI gateway ignores it unless
+  // configured. The options page reuses the API-key field for this.
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (token) headers.authorization = `Bearer ${token}`;
   let res: Response;
   try {
     res = await fetch('http://127.0.0.1:8787/v1/complete', {
       method: 'POST',
       signal,
-      headers: { 'content-type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
     });
   } catch {
@@ -260,7 +266,7 @@ export async function callAI(
     case 'google':
       return callGoogle(apiKey, model, prompt, onChunk, signal, image);
     case 'nodx':
-      return callNodxCli(model, prompt, onChunk, signal, image);
+      return callNodxCli(model, prompt, onChunk, signal, image, apiKey);
   }
 }
 

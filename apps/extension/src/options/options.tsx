@@ -47,7 +47,7 @@ const MODELS: Record<Provider, { explain: string[]; deepen: string[]; help: stri
   nodx: {
     explain: ['haiku', 'sonnet'],
     deepen: ['sonnet', 'opus'],
-    help: 'No API key — uses your logged-in Claude Code via the local nodx gateway. Start it: `pnpm cli-gateway` (gateway only) or `pnpm start:cli` (gateway + desktop) in the nodx repo. Port 127.0.0.1:8787.',
+    help: 'No API key — uses your local nodx gateway (127.0.0.1:8787): the desktop app, `pnpm start:cli`, or `pnpm cli-gateway`. If the desktop gateway rejects with 401, paste its client token (VITE_AI_CLIENT_TOKEN) into the API Key field above — otherwise leave it empty.',
   },
 };
 

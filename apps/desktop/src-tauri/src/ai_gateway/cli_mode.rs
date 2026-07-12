@@ -31,6 +31,29 @@ use tokio::time::timeout;
 
 use super::anthropic::{CompleteRequest, CompleteResponse, Usage};
 
+/// Temp file that removes itself when dropped — image staging for the
+/// CLI's Read tool survives every early-return path without leaking.
+struct TempImage(std::path::PathBuf);
+impl Drop for TempImage {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
+/// Stage a base64 image under $TMPDIR/nodx-cli/ for the CLI to Read.
+fn stage_image(b64: &str, mime: Option<&str>) -> Result<TempImage, String> {
+    use base64::Engine as _;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(b64)
+        .map_err(|e| format!("bad image_base64: {}", e))?;
+    let dir = std::env::temp_dir().join("nodx-cli");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("mkdir: {}", e))?;
+    let ext = if mime.is_some_and(|m| m.contains("jpeg")) { "jpg" } else { "png" };
+    let path = dir.join(format!("img-{}.{}", uuid::Uuid::new_v4(), ext));
+    std::fs::write(&path, bytes).map_err(|e| format!("write: {}", e))?;
+    Ok(TempImage(path))
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // claude binary resolver
 //
@@ -245,6 +268,18 @@ pub async fn run(req: &CompleteRequest) -> Result<CompleteResponse, CliError> {
     };
     let model_alias = map_model(&req.model);
 
+    // Vision: the CLI can't take image bytes on stdin, but its Read tool
+    // renders images — stage the crop as a temp file and let it look.
+    let temp_image = match req.image_base64.as_deref().filter(|s| !s.is_empty()) {
+        Some(b64) => match stage_image(b64, req.image_mime.as_deref()) {
+            Ok(t) => Some(t),
+            Err(e) => {
+                return Err(CliError { status: 500, message: format!("failed to stage image: {}", e) });
+            }
+        },
+        None => None,
+    };
+
     let mut args: Vec<String> = vec![
         "-p".into(),
         "--output-format".into(),
@@ -260,6 +295,14 @@ pub async fn run(req: &CompleteRequest) -> Result<CompleteResponse, CliError> {
         args.push("WebFetch".into());
         args.push("--max-turns".into());
         args.push("8".into());
+    } else if temp_image.is_some() {
+        // Read renders the staged image; a couple of turns to view+answer.
+        // (Read is not path-scoped — acceptable for the user's own local
+        // screenshots; the gateway stays loopback-only.)
+        args.push("--allowedTools".into());
+        args.push("Read".into());
+        args.push("--max-turns".into());
+        args.push("3".into());
     } else {
         // Empty allowedTools = NO tools at all → safe.
         // One turn = a single assistant message (the answer).
@@ -306,9 +349,17 @@ pub async fn run(req: &CompleteRequest) -> Result<CompleteResponse, CliError> {
         }
     };
 
-    // Feed the prompt on stdin.
+    // Feed the prompt on stdin (image runs get a view-then-answer wrapper).
+    let final_prompt = match &temp_image {
+        Some(t) => format!(
+            "First use the Read tool to view the image at {} — do not do anything else with the filesystem. Then complete the following task about that image, replying with ONLY the final answer:\n\n{}",
+            t.0.display(),
+            req.prompt
+        ),
+        None => req.prompt.clone(),
+    };
     if let Some(mut stdin) = child.stdin.take() {
-        if let Err(e) = stdin.write_all(req.prompt.as_bytes()).await {
+        if let Err(e) = stdin.write_all(final_prompt.as_bytes()).await {
             return Err(CliError {
                 status: 500,
                 message: format!("write stdin: {}", e),
