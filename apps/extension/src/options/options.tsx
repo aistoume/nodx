@@ -125,7 +125,7 @@ function App() {
       <section>
         <label>{t('language')}</label>
         <div className="radios">
-          {(['auto', 'zh', 'en'] as Language[]).map((lang) => (
+          {(['auto', 'en', 'zh'] as Language[]).map((lang) => (
             <label key={lang}>
               <input
                 type="radio"
