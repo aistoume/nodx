@@ -218,6 +218,63 @@ export type ProviderName = 'anthropic' | 'openai' | 'google' | 'openrouter' | 'n
  * own Claude auth. No API key. Non-streaming: the full text arrives in one
  * chunk. Vision goes as image_base64 (CLI gateway views it via Read).
  */
+const NODX_GATEWAY = 'http://127.0.0.1:8787';
+
+/**
+ * Fire the `nodx://wake` deep link so the OS launches nodx desktop (whose
+ * in-proc gateway then serves :8787). Works from DOM contexts (content
+ * script / side panel / options — anchor click); the service worker falls
+ * back to a throwaway background tab. Chrome shows its "Open nodx?"
+ * prompt on first use; ticking "always allow" makes it silent after that.
+ */
+async function fireNodxWake(): Promise<boolean> {
+  try {
+    if (typeof document !== 'undefined' && document.body) {
+      const a = document.createElement('a');
+      a.href = 'nodx://wake';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return true;
+    }
+    if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
+      const tab = await chrome.tabs.create({ url: 'nodx://wake', active: false });
+      if (tab.id != null) {
+        const id = tab.id;
+        setTimeout(() => void chrome.tabs.remove(id).catch(() => {}), 2500);
+      }
+      return true;
+    }
+  } catch {
+    /* scheme not registered / tab creation blocked — treated as not woken */
+  }
+  return false;
+}
+
+async function nodxGatewayUp(): Promise<boolean> {
+  try {
+    const res = await fetch(`${NODX_GATEWAY}/health`);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Wake the desktop app, then poll /health until the gateway answers. */
+async function wakeNodxAndWait(): Promise<boolean> {
+  if (!(await fireNodxWake())) return false;
+  for (let i = 0; i < 10; i++) {
+    await new Promise((r) => setTimeout(r, 900));
+    if (await nodxGatewayUp()) return true;
+  }
+  return false;
+}
+
+const NODX_DOWN_MSG =
+  '本地 nodx 网关未运行（127.0.0.1:8787），尝试用 nodx:// 唤起桌面 app 也没等到它上线 — ' +
+  '请手动打开 nodx 桌面版，或在 nodx 目录跑 `pnpm cli-gateway`（仅网关）/ `pnpm start:cli`（网关+桌面）后重试。';
+
 export async function callNodxCli(
   model: string,
   prompt: string,
@@ -236,18 +293,25 @@ export async function callNodxCli(
   // configured. The options page reuses the API-key field for this.
   const headers: Record<string, string> = { 'content-type': 'application/json' };
   if (token) headers.authorization = `Bearer ${token}`;
-  let res: Response;
-  try {
-    res = await fetch('http://127.0.0.1:8787/v1/complete', {
+  const post = () =>
+    fetch(`${NODX_GATEWAY}/v1/complete`, {
       method: 'POST',
       signal,
       headers,
       body: JSON.stringify(body),
     });
+  let res: Response;
+  try {
+    res = await post();
   } catch {
-    throw new Error(
-      '本地 nodx 网关未运行（127.0.0.1:8787）— 在 nodx 目录跑 `pnpm cli-gateway`（仅网关）或 `pnpm start:cli`（网关+桌面）。',
-    );
+    // Gateway down — deep-link launch nodx desktop, wait for /health,
+    // then retry the call once.
+    if (!(await wakeNodxAndWait())) throw new Error(NODX_DOWN_MSG);
+    try {
+      res = await post();
+    } catch {
+      throw new Error(NODX_DOWN_MSG);
+    }
   }
   if (!res.ok) {
     const errBody = await res.text().catch(() => '');

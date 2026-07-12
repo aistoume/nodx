@@ -23,8 +23,24 @@ export type WheelAction =
 export interface WheelItem {
   emoji: string;
   label: string;
+  /** Custom button colour (#rrggbb). Unset → the fixed position colour;
+   *  children without a colour inherit their parent spoke's. */
+  color?: string;
   action: WheelAction | null;
   children: WheelItem[];
+}
+
+/** Position default colours (up/right/down/left) as hex — the editor's
+ *  colour inputs and the renderers' fallbacks both derive from these. */
+export const SPOKE_COLORS_HEX = ['#3b82f6', '#d97706', '#10b981', '#a855f7'];
+
+/** hex → the wheel's standard rgba(…, 0.95) button background. */
+export function wheelBg(hex: string | undefined, fallback: string): string {
+  if (!hex || !/^#[0-9a-f]{6}$/i.test(hex)) return fallback;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, 0.95)`;
 }
 
 export interface WheelConfigV1 {

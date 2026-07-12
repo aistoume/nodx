@@ -131,3 +131,36 @@ select { width: auto; min-width: 200px; }
 .icon-manual { flex: 1; min-width: 0; font-size: 12px; padding: 5px 8px !important;
   border: 1px solid #ddd; border-radius: 6px; }
 .wp-btn .wp-img { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; }
+
+/* ── Wheel colour swatch ───────────────────────────────────────── */
+.color-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.color-field input[type='color'] {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #ddd;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+.color-field input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+.color-field input[type='color']::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+.color-reset {
+  border: 0;
+  background: transparent;
+  color: #999;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.color-reset:hover { color: #d97706; }

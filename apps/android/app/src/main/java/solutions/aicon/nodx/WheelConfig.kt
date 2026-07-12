@@ -82,10 +82,14 @@ class WheelItem(
     val label: String,
     val action: WheelAction?,
     val children: List<WheelItem> = emptyList(),
+    /** Custom button colour "#rrggbb"; null → position default (children
+     *  inherit their parent spoke's colour). Same field as the extension. */
+    val color: String? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("emoji", emoji)
         put("label", label)
+        if (color != null) put("color", color)
         put("action", action?.toJson() ?: JSONObject.NULL)
         put("children", JSONArray().also { arr -> children.forEach { arr.put(it.toJson()) } })
     }
@@ -107,6 +111,7 @@ class WheelItem(
                 label,
                 WheelAction.fromJson(o.optJSONObject("action")),
                 kids,
+                o.optString("color").takeIf { it.isNotBlank() },
             )
         }
     }

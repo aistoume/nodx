@@ -17,7 +17,7 @@
  * content-script world without shipping React/Preact.
  */
 
-import type { WheelAction, WheelItem } from '../shared/wheel.js';
+import { wheelBg, type WheelAction, type WheelItem } from '../shared/wheel.js';
 
 export type RadialChoice =
   | 'explain'
@@ -44,6 +44,8 @@ interface SubOption {
   key: LeafChoice;
   emoji: string;
   label: string;
+  /** Custom colour; unset → inherit the parent spoke's bg. */
+  bg?: string;
 }
 
 interface RadialOption {
@@ -157,12 +159,13 @@ export function showWheelMenu(
   const asKey = (id: string) => id as unknown as LeafChoice;
 
   const options: RadialOption[] = spokes.map((s, i) => {
+    const spokeBg = wheelBg(s.color, WHEEL_BG[i]!);
     const base = {
       emoji: s.emoji,
       label: s.label,
       title: s.label || undefined,
       angleDeg: i * 90,
-      bg: WHEEL_BG[i]!,
+      bg: spokeBg,
     };
     if (s.children.length > 0) {
       return {
@@ -170,7 +173,12 @@ export function showWheelMenu(
         children: s.children.map((c, j) => {
           const id = `w${i}-${j}`;
           if (c.action) actions.set(id, c.action);
-          return { key: asKey(id), emoji: c.emoji, label: c.label };
+          return {
+            key: asKey(id),
+            emoji: c.emoji,
+            label: c.label,
+            ...(c.color ? { bg: wheelBg(c.color, spokeBg) } : {}),
+          };
         }),
       };
     }
@@ -255,7 +263,7 @@ export function showRadialMenu(
           const offset = (i - (kids.length - 1) / 2) * SUB_STEP;
           const pos = angleToXY(level!.angleDeg + offset, SUB_RADIUS, cx, cy);
           root.appendChild(makeLine(parentPos, pos));
-          const btn = makeButton(kid.emoji, kid.label, pos, level!.bg);
+          const btn = makeButton(kid.emoji, kid.label, pos, kid.bg ?? level!.bg);
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
             finish(kid.key);

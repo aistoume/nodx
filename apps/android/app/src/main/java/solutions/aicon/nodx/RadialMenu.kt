@@ -79,13 +79,20 @@ class RadialMenu(
     private val spokeColors = intArrayOf(
         0xF23B82F6.toInt(), 0xF2D97706.toInt(), 0xF210B981.toInt(), 0xF2A855F7.toInt(),
     )
+    /** "#rrggbb" → ARGB with the wheel's standard 0.95 alpha. */
+    private fun customColor(hex: String?): Int? = hex?.let {
+        runCatching {
+            (0xF2 shl 24) or (android.graphics.Color.parseColor(it) and 0xFFFFFF)
+        }.getOrNull()
+    }
+
     private val options: List<Option> = items.mapIndexed { i, item ->
-        val color = spokeColors[i]
+        val color = customColor(item.color) ?: spokeColors[i]
         Option(
             item.emoji, item.label, i * 90f, color,
             action = item.action,
             children = item.children.takeIf { it.isNotEmpty() }?.map { kid ->
-                Option(kid.emoji, kid.label, 0f, color, action = kid.action)
+                Option(kid.emoji, kid.label, 0f, customColor(kid.color) ?: color, action = kid.action)
             },
         )
     }

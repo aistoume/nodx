@@ -18,6 +18,8 @@ import {
   getWheelConfig,
   resetWheelConfig,
   setWheelConfig,
+  SPOKE_COLORS_HEX,
+  wheelBg,
   type WheelAction,
   type WheelConfigV1,
   type WheelItem,
@@ -396,7 +398,7 @@ function WheelPreview({
         const p = polar(i * 90, OUTER);
         const isExp = expIdx === i;
         const dimmed = expIdx != null;
-        return button(s, p.x, p.y, WHEEL_BG[i]!, {
+        return button(s, p.x, p.y, wheelBg(s.color, WHEEL_BG[i]!), {
           dim: dimmed,
           onClick:
             s.children.length > 0 ? () => onExpand(isExp ? null : i) : undefined,
@@ -404,7 +406,11 @@ function WheelPreview({
       })}
       {exp?.children.map((c, j) => {
         const p = childPos(j, exp.children.length);
-        return button(c, p.x, p.y, WHEEL_BG[expIdx!]!, {});
+        return button(
+          c, p.x, p.y,
+          wheelBg(c.color ?? exp.color, WHEEL_BG[expIdx!]!),
+          {},
+        );
       })}
       <div className="wp-centre wp-click" onClick={() => onExpand(null)}>
         {expIdx == null ? '✕' : '↩'}
@@ -558,13 +564,50 @@ function paramOf(a: WheelAction | null): string {
   return '';
 }
 
+/**
+ * Native colour swatch. `value` unset means "position default" — a ↺
+ * reset appears once the user picks a custom colour.
+ */
+function ColorField({
+  value,
+  defaultHex,
+  onChange,
+}: {
+  value: string | undefined;
+  defaultHex: string;
+  onChange: (v: string | undefined) => void;
+}) {
+  return (
+    <span className="color-field">
+      <input
+        type="color"
+        value={value ?? defaultHex}
+        title={t('wheelColor')}
+        onInput={(e) => onChange((e.target as HTMLInputElement).value)}
+      />
+      {value && (
+        <button
+          type="button"
+          className="color-reset"
+          title={t('wheelColorReset')}
+          onClick={() => onChange(undefined)}
+        >
+          ↺
+        </button>
+      )}
+    </span>
+  );
+}
+
 function ItemFields({
   item,
+  defaultColor,
   onChange,
   onRemove,
   removeDisabled,
 }: {
   item: WheelItem;
+  defaultColor: string;
   onChange: (next: WheelItem) => void;
   onRemove?: () => void;
   removeDisabled?: boolean;
@@ -581,6 +624,16 @@ function ItemFields({
         <IconPicker
           value={item.emoji}
           onChange={(v) => onChange({ ...item, emoji: v })}
+        />
+        <ColorField
+          value={item.color}
+          defaultHex={defaultColor}
+          onChange={(color) => {
+            const next = { ...item };
+            if (color) next.color = color;
+            else delete next.color;
+            onChange(next);
+          }}
         />
         <input
           className="wheel-name"
@@ -727,7 +780,7 @@ function WheelEditor({ onSaved }: { onSaved: () => void }) {
           <div
             key={i}
             className="wheel-spoke"
-            style={{ borderLeft: `4px solid ${WHEEL_BG[i]!}` }}
+            style={{ borderLeft: `4px solid ${spoke.color ?? SPOKE_COLORS_HEX[i]!}` }}
           >
             <strong>{posName[i]}</strong>
             <div className="radios">
@@ -771,6 +824,16 @@ function WheelEditor({ onSaved }: { onSaved: () => void }) {
                     value={spoke.emoji}
                     onChange={(v) => patchSpoke(i, { ...spoke, emoji: v })}
                   />
+                  <ColorField
+                    value={spoke.color}
+                    defaultHex={SPOKE_COLORS_HEX[i]!}
+                    onChange={(color) => {
+                      const next = { ...spoke };
+                      if (color) next.color = color;
+                      else delete next.color;
+                      patchSpoke(i, next);
+                    }}
+                  />
                   <input
                     value={spoke.label}
                     placeholder={t('wheelLabelPh')}
@@ -783,6 +846,7 @@ function WheelEditor({ onSaved }: { onSaved: () => void }) {
                   <div key={j} className="wheel-child">
                     <ItemFields
                       item={kid}
+                      defaultColor={spoke.color ?? SPOKE_COLORS_HEX[i]!}
                       onChange={(next) =>
                         patchSpoke(i, {
                           ...spoke,
@@ -817,7 +881,11 @@ function WheelEditor({ onSaved }: { onSaved: () => void }) {
                 )}
               </>
             ) : (
-              <ItemFields item={spoke} onChange={(next) => patchSpoke(i, next)} />
+              <ItemFields
+                item={spoke}
+                defaultColor={SPOKE_COLORS_HEX[i]!}
+                onChange={(next) => patchSpoke(i, next)}
+              />
             )}
           </div>
         );

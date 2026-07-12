@@ -39,6 +39,15 @@ class WheelSettingsActivity : AppCompatActivity() {
     /** Ping the live preview whenever any form value changes. */
     private var onFormChanged: () -> Unit = {}
 
+    private companion object {
+        /** Preset swatches — first slot in the strip is "↺ 默认" (null). */
+        val COLOR_PALETTE = listOf(
+            "#3b82f6", "#d97706", "#10b981", "#a855f7",
+            "#ef4444", "#ec4899", "#06b6d4", "#84cc16",
+            "#f97316", "#8b5cf6", "#64748b", "#18181b",
+        )
+    }
+
     /** One emoji+label+kind+param row — used for spokes and children alike. */
     private inner class ItemEditor(prefill: WheelItem?) {
         val root = LinearLayout(this@WheelSettingsActivity).apply { orientation = LinearLayout.VERTICAL }
@@ -62,6 +71,40 @@ class WheelSettingsActivity : AppCompatActivity() {
             )
         }
         val param = EditText(this@WheelSettingsActivity)
+
+        /** Custom colour "#rrggbb"; null = position default. */
+        var colorHex: String? = prefill?.color
+        private val colorStrip = LinearLayout(this@WheelSettingsActivity).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        /** Small tappable swatch row: 默认 dot + preset palette. */
+        private fun renderColorStrip() {
+            colorStrip.removeAllViews()
+            val d = resources.displayMetrics.density
+            val size = (32 * d).toInt()
+            val gap = (8 * d).toInt()
+            (listOf<String?>(null) + COLOR_PALETTE).forEach { hex ->
+                val dot = TextView(this@WheelSettingsActivity).apply {
+                    layoutParams = LinearLayout.LayoutParams(size, size).apply { rightMargin = gap }
+                    gravity = android.view.Gravity.CENTER
+                    text = if (hex == null) "↺" else ""
+                    setTextColor(Color.DKGRAY)
+                    background = android.graphics.drawable.GradientDrawable().apply {
+                        shape = android.graphics.drawable.GradientDrawable.OVAL
+                        setColor(
+                            hex?.let { runCatching { Color.parseColor(it) }.getOrNull() }
+                                ?: Color.argb(40, 128, 128, 128)
+                        )
+                        if (hex == colorHex) setStroke((3 * d).toInt(), Color.BLACK)
+                    }
+                    setOnClickListener {
+                        colorHex = hex; renderColorStrip(); onFormChanged()
+                    }
+                }
+                colorStrip.addView(dot)
+            }
+        }
 
         /** Per-kind param memory — switching kinds no longer wipes input. */
         private val stash = mutableMapOf<Kind, String>()
@@ -90,6 +133,12 @@ class WheelSettingsActivity : AppCompatActivity() {
             row.addView(emoji, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             row.addView(label, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2f))
             root.addView(row)
+            renderColorStrip()
+            root.addView(android.widget.HorizontalScrollView(this@WheelSettingsActivity).apply {
+                isHorizontalScrollBarEnabled = false
+                setPadding(0, 8, 0, 8)
+                addView(colorStrip)
+            })
             root.addView(kind)
             root.addView(layout)
             root.addView(param)
@@ -178,7 +227,9 @@ class WheelSettingsActivity : AppCompatActivity() {
         fun build(children: List<WheelItem> = emptyList()): WheelItem? {
             val e = emoji.text.toString().trim()
             if (e.isEmpty()) { toast(getString(R.string.wheel_err_emoji)); return null }
-            if (children.isNotEmpty()) return WheelItem(e, label.text.toString().trim(), null, children)
+            if (children.isNotEmpty()) {
+                return WheelItem(e, label.text.toString().trim(), null, children, colorHex)
+            }
             val p = param.text.toString().trim()
             val action = when (Kind.entries[kind.selectedItemPosition]) {
                 Kind.PROMPT -> { if (p.isEmpty()) { toast(getString(R.string.wheel_err_param)); return null }; WheelAction.Prompt(p) }
@@ -187,14 +238,14 @@ class WheelSettingsActivity : AppCompatActivity() {
                 Kind.GENERATE ->
                     WheelAction.Generate(layoutValue(), p.ifEmpty { defaultStyleForLayout() })
             }
-            return WheelItem(e, label.text.toString().trim(), action)
+            return WheelItem(e, label.text.toString().trim(), action, color = colorHex)
         }
 
         /** No-toast variant for the live preview: never fails, fills gaps. */
         fun buildLenient(children: List<WheelItem> = emptyList()): WheelItem {
             val e = emoji.text.toString().trim().ifEmpty { "❓" }
             val l = label.text.toString().trim()
-            if (children.isNotEmpty()) return WheelItem(e, l, null, children)
+            if (children.isNotEmpty()) return WheelItem(e, l, null, children, colorHex)
             val p = param.text.toString().trim()
             val action = when (Kind.entries[kind.selectedItemPosition]) {
                 Kind.PROMPT -> WheelAction.Prompt(p)
@@ -203,7 +254,7 @@ class WheelSettingsActivity : AppCompatActivity() {
                 Kind.GENERATE ->
                     WheelAction.Generate(layoutValue(), p.ifEmpty { defaultStyleForLayout() })
             }
-            return WheelItem(e, l, action)
+            return WheelItem(e, l, action, color = colorHex)
         }
     }
 
