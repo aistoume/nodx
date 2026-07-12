@@ -74,9 +74,13 @@ function App() {
   // narrowed value explicit.
   const s = settings;
   async function save(patch: Partial<Settings>) {
-    const next: Settings = { ...s, ...patch };
-    setSettingsState(next);
+    // Optimistic merge for instant feedback…
+    setSettingsState({ ...s, ...patch });
     await setSettings(patch);
+    // …then reconcile with storage — per-provider apiKey derivation
+    // (apiKeys map) lives in setSettings/getSettings, and the local copy
+    // must reflect it or provider switches show stale/empty keys.
+    setSettingsState(await getSettings());
     setSavedAt(Date.now());
     if (patch.language !== undefined) {
       setLocale(patch.language);
@@ -126,8 +130,6 @@ function App() {
                       explain: MODELS[p].explain[0],
                       deepen: MODELS[p].deepen[0],
                     },
-                    // Swap in this provider's remembered key (may be empty).
-                    apiKey: s.apiKeys[p] ?? '',
                   })
                 }
               />{' '}
