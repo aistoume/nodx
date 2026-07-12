@@ -79,6 +79,9 @@
     <string name="wheel_param_url_hint">URL 前缀（末尾自动拼关键词），如 https://www.google.com/search?q=</string>
     <string name="wheel_preset_custom">自定义 URL…</string>
     <string name="icon_pick_title">选择图标</string>
+    <string name="result_title_explain">💡 nodx · 解释</string>
+    <string name="result_copy">📋 复制</string>
+    <string name="result_copied">已复制</string>
     <string name="icon_upload">从相册选…</string>
     <string name="icon_manual">输入 emoji</string>
     <string name="icon_manual_hint">emoji，如 🔍</string>

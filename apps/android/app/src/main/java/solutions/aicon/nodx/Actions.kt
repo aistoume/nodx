@@ -88,7 +88,8 @@ object Actions {
         }
     }
 
-    /** kind=prompt：vision call with the (user-customizable) prompt → toast. */
+    /** kind=prompt：vision call with the (user-customizable) prompt →
+     *  full-text overlay card (scrollable, copyable, user-dismissed). */
     private fun explain(context: Context, crop: Bitmap, prompt: String) {
         if (!ensureKey(context)) return
         val b64 = toBase64Png(crop)
@@ -96,7 +97,14 @@ object Actions {
         CoroutineScope(Dispatchers.IO).launch {
             val answer = runCatching { vision(context, b64, prompt) }
                 .getOrElse { context.getString(R.string.act_call_failed, it.message) }
-            mainToast(context, answer.take(300), long = true)
+            withContext(Dispatchers.Main) {
+                val wm = context.getSystemService(Context.WINDOW_SERVICE)
+                    as android.view.WindowManager
+                ResultCard.show(
+                    context, wm,
+                    context.getString(R.string.result_title_explain), answer,
+                )
+            }
         }
     }
 

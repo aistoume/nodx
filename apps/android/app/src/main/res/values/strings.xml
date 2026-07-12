@@ -79,6 +79,9 @@
     <string name="wheel_param_url_hint">URL prefix (keyword appended), e.g. https://www.google.com/search?q=</string>
     <string name="wheel_preset_custom">Custom URL…</string>
     <string name="icon_pick_title">Pick an icon</string>
+    <string name="result_title_explain">💡 nodx · answer</string>
+    <string name="result_copy">📋 Copy</string>
+    <string name="result_copied">Copied</string>
     <string name="icon_upload">From gallery…</string>
     <string name="icon_manual">Type emoji</string>
     <string name="icon_manual_hint">Emoji, e.g. 🔍</string>
