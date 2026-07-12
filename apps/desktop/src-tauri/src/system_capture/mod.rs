@@ -13,13 +13,19 @@
 //! only (matching lens-mac's scope).
 
 use std::sync::OnceLock;
+#[cfg(desktop)]
 use std::thread;
+#[cfg(desktop)]
 use std::time::Duration;
 
+#[cfg(desktop)]
 use tauri::{AppHandle, Emitter, Manager};
+#[cfg(desktop)]
 use tauri_plugin_clipboard_manager::ClipboardExt;
+#[cfg(desktop)]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
+#[cfg(desktop)]
 /// Payload broadcast on a successful capture.
 #[derive(serde::Serialize, Clone, Debug)]
 pub struct CapturedSnippet {
@@ -101,6 +107,7 @@ pub fn open_accessibility_pane() {}
 /// Runs on whatever thread the global-shortcut plugin invokes us on, so we
 /// avoid any tokio / Tauri runtime assumptions. The 120 ms sleep is on this
 /// thread — that's fine, the hotkey isn't fired rapidly.
+#[cfg(desktop)]
 pub fn on_hotkey(app: AppHandle) {
     // 1. Permission gate. Without Accessibility our synthesised ⌘+C is
     //    silently dropped and we'd end up emitting whatever was in the
@@ -168,6 +175,7 @@ pub fn on_hotkey(app: AppHandle) {
 /// by default, so a plain DOM `keydown` listener never fires inside the
 /// popover webview. Registering ESC + Cmd+W as temporary global shortcuts
 /// bypasses focus entirely.
+#[cfg(desktop)]
 fn popover_dismiss_shortcuts() -> [Shortcut; 2] {
     [
         Shortcut::new(None, Code::Escape),
@@ -178,6 +186,7 @@ fn popover_dismiss_shortcuts() -> [Shortcut; 2] {
 /// Register the ESC + Cmd+W dismiss shortcuts. Best-effort — if a global
 /// ESC is somehow already taken we still fall back to the in-webview
 /// listener (which works when the user has clicked into the popover).
+#[cfg(desktop)]
 pub fn register_dismiss_shortcuts(app: &AppHandle) {
     for sc in popover_dismiss_shortcuts() {
         match app.global_shortcut().register(sc) {
@@ -189,6 +198,7 @@ pub fn register_dismiss_shortcuts(app: &AppHandle) {
 
 /// Unregister the dismiss shortcuts so they don't intercept ESC / Cmd+W
 /// system-wide while the popover is hidden.
+#[cfg(desktop)]
 pub fn unregister_dismiss_shortcuts(app: &AppHandle) {
     for sc in popover_dismiss_shortcuts() {
         let _ = app.global_shortcut().unregister(sc);
@@ -197,6 +207,7 @@ pub fn unregister_dismiss_shortcuts(app: &AppHandle) {
 
 /// True if the given shortcut is one of our popover dismiss shortcuts.
 /// Called from the global-shortcut handler in lib.rs.
+#[cfg(desktop)]
 pub fn is_dismiss_shortcut(sc: &Shortcut) -> bool {
     popover_dismiss_shortcuts().iter().any(|d| d == sc)
 }
@@ -208,6 +219,7 @@ pub fn is_dismiss_shortcut(sc: &Shortcut) -> bool {
 /// internal lock during dispatch; calling `unregister()` re-enters that
 /// lock and deadlocks the entire app. So we hide synchronously (cheap),
 /// then defer the unregister to a worker thread.
+#[cfg(desktop)]
 pub fn hide_popover(app: &AppHandle) {
     if let Some(win) = app.get_webview_window("popover") {
         let _ = win.hide();
@@ -231,6 +243,7 @@ pub fn hide_popover(app: &AppHandle) {
 ///     it's shown without explicit activation. We additionally register
 ///     ESC + Cmd+W as temporary global shortcuts (see register_dismiss_
 ///     shortcuts) so the user can always dismiss regardless of focus.
+#[cfg(desktop)]
 fn show_popover(app: &AppHandle) {
     use tauri::WebviewUrl;
 
@@ -308,6 +321,7 @@ fn show_popover(app: &AppHandle) {
 ///   does nothing.
 /// - ESC + Cmd+W global shortcuts would stay registered even after the
 ///   popover is hidden, swallowing those keys system-wide.
+#[cfg(desktop)]
 pub fn install_popover_handlers(app: &AppHandle, win: &tauri::WebviewWindow) {
     let _label = win.label().to_string();
     let app_handle = app.clone();
@@ -321,6 +335,7 @@ pub fn install_popover_handlers(app: &AppHandle, win: &tauri::WebviewWindow) {
 }
 
 /// Local stand-in for chrono so we don't pull a whole crate just for ms.
+#[cfg(desktop)]
 fn chrono_now_ms() -> i64 {
     use std::time::{SystemTime, UNIX_EPOCH};
     SystemTime::now()

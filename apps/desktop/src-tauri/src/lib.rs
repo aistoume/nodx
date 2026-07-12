@@ -4,12 +4,15 @@ mod system_capture;
 
 use ai_gateway::Provider;
 use serde::Serialize;
+use tauri::{Emitter, Manager};
+#[cfg(desktop)]
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Emitter, Manager,
+    AppHandle,
 };
 use tauri_plugin_deep_link::DeepLinkExt;
+#[cfg(desktop)]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 /// Payload broadcast to the frontend when a `nodx://capture?...` URL fires.
@@ -251,36 +254,41 @@ fn random_token() -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|app, shortcut, event| {
-                    // Fire only on the press; the release also calls back.
-                    if event.state() != ShortcutState::Pressed {
-                        return;
-                    }
-                    // ⌥+E — system-wide capture trigger.
-                    if shortcut.matches(Modifiers::ALT, Code::KeyE) {
-                        let handle = app.clone();
-                        std::thread::spawn(move || {
-                            system_capture::on_hotkey(handle);
-                        });
-                        return;
-                    }
-                    // ESC / Cmd+W — popover dismiss shortcuts (registered
-                    // only while the popover is visible, see system_capture
-                    // mod). Hide it + clean up the shortcuts.
-                    if system_capture::is_dismiss_shortcut(shortcut) {
-                        system_capture::hide_popover(app);
-                        return;
-                    }
-                })
-                .build(),
-        )
+        .plugin(tauri_plugin_clipboard_manager::init());
+
+    // Global-shortcut plugin is desktop-only (no such concept on mobile).
+    #[cfg(desktop)]
+    let builder = builder.plugin(
+        tauri_plugin_global_shortcut::Builder::new()
+            .with_handler(|app, shortcut, event| {
+                // Fire only on the press; the release also calls back.
+                if event.state() != ShortcutState::Pressed {
+                    return;
+                }
+                // ⌥+E — system-wide capture trigger.
+                if shortcut.matches(Modifiers::ALT, Code::KeyE) {
+                    let handle = app.clone();
+                    std::thread::spawn(move || {
+                        system_capture::on_hotkey(handle);
+                    });
+                    return;
+                }
+                // ESC / Cmd+W — popover dismiss shortcuts (registered
+                // only while the popover is visible, see system_capture
+                // mod). Hide it + clean up the shortcuts.
+                if system_capture::is_dismiss_shortcut(shortcut) {
+                    system_capture::hide_popover(app);
+                    return;
+                }
+            })
+            .build(),
+    );
+
+    builder
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:nodx.db", migrations::all())
@@ -367,35 +375,38 @@ pub fn run() {
             // Don't crash the app if registration fails — the user can fall
             // back to in-app Lens usage. Most common failure: another app
             // (e.g. the old standalone lens-mac) already grabbed the key.
-            match app.global_shortcut().register(Shortcut::new(
-                Some(Modifiers::ALT),
-                Code::KeyE,
-            )) {
-                Ok(()) => {
-                    system_capture::mark_hotkey_registered();
-                    log::info!("registered global shortcut ⌥+E");
+            #[cfg(desktop)]
+            {
+                match app.global_shortcut().register(Shortcut::new(
+                    Some(Modifiers::ALT),
+                    Code::KeyE,
+                )) {
+                    Ok(()) => {
+                        system_capture::mark_hotkey_registered();
+                        log::info!("registered global shortcut ⌥+E");
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "could not register ⌥+E: {} (likely another app already owns it)",
+                            e
+                        );
+                    }
                 }
-                Err(e) => {
-                    log::warn!(
-                        "could not register ⌥+E: {} (likely another app already owns it)",
-                        e
-                    );
+
+                // ── 0.3: Menu-bar tray icon ─────────────────────────────
+                // Lets the app run truly background-friendly: close the
+                // main window without quitting; ⌥+E still works; click the
+                // tray to bring nodx back.
+                build_tray(app.handle())?;
+
+                // ── 0.3: Popover close → hide (not destroy) ─────────────
+                // The popover window declared in tauri.conf.json defaults
+                // to destroy-on-close. Install our hide-instead handler so
+                // the user can repeatedly fire ⌥+E without us having to
+                // rebuild the window every time.
+                if let Some(popover) = app.get_webview_window("popover") {
+                    system_capture::install_popover_handlers(app.handle(), &popover);
                 }
-            }
-
-            // ── 0.3: Menu-bar tray icon ─────────────────────────────────
-            // Lets the app run truly background-friendly: close the main
-            // window without quitting; ⌥+E still works; click the tray to
-            // bring nodx back.
-            build_tray(app.handle())?;
-
-            // ── 0.3: Popover close → hide (not destroy) ─────────────────
-            // The popover window declared in tauri.conf.json defaults to
-            // destroy-on-close. Install our hide-instead handler so the user
-            // can repeatedly fire ⌥+E without us having to rebuild the
-            // window every time.
-            if let Some(popover) = app.get_webview_window("popover") {
-                system_capture::install_popover_handlers(app.handle(), &popover);
             }
 
             Ok(())
@@ -406,6 +417,7 @@ pub fn run() {
 
 /// Build a minimal tray-icon menu so nodx can live in the menu bar.
 /// Three actions: open main window, settings, quit.
+#[cfg(desktop)]
 fn build_tray(app: &AppHandle) -> Result<(), tauri::Error> {
     let show = MenuItem::with_id(app, "tray-show", "打开 nodx · Open nodx", true, None::<&str>)?;
     let settings =

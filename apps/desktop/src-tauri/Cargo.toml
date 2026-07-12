@@ -20,7 +20,7 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 # tray-icon needed for menu-bar presence (0.3 task: lens-mac merger)
-tauri = { version = "2.11.0", features = ["protocol-asset", "tray-icon"] }
+tauri = { version = "2.11.0", features = ["protocol-asset"] }
 tauri-plugin-log = "2"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 tauri-plugin-dialog = "2"
@@ -29,9 +29,7 @@ tauri-plugin-deep-link = "2"
 urlencoding = "2.1"
 
 # 0.3 — System-wide select-and-explain (merged from lens-mac).
-# global-shortcut for ⌥+E; clipboard for save/restore around the synthesised
-# ⌘+C; core-graphics (macOS only) for the CGEvent keyboard synthesis.
-tauri-plugin-global-shortcut = "2"
+# clipboard for save/restore around the synthesised ⌘+C.
 tauri-plugin-clipboard-manager = "2"
 
 # In-proc AI gateway (replaces the Cloudflare worker for desktop usage).
@@ -67,5 +65,11 @@ uuid = { version = "1.11", features = ["v4"] }
 # LAST: any general dependency added below the target header silently
 # becomes macOS-only and breaks the Windows build (that exact mistake put
 # the whole AI gateway behind this cfg once).
+# Desktop only (macOS/Windows/Linux): menu-bar tray + the global ⌥+E
+# shortcut. Neither concept exists on iOS/Android.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri = { version = "2.11.0", features = ["protocol-asset", "tray-icon"] }
+tauri-plugin-global-shortcut = "2"
+
 [target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = "0.24"
