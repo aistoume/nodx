@@ -96,9 +96,15 @@ class WheelItem(
             o.optJSONArray("children")?.let { arr ->
                 for (i in 0 until arr.length()) kids += fromJson(arr.getJSONObject(i))
             }
+            // Old default labels renamed in place — only exact matches
+            // (i.e. the user never touched them) are migrated.
+            val label = when (val l = o.optString("label")) {
+                "Shopping" -> "Google shop"
+                else -> l
+            }
             return WheelItem(
                 o.optString("emoji", "❓"),
-                o.optString("label"),
+                label,
                 WheelAction.fromJson(o.optJSONObject("action")),
                 kids,
             )
@@ -119,7 +125,7 @@ object WheelConfig {
         )),
         WheelItem("💡", "", WheelAction.Save),
         WheelItem("🛒", "", null, listOf(
-            WheelItem("🏷", "Shopping", WheelAction.Search("https://www.google.com/search?udm=28&q=")),
+            WheelItem("🏷", "Google shop", WheelAction.Search("https://www.google.com/search?udm=28&q=")),
             WheelItem("📦", "Amazon", WheelAction.Search("https://www.amazon.com/s?k=")),
         )),
         WheelItem("🎨", "",

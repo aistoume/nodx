@@ -52,6 +52,14 @@ export const DEFAULT_SINGLE_STYLE_PROMPT = `Create ONE single, polished image of
 
 Subject: {subject}`;
 
+/** Old default labels renamed in place — only exact matches (i.e. the
+ *  user never touched them) are migrated. */
+const LEGACY_LABEL_MAP: Record<string, string> = { Shopping: 'Google shop' };
+
+export function upgradeLabel(label: string): string {
+  return LEGACY_LABEL_MAP[label] ?? label;
+}
+
 /** Fill in fields older stored configs (or hand-written JSON) may miss. */
 export function normalizeAction(a: WheelAction | null): WheelAction | null {
   if (a?.kind === 'generate') {
@@ -82,7 +90,7 @@ export function defaultWheel(): WheelConfigV1 {
       {
         emoji: '🛒', label: '', action: null,
         children: [
-          { emoji: '🏷', label: 'Shopping', action: { kind: 'search', urlPrefix: 'https://www.google.com/search?udm=28&q=' }, children: [] },
+          { emoji: '🏷', label: 'Google shop', action: { kind: 'search', urlPrefix: 'https://www.google.com/search?udm=28&q=' }, children: [] },
           { emoji: '📦', label: 'Amazon', action: { kind: 'search', urlPrefix: 'https://www.amazon.com/s?k=' }, children: [] },
         ],
       },
@@ -106,8 +114,13 @@ export async function getWheelConfig(): Promise<WheelConfigV1> {
     ...cfg,
     spokes: cfg.spokes.map((s) => ({
       ...s,
+      label: upgradeLabel(s.label),
       action: normalizeAction(s.action),
-      children: s.children.map((c) => ({ ...c, action: normalizeAction(c.action) })),
+      children: s.children.map((c) => ({
+        ...c,
+        label: upgradeLabel(c.label),
+        action: normalizeAction(c.action),
+      })),
     })),
   };
 }

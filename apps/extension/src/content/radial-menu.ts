@@ -88,7 +88,7 @@ export const IMAGE_OPTIONS: RadialOption[] = [
     angleDeg: 180,
     bg: 'rgba(16, 185, 129, 0.95)',
     children: [
-      { key: 'shopping-google', emoji: '🏷', label: 'Shopping' },
+      { key: 'shopping-google', emoji: '🏷', label: 'Google shop' },
       { key: 'shopping-amazon', emoji: '📦', label: 'Amazon' },
     ],
   },
@@ -126,7 +126,7 @@ export const TEXT_OPTIONS: RadialOption[] = [
     angleDeg: 180,
     bg: 'rgba(16, 185, 129, 0.95)',
     children: [
-      { key: 'txt-shopping-google', emoji: '🏷', label: 'Shopping' },
+      { key: 'txt-shopping-google', emoji: '🏷', label: 'Google shop' },
       { key: 'txt-shopping-amazon', emoji: '📦', label: 'Amazon' },
     ],
   },
