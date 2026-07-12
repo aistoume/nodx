@@ -1,8 +1,28 @@
+<!-- 悬浮球：与启动器同款 nodx 放大镜 logo 的圆形版（导航深蓝 + 白色镜+星芒）。
+     也用作前台服务通知小图标（系统会取 alpha 剪影）。 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="56dp" android:height="56dp"
-    android:viewportWidth="56" android:viewportHeight="56">
-    <path android:fillColor="#2C5282"
-        android:pathData="M28,4 A24,24 0 1,0 28,52 A24,24 0 1,0 28,4 Z"/>
-    <path android:fillColor="#F59E0B"
-        android:pathData="M18,26 h20 v4 h-20 z M18,34 h14 v4 h-14 z M18,18 h20 v4 h-20 z"/>
+    android:viewportWidth="128" android:viewportHeight="128">
+    <!-- circular background, same gradient as the launcher icon -->
+    <path android:pathData="M64,6 A58,58 0 1,0 64,122 A58,58 0 1,0 64,6 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startColor="#3D6BA0" android:endColor="#1F3F66"
+                android:startX="64" android:startY="6"
+                android:endX="64" android:endY="122" android:type="linear"/>
+        </aapt:attr>
+    </path>
+    <!-- magnifier lens -->
+    <path android:pathData="M50,50 m-26,0 a26,26 0 1,0 52,0 a26,26 0 1,0 -52,0"
+        android:strokeColor="#FFFFFF" android:strokeWidth="10"/>
+    <!-- handle -->
+    <path android:pathData="M70,70 L96,96"
+        android:strokeColor="#FFFFFF" android:strokeWidth="12"
+        android:strokeLineCap="round"/>
+    <!-- AI sparkle -->
+    <path android:pathData="M50,32 L53,47 L68,50 L53,53 L50,68 L47,53 L32,50 L47,47 Z"
+        android:fillColor="#FFFFFF" android:fillAlpha="0.92"/>
+    <path android:pathData="M65,38 L66.5,42.5 L71,44 L66.5,45.5 L65,50 L63.5,45.5 L59,44 L63.5,42.5 Z"
+        android:fillColor="#FFFFFF" android:fillAlpha="0.55"/>
 </vector>
