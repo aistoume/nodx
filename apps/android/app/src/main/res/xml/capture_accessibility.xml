@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screenshot-only service: minimal event mask, no window-content flag —
+     it exists solely so takeScreenshot() works without per-session
+     MediaProjection consent. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:notificationTimeout="1000"
+    android:canTakeScreenshot="true"
+    android:description="@string/access_desc" />

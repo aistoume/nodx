@@ -37,6 +37,25 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ActionLogActivity"
+            android:exported="false"
+            android:label="@string/log_title" />
+
+        <!-- 无障碍截屏服务：用户在系统设置开一次，悬浮球截屏永不再弹授权 -->
+        <service
+            android:name=".CaptureAccessibilityService"
+            android:exported="false"
+            android:label="@string/access_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/capture_accessibility" />
+        </service>
+
         <!-- 透明中转页：点悬浮球时才弹「分享屏幕」授权 -->
         <!-- taskAffinity="" + NEW_TASK：中转页开在独立空任务里，不会把
              MainActivity 连带拉到前台；finish 后前台回落到点悬浮球时的来源 app -->

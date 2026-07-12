@@ -40,6 +40,7 @@ class MainActivity : AppCompatActivity() {
 
     /** Auto-launch the projection consent at most once per app entry. */
     private var autoStartAttempted = false
+    private lateinit var accBtn: Button
 
     /**
      * A collapsible BYOK row: masked "saved" status line ↔ editable field.
@@ -197,6 +198,16 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+        accBtn = Button(this).apply {
+            setOnClickListener {
+                toast(getString(R.string.toast_access_howto))
+                runCatching {
+                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                }
+            }
+        }
+        root.addView(accBtn)
+
         root.addView(Button(this).apply {
             text = getString(R.string.btn_wheel)
             setOnClickListener {
@@ -212,6 +223,11 @@ class MainActivity : AppCompatActivity() {
         header.addView(TextView(this).apply {
             text = getString(R.string.recent_title); textSize = 16f
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        header.addView(TextView(this).apply {
+            text = getString(R.string.recent_log); textSize = 14f
+            setPadding(0, 0, 48, 0)
+            setOnClickListener { startActivity(Intent(this@MainActivity, ActionLogActivity::class.java)) }
         })
         header.addView(TextView(this).apply {
             text = getString(R.string.recent_more); textSize = 14f
@@ -244,6 +260,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        accBtn.text = getString(
+            if (CaptureAccessibilityService.instance != null) R.string.btn_access_on
+            else R.string.btn_access
+        )
         refreshRecent()
         maybeAutoStart()
     }

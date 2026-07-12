@@ -161,6 +161,30 @@ class FloatingBubbleService : Service() {
     }
 
     private fun onBubbleTap() {
+        // Long-lived path: accessibility screenshot (user enabled the nodx
+        // service once in system settings) — silent, survives locks, no
+        // MediaProjection session needed at all.
+        val acc = CaptureAccessibilityService.instance
+        if (acc != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            bubble?.visibility = View.INVISIBLE
+            // Give the bubble a frame to actually vanish before the shot.
+            bubble?.postDelayed({
+                acc.grab { bmp ->
+                    bubble?.visibility = View.VISIBLE
+                    if (bmp != null) {
+                        SelectionOverlayView.show(this, windowManager, bmp)
+                    } else {
+                        projectionTap() // rate-limited/failed → old path
+                    }
+                }
+            }, 90)
+            return
+        }
+        projectionTap()
+    }
+
+    /** MediaProjection path — per-session consent, lock ends the grant. */
+    private fun projectionTap() {
         val cap = capture
         if (cap == null) {
             // First tap of this session — ask for screen share now; the

@@ -97,6 +97,10 @@ object Actions {
         CoroutineScope(Dispatchers.IO).launch {
             val answer = runCatching { vision(context, b64, prompt) }
                 .getOrElse { context.getString(R.string.act_call_failed, it.message) }
+            ActionLog.append(
+                context, ActionLog.KIND_PROMPT,
+                title = prompt.take(120), detail = answer, image = crop,
+            )
             withContext(Dispatchers.Main) {
                 val wm = context.getSystemService(Context.WINDOW_SERVICE)
                     as android.view.WindowManager
@@ -120,8 +124,13 @@ object Actions {
                     .replace(Regex("\\s+"), " ").trim()
             }.getOrNull()
             if (query.isNullOrBlank()) { mainToast(context, context.getString(R.string.act_no_subject)); return@launch }
+            val url = urlPrefix + URLEncoder.encode(query, "UTF-8")
+            ActionLog.append(
+                context, ActionLog.KIND_SEARCH,
+                title = query, url = url, image = crop,
+            )
             withContext(Dispatchers.Main) {
-                openUrl(context, urlPrefix + URLEncoder.encode(query, "UTF-8"))
+                openUrl(context, url)
                 toast(context, context.getString(okMsgRes, query))
             }
         }
@@ -131,6 +140,7 @@ object Actions {
     private fun save(context: Context, crop: Bitmap) {
         CoroutineScope(Dispatchers.IO).launch {
             val uri = storeToGallery(context, crop, "nodx")
+            if (uri != null) ActionLog.append(context, ActionLog.KIND_SAVE, image = crop)
             mainToast(
                 context,
                 context.getString(if (uri != null) R.string.act_saved else R.string.act_save_failed)
@@ -164,6 +174,10 @@ object Actions {
             val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                 ?: run { mainToast(context, context.getString(R.string.gen_decode_failed)); return@launch }
             val uri = storeToGallery(context, downscale(bmp, 640), "nodx-gen")
+            ActionLog.append(
+                context, ActionLog.KIND_GENERATE,
+                title = subject.take(160), detail = subject, image = downscale(bmp, 360),
+            )
             withContext(Dispatchers.Main) {
                 if (uri == null) { toast(context, context.getString(R.string.gen_saved_failed)); return@withContext }
                 toast(context, context.getString(R.string.gen_done))
