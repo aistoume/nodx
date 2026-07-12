@@ -15,7 +15,14 @@
 
 import { render } from 'preact';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import { getSettings , providerNeedsApiKey } from '../shared/settings.js';
+import {
+  getSettings,
+  providerNeedsApiKey,
+  setSettings,
+  type Provider,
+  type Settings,
+} from '../shared/settings.js';
+import { MODELS, PROVIDER_SHORT } from '../shared/model-catalog.js';
 import {
   appendQA,
   deleteAction,
@@ -53,6 +60,7 @@ function App() {
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [actions, setActions] = useState<Highlight[]>([]);
   const [syncToNodx, setSyncToNodx] = useState(true);
+  const [settings, setSettingsState] = useState<Settings | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [showAllActions, setShowAllActions] = useState(false);
   const cardsRef = useRef<Record<string, HTMLDivElement | null>>({});
@@ -75,6 +83,42 @@ function App() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // ── Quick model switcher: load settings + stay in sync with the
+  //    options page (both write the same `settings` storage key). ─────
+  useEffect(() => {
+    void getSettings().then(setSettingsState);
+    const listener = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      area: string,
+    ) => {
+      if (area === 'local' && changes.settings) {
+        void getSettings().then(setSettingsState);
+      }
+    };
+    chrome.storage.onChanged.addListener(listener);
+    return () => chrome.storage.onChanged.removeListener(listener);
+  }, []);
+
+  const switchProvider = useCallback((p: Provider) => {
+    // Same behaviour as the options page: picking a provider snaps the
+    // models to that provider's defaults (each provider has its own ids).
+    const next = {
+      provider: p,
+      model: { explain: MODELS[p].explain[0]!, deepen: MODELS[p].deepen[0]! },
+    };
+    setSettingsState((s) => (s ? { ...s, ...next, apiKey: s.apiKeys[p] ?? '' } : s));
+    void setSettings(next);
+  }, []);
+
+  const switchModel = useCallback((explain: string) => {
+    setSettingsState((s) => {
+      if (!s) return s;
+      const model = { ...s.model, explain };
+      void setSettings({ model });
+      return { ...s, model };
+    });
   }, []);
 
   // ── Live-refresh on storage changes for this tab's URL. ───────────
@@ -181,6 +225,46 @@ function App() {
             📸 Screenshot region
           </button>
         </div>
+        {settings && (
+          <div class="model-row">
+            <select
+              class="model-select"
+              value={settings.provider}
+              onChange={(e) =>
+                switchProvider((e.target as HTMLSelectElement).value as Provider)
+              }
+              title="AI provider"
+            >
+              {(Object.keys(MODELS) as Provider[]).map((p) => (
+                <option key={p} value={p}>
+                  {PROVIDER_SHORT[p]}
+                </option>
+              ))}
+            </select>
+            <select
+              class="model-select grow"
+              value={settings.model.explain}
+              onChange={(e) => switchModel((e.target as HTMLSelectElement).value)}
+              title="Model used for answers here"
+            >
+              {[
+                ...new Set([
+                  ...MODELS[settings.provider].explain,
+                  ...MODELS[settings.provider].deepen,
+                ]),
+              ].map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            {providerNeedsApiKey(settings.provider) && !settings.apiKey && (
+              <span class="model-nokey" title="This provider has no API key saved yet — click ⚙ Settings to add one">
+                ⚠ no key
+              </span>
+            )}
+          </div>
+        )}
         <label class="sync-row">
           <input type="checkbox" checked={syncToNodx} onChange={toggleSync} />
           <span>Also send screenshots to nodx desktop</span>
