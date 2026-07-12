@@ -64,3 +64,10 @@ apps/extension/*.zip
 /PRD.md
 /CLAUDE.md
 /docs/
+
+# Release binaries — distributed via GitHub Releases / the aicon-web repo,
+# kept on disk for rsync deploys but never tracked here
+apps/web/downloads/*.dmg
+apps/web/downloads/*.apk
+apps/extension/*.zip
+apps/lens-mac/*.dmg
