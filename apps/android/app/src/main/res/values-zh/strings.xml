@@ -83,6 +83,9 @@
     <string name="log_title">操作记录</string>
     <string name="recent_log">🕘 记录 ▸</string>
     <string name="log_section">🕘 操作记录</string>
+    <string name="tab_run">▶  运行</string>
+    <string name="tab_history">🕘  记录</string>
+    <string name="tab_settings">⚙  设置</string>
     <string name="btn_log_all">🕘  查看全部记录  ▸</string>
     <string name="log_empty">还没有记录 — 悬浮球的操作会落在这里。</string>
     <string name="log_kind_prompt">💬 解释</string>

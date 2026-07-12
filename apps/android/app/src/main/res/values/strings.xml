@@ -83,6 +83,9 @@
     <string name="log_title">Activity log</string>
     <string name="recent_log">🕘 Log ▸</string>
     <string name="log_section">🕘 Activity log</string>
+    <string name="tab_run">▶  Run</string>
+    <string name="tab_history">🕘  History</string>
+    <string name="tab_settings">⚙  Settings</string>
     <string name="btn_log_all">🕘  View all records  ▸</string>
     <string name="log_empty">Nothing yet — actions from the bubble land here.</string>
     <string name="log_kind_prompt">💬 Answer</string>

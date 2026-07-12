@@ -3,16 +3,20 @@ package solutions.aicon.nodx
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -25,11 +29,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Entry screen. Once the keys are in and "draw over apps" is granted,
- * opening the app auto-launches the screen-capture consent — the only
- * tap the system still requires — then minimises itself; everything
- * else lives in the floating bubble. The screen also shows a "最近添加"
- * strip previewing the newest saves (full browse in GalleryActivity).
+ * Entry screen, split into three tabs (bottom bar):
+ *
+ *   ▶ Run      — start/stop the bubble, long-lived capture consent
+ *   🕘 History — recently added images + activity log
+ *   ⚙ Settings — AI provider + key, action-wheel editor
+ *
+ * The bubble auto-starts on open once keys + overlay permission are in;
+ * everything operational lives in the bubble itself.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -38,10 +45,237 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recentRow: LinearLayout
     private lateinit var recentEmpty: TextView
     private lateinit var logBox: LinearLayout
+    private lateinit var accBtn: Button
+
+    private lateinit var tabs: List<View>
+    private lateinit var navBtns: List<TextView>
 
     /** Auto-launch the projection consent at most once per app entry. */
     private var autoStartAttempted = false
-    private lateinit var accBtn: Button
+
+    /** Spinner order — must match the adapter labels in buildSettingsTab. */
+    private val providerIds = listOf(
+        Prefs.PROVIDER_ANTHROPIC, Prefs.PROVIDER_OPENAI,
+        Prefs.PROVIDER_GEMINI, Prefs.PROVIDER_OPENROUTER,
+    )
+
+    // Android 13+: without this the foreground-service notification is
+    // silently hidden (the service itself still runs). Result is not
+    // blocking — we just ask once on startup.
+    private val notifPermLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        val content = FrameLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f,
+            )
+        }
+        val home = wrapTab(buildRunTab())
+        val history = wrapTab(buildHistoryTab())
+        val settings = wrapTab(buildSettingsTab())
+        tabs = listOf(home, history, settings)
+        tabs.forEach { content.addView(it) }
+
+        // ── Bottom tab bar ────────────────────────────────────────────
+        val nav = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setBackgroundColor(Color.argb(16, 128, 128, 128))
+            setPadding(0, 8, 0, 8)
+        }
+        navBtns = listOf(
+            navButton(getString(R.string.tab_run)) { selectTab(0) },
+            navButton(getString(R.string.tab_history)) { selectTab(1) },
+            navButton(getString(R.string.tab_settings)) { selectTab(2) },
+        )
+        navBtns.forEach {
+            nav.addView(it, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
+
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(content)
+            addView(View(this@MainActivity).apply {
+                setBackgroundColor(Color.argb(40, 128, 128, 128))
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 2)
+            })
+            addView(nav)
+        }
+        setContentView(root)
+        selectTab(0)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    private fun wrapTab(inner: View): ScrollView = ScrollView(this).apply {
+        isFillViewport = true
+        addView(inner)
+    }
+
+    private fun navButton(label: String, onTap: () -> Unit): TextView =
+        TextView(this).apply {
+            text = label
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setPadding(0, 28, 0, 28)
+            setOnClickListener { onTap() }
+        }
+
+    private fun selectTab(i: Int) {
+        tabs.forEachIndexed { j, v -> v.visibility = if (i == j) View.VISIBLE else View.GONE }
+        navBtns.forEachIndexed { j, b ->
+            b.setTextColor(if (i == j) Color.rgb(217, 119, 6) else Color.GRAY)
+            b.paint.isFakeBoldText = i == j
+        }
+    }
+
+    // ── Tab 1: Run ────────────────────────────────────────────────────
+
+    private fun buildRunTab(): View {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(64, 140, 64, 64)
+        }
+        box.addView(TextView(this).apply {
+            text = getString(R.string.app_title); textSize = 20f
+            setPadding(0, 0, 0, 32)
+        })
+        box.addView(Button(this).apply {
+            text = getString(R.string.btn_start)
+            setOnClickListener {
+                if (activeKey().isBlank()) {
+                    toast(getString(R.string.toast_need_key))
+                    selectTab(2) // key lives in Settings — take them there
+                    return@setOnClickListener
+                }
+                ensureOverlayThenProjection()
+            }
+        })
+        box.addView(Button(this).apply {
+            text = getString(R.string.btn_stop)
+            setOnClickListener {
+                if (FloatingBubbleService.isRunning) {
+                    startService(
+                        Intent(this@MainActivity, FloatingBubbleService::class.java)
+                            .setAction(FloatingBubbleService.ACTION_STOP)
+                    )
+                    toast(getString(R.string.toast_stopped))
+                } else {
+                    toast(getString(R.string.toast_not_running))
+                }
+            }
+        })
+        accBtn = Button(this).apply {
+            setOnClickListener {
+                toast(getString(R.string.toast_access_howto))
+                runCatching { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+            }
+        }
+        box.addView(accBtn)
+        box.addView(TextView(this).apply {
+            text = getString(R.string.main_instructions)
+            setPadding(0, 40, 0, 0)
+        })
+        return box
+    }
+
+    // ── Tab 2: History (recent images + activity log) ─────────────────
+
+    private fun buildHistoryTab(): View {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(64, 80, 64, 64)
+        }
+        val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        header.addView(TextView(this).apply {
+            text = getString(R.string.recent_title); textSize = 16f
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        header.addView(TextView(this).apply {
+            text = getString(R.string.recent_more); textSize = 14f
+            setOnClickListener { startActivity(Intent(this@MainActivity, GalleryActivity::class.java)) }
+        })
+        box.addView(header)
+        recentRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        box.addView(HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            setPadding(0, 12, 0, 0)
+            addView(recentRow)
+        })
+        recentEmpty = TextView(this).apply {
+            text = getString(R.string.recent_empty)
+            visibility = View.GONE
+        }
+        box.addView(recentEmpty)
+
+        box.addView(TextView(this).apply {
+            text = getString(R.string.log_section); textSize = 16f
+            setPadding(0, 48, 0, 12)
+        })
+        logBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(logBox)
+        box.addView(Button(this).apply {
+            text = getString(R.string.btn_log_all)
+            textSize = 16f
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, ActionLogActivity::class.java))
+            }
+        })
+        return box
+    }
+
+    // ── Tab 3: Settings (provider + key + wheel) ──────────────────────
+
+    private fun buildSettingsTab(): View {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(64, 80, 64, 64)
+        }
+        box.addView(TextView(this).apply {
+            text = getString(R.string.provider_label)
+            setPadding(0, 0, 0, 8)
+        })
+        val providerSpinner = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(
+                this@MainActivity, android.R.layout.simple_spinner_dropdown_item,
+                listOf(
+                    getString(R.string.provider_anthropic),
+                    getString(R.string.provider_openai),
+                    getString(R.string.provider_gemini),
+                    getString(R.string.provider_openrouter),
+                ),
+            )
+        }
+        box.addView(providerSpinner)
+        keyArea = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(keyArea)
+        providerSpinner.setSelection(providerIds.indexOf(Prefs.provider(this)).coerceAtLeast(0))
+        providerSpinner.onItemSelectedListener =
+            object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long,
+                ) {
+                    Prefs.setProvider(this@MainActivity, providerIds[pos])
+                    renderKeyArea()
+                }
+                override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
+            }
+        renderKeyArea()
+
+        box.addView(Button(this).apply {
+            text = getString(R.string.btn_wheel)
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, WheelSettingsActivity::class.java))
+            }
+        })
+        return box
+    }
 
     /**
      * A collapsible BYOK row: masked "saved" status line ↔ editable field.
@@ -93,8 +327,7 @@ class MainActivity : AppCompatActivity() {
         root.addView(row)
     }
 
-    /** Only the ACTIVE provider's key row is shown — no more stacked
-     *  fields fighting for space on a 384dp screen. */
+    /** Only the ACTIVE provider's key row is shown. */
     private fun renderKeyArea() {
         keyArea.removeAllViews()
         when (Prefs.provider(this)) {
@@ -119,155 +352,6 @@ class MainActivity : AppCompatActivity() {
 
     /** The selected provider's key — start/auto-start gate on THIS one. */
     private fun activeKey(): String = Prefs.keyFor(this, Prefs.provider(this))
-
-    /** Spinner order — must match the adapter labels in onCreate. */
-    private val providerIds = listOf(
-        Prefs.PROVIDER_ANTHROPIC, Prefs.PROVIDER_OPENAI,
-        Prefs.PROVIDER_GEMINI, Prefs.PROVIDER_OPENROUTER,
-    )
-
-    // Android 13+: without this the foreground-service notification is
-    // silently hidden (the service itself still runs). Result is not
-    // blocking — we just ask once on startup.
-    private val notifPermLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(64, 140, 64, 64)
-        }
-        root.addView(TextView(this).apply {
-            text = getString(R.string.app_title); textSize = 20f
-        })
-        // Provider — a full-width dropdown (the old horizontal radio pair
-        // wrapped/cramped on narrow screens). Gemini's AI-Studio tier is
-        // free, so the whole app can run on just the Google key.
-        root.addView(TextView(this).apply {
-            text = getString(R.string.provider_label)
-            setPadding(0, 32, 0, 8)
-        })
-        val providerSpinner = android.widget.Spinner(this).apply {
-            adapter = android.widget.ArrayAdapter(
-                this@MainActivity, android.R.layout.simple_spinner_dropdown_item,
-                listOf(
-                    getString(R.string.provider_anthropic),
-                    getString(R.string.provider_openai),
-                    getString(R.string.provider_gemini),
-                    getString(R.string.provider_openrouter),
-                ),
-            )
-        }
-        root.addView(providerSpinner)
-        keyArea = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(keyArea)
-        providerSpinner.setSelection(providerIds.indexOf(Prefs.provider(this)).coerceAtLeast(0))
-        providerSpinner.onItemSelectedListener =
-            object : android.widget.AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(
-                    p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long,
-                ) {
-                    Prefs.setProvider(this@MainActivity, providerIds[pos])
-                    renderKeyArea()
-                }
-                override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
-            }
-        renderKeyArea()
-        root.addView(Button(this).apply {
-            text = getString(R.string.btn_start)
-            setOnClickListener {
-                if (activeKey().isBlank()) {
-                    toast(getString(R.string.toast_need_key))
-                    return@setOnClickListener
-                }
-                ensureOverlayThenProjection()
-            }
-        })
-        root.addView(Button(this).apply {
-            text = getString(R.string.btn_stop)
-            setOnClickListener {
-                if (FloatingBubbleService.isRunning) {
-                    startService(
-                        Intent(this@MainActivity, FloatingBubbleService::class.java)
-                            .setAction(FloatingBubbleService.ACTION_STOP)
-                    )
-                    toast(getString(R.string.toast_stopped))
-                } else {
-                    toast(getString(R.string.toast_not_running))
-                }
-            }
-        })
-
-        accBtn = Button(this).apply {
-            setOnClickListener {
-                toast(getString(R.string.toast_access_howto))
-                runCatching {
-                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                }
-            }
-        }
-        root.addView(accBtn)
-
-        root.addView(Button(this).apply {
-            text = getString(R.string.btn_wheel)
-            setOnClickListener {
-                startActivity(Intent(this@MainActivity, WheelSettingsActivity::class.java))
-            }
-        })
-
-        // ── 最近添加：横排预览，点图看大图；「收集库 ▸」进全量网格 ──
-        val header = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 48, 0, 12)
-        }
-        header.addView(TextView(this).apply {
-            text = getString(R.string.recent_title); textSize = 16f
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        })
-        header.addView(TextView(this).apply {
-            text = getString(R.string.recent_more); textSize = 14f
-            setOnClickListener { startActivity(Intent(this@MainActivity, GalleryActivity::class.java)) }
-        })
-        root.addView(header)
-        recentRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        root.addView(HorizontalScrollView(this).apply {
-            isHorizontalScrollBarEnabled = false
-            addView(recentRow)
-        })
-        recentEmpty = TextView(this).apply {
-            text = getString(R.string.recent_empty)
-            visibility = View.GONE
-        }
-        root.addView(recentEmpty)
-
-        // ── 操作记录：主页直接显示最近 3 条 + 显眼的全量入口 ──
-        root.addView(TextView(this).apply {
-            text = getString(R.string.log_section); textSize = 16f
-            setPadding(0, 48, 0, 12)
-        })
-        logBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(logBox)
-        root.addView(Button(this).apply {
-            text = getString(R.string.btn_log_all)
-            textSize = 16f
-            setOnClickListener {
-                startActivity(Intent(this@MainActivity, ActionLogActivity::class.java))
-            }
-        })
-
-        root.addView(TextView(this).apply {
-            text = getString(R.string.main_instructions)
-            setPadding(0, 40, 0, 0)
-        })
-        setContentView(root)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
 
     override fun onResume() {
         super.onResume()
@@ -296,7 +380,7 @@ class MainActivity : AppCompatActivity() {
     private fun refreshLog() {
         scope.launch {
             val entries = withContext(Dispatchers.IO) {
-                ActionLog.list(this@MainActivity).take(3)
+                ActionLog.list(this@MainActivity).take(10)
             }
             val thumbs = withContext(Dispatchers.IO) {
                 entries.associate { e ->
@@ -324,7 +408,7 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dpi(8), dpi(8), dpi(8), dpi(8))
             background = android.graphics.drawable.GradientDrawable().apply {
-                setColor(android.graphics.Color.argb(12, 128, 128, 128))
+                setColor(Color.argb(12, 128, 128, 128))
                 cornerRadius = dpi(10).toFloat()
             }
         }
@@ -346,7 +430,7 @@ class MainActivity : AppCompatActivity() {
         }
         col.addView(TextView(this).apply {
             text = badge; textSize = 11f
-            setTextColor(android.graphics.Color.GRAY)
+            setTextColor(Color.GRAY)
         })
         val preview = e.title.ifBlank { e.detail }
         if (preview.isNotBlank()) col.addView(TextView(this).apply {
