@@ -160,7 +160,7 @@ function App() {
             onClick={() => chrome.runtime.openOptionsPage()}
             title="Open settings"
           >
-            ⚙
+            ⚙ Settings
           </button>
         </div>
         <div class="panel-sub">
@@ -178,6 +178,13 @@ function App() {
         <div class="actions">
           <button class="action-btn" onClick={startScreenshot}>
             📸 Screenshot region
+          </button>
+          <button
+            class="action-btn action-btn-secondary"
+            onClick={() => chrome.runtime.openOptionsPage()}
+            title="API keys, models, action wheel"
+          >
+            ⚙ Settings
           </button>
         </div>
         <label class="sync-row">
