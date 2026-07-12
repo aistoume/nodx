@@ -44,6 +44,11 @@ const MODELS: Record<Provider, { explain: string[]; deepen: string[]; help: stri
     deepen: ['openrouter/free', 'google/gemma-4-31b-it:free', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free'],
     help: 'FREE — get a key at openrouter.ai/keys. :free models cost nothing (~20 req/min, 200/day); openrouter/free auto-picks a vision-capable free model',
   },
+  nodx: {
+    explain: ['haiku', 'sonnet'],
+    deepen: ['sonnet', 'opus'],
+    help: 'No API key — uses your logged-in Claude Code via the local nodx gateway. Start it: `pnpm cli-gateway` (gateway only) or `pnpm start:cli` (gateway + desktop) in the nodx repo. Port 127.0.0.1:8787.',
+  },
 };
 
 /** Image-gen models (gemini-2.5-flash-image shuts down 2026-08-17). */
@@ -107,7 +112,7 @@ function App() {
       <section>
         <label>{t('aiProvider')}</label>
         <div className="radios">
-          {(['anthropic', 'openai', 'google', 'openrouter'] as Provider[]).map((p) => (
+          {(['anthropic', 'openai', 'google', 'openrouter', 'nodx'] as Provider[]).map((p) => (
             <label key={p}>
               <input
                 type="radio"
@@ -130,7 +135,9 @@ function App() {
                   ? t('providerOpenAI')
                   : p === 'google'
                     ? t('providerGoogle')
-                    : t('providerOpenRouter')}
+                    : p === 'openrouter'
+                      ? t('providerOpenRouter')
+                      : t('providerNodx')}
             </label>
           ))}
         </div>

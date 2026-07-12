@@ -16,7 +16,7 @@
  * disconnect early to abort (AbortSignal flows down to fetch).
  */
 
-import { getSettings } from '../shared/settings.js';
+import { getSettings, providerNeedsApiKey } from '../shared/settings.js';
 import { buildExplainPrompt, buildDeepenPrompt } from '../shared/prompts.js';
 import { callAI, generateGeminiImage } from '../shared/providers.js';
 import { recordExplanation } from '../shared/history.js';
@@ -51,7 +51,7 @@ async function handle(
   try {
     const settings = await getSettings();
     setLocale(settings.language);
-    if (!settings.apiKey) {
+    if (!settings.apiKey && providerNeedsApiKey(settings.provider)) {
       throw new Error(t('missingApiKey'));
     }
 
@@ -393,7 +393,7 @@ async function generatePromptFromImage(
 ): Promise<{ ok: boolean; prompt?: string; error?: string }> {
   try {
     const settings = await getSettings();
-    if (!settings.apiKey) {
+    if (!settings.apiKey && providerNeedsApiKey(settings.provider)) {
       return {
         ok: false,
         error: 'AI key not set. Open settings and paste your Anthropic key.',
@@ -454,7 +454,7 @@ async function shoppingQueryFromImage(
 ): Promise<{ ok: boolean; query?: string; error?: string }> {
   try {
     const settings = await getSettings();
-    if (!settings.apiKey) {
+    if (!settings.apiKey && providerNeedsApiKey(settings.provider)) {
       return { ok: false, error: 'AI key 未设置，打开 ⚙ 设置粘贴 Anthropic key。' };
     }
 

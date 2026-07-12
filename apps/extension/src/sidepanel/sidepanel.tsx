@@ -15,7 +15,7 @@
 
 import { render } from 'preact';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import { getSettings } from '../shared/settings.js';
+import { getSettings , providerNeedsApiKey } from '../shared/settings.js';
 import {
   appendQA,
   deleteAction,
@@ -28,7 +28,7 @@ import {
   updateHighlight,
   type Highlight,
 } from '../shared/highlights.js';
-import { callAnthropic } from '../shared/providers.js';
+import { callAI } from '../shared/providers.js';
 import { postCaptureToNodx } from '../shared/capture.js';
 
 interface ActiveTabState {
@@ -387,14 +387,9 @@ function HighlightCard({
     setError(null);
     try {
       const settings = await getSettings();
-      if (!settings.apiKey) {
+      if (!settings.apiKey && providerNeedsApiKey(settings.provider)) {
         throw new Error(
-          "AI key not set. Click ⚙ above and paste your Anthropic API key.",
-        );
-      }
-      if (settings.provider !== 'anthropic') {
-        throw new Error(
-          'Image Q&A currently only supports Anthropic. Change provider in ⚙ settings.',
+          'AI key not set. Click ⚙ above and paste your API key.',
         );
       }
 
@@ -407,7 +402,8 @@ function HighlightCard({
       const mime = highlight.thumbnailDataUrl.match(/^data:([^;]+);/)?.[1] ?? 'image/png';
 
       let full = '';
-      await callAnthropic(
+      await callAI(
+        settings.provider,
         settings.apiKey,
         settings.model.explain,
         buildPromptFor(q, highlight.pageTitle),

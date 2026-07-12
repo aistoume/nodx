@@ -196,7 +196,48 @@ export async function callGoogle(
 // user picked in settings.
 // ============================================================================
 
-export type ProviderName = 'anthropic' | 'openai' | 'google' | 'openrouter';
+export type ProviderName = 'anthropic' | 'openai' | 'google' | 'openrouter' | 'nodx';
+
+/**
+ * nodx local gateway (127.0.0.1:8787) — the desktop in-proc gateway or the
+ * standalone CLI gateway (`pnpm cli-gateway`), both backed by the user's
+ * own Claude auth. No API key. Non-streaming: the full text arrives in one
+ * chunk. Vision goes as image_base64 (CLI gateway views it via Read).
+ */
+export async function callNodxCli(
+  model: string,
+  prompt: string,
+  onChunk: ChunkCallback,
+  signal?: AbortSignal,
+  image?: AnthropicImageInput,
+): Promise<string> {
+  const body: Record<string, unknown> = { model, prompt };
+  if (image) {
+    body.image_base64 = image.base64;
+    body.image_mime = image.mime;
+  }
+  let res: Response;
+  try {
+    res = await fetch('http://127.0.0.1:8787/v1/complete', {
+      method: 'POST',
+      signal,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error(
+      '本地 nodx 网关未运行（127.0.0.1:8787）— 在 nodx 目录跑 `pnpm cli-gateway`（仅网关）或 `pnpm start:cli`（网关+桌面）。',
+    );
+  }
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => '');
+    throw new Error(`nodx gateway ${res.status}: ${errBody.slice(0, 200)}`);
+  }
+  const json = (await res.json()) as { text?: string };
+  const text = json.text ?? '';
+  if (text) onChunk(text);
+  return text;
+}
 
 export async function callAI(
   provider: ProviderName,
@@ -218,6 +259,8 @@ export async function callAI(
       return callOpenAI(apiKey, model, prompt, onChunk, signal, image, 'https://openrouter.ai/api/v1');
     case 'google':
       return callGoogle(apiKey, model, prompt, onChunk, signal, image);
+    case 'nodx':
+      return callNodxCli(model, prompt, onChunk, signal, image);
   }
 }
 

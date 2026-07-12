@@ -15,6 +15,8 @@
 // Contract (mirrors the worker):
 //   GET  /health        → { ok, service }
 //   POST /v1/complete   → { text, stopReason, usage:{input_tokens,output_tokens}, model }
+//                         (optional image_base64/image_mime → vision via a
+//                          temp file the CLI views with its Read tool)
 //   POST /v1/embed      → 501 (embeddings need the API-key gateway; CBR degrades)
 //
 // Run it on the worker's port so the desktop app needs NO config change:
@@ -28,6 +30,10 @@
 
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
+import { mkdirSync, writeFileSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 const PORT = Number(process.env.PORT ?? process.env.CLI_GATEWAY_PORT ?? 8787);
 const HOST = process.env.CLI_GATEWAY_HOST ?? '127.0.0.1';
@@ -81,12 +87,17 @@ function readBody(req) {
  * Run one `claude -p` completion. Resolves the parsed result envelope, or
  * rejects with { status, message } on spawn / non-zero / error-envelope.
  */
-function runClaude({ model, prompt, system, enableWebSearch }) {
+function runClaude({ model, prompt, system, enableWebSearch, imagePath }) {
   return new Promise((resolve, reject) => {
     const args = ['-p', '--output-format', 'json', '--model', mapModel(model)];
     if (enableWebSearch) {
       // Allow only the read-only web tools, give it room for search→answer.
       args.push('--allowedTools', 'WebSearch', 'WebFetch', '--max-turns', '8');
+    } else if (imagePath) {
+      // Vision: the CLI's Read tool renders images. Two turns: Read, answer.
+      // Note: Read is not path-scoped — acceptable on the user's own machine
+      // for their own screenshots, but keep this gateway localhost-only.
+      args.push('--allowedTools', 'Read', '--max-turns', '3');
     } else {
       // Empty allow-list = no tools at all (can't touch the filesystem);
       // one turn = a single assistant message (the answer).
@@ -149,7 +160,10 @@ function runClaude({ model, prompt, system, enableWebSearch }) {
       done(resolve, env);
     });
 
-    child.stdin.write(String(prompt ?? ''));
+    const finalPrompt = imagePath
+      ? `First use the Read tool to view the image at ${imagePath} — do not do anything else with the filesystem. Then complete the following task about that image, replying with ONLY the final answer:\n\n${String(prompt ?? '')}`
+      : String(prompt ?? '');
+    child.stdin.write(finalPrompt);
     child.stdin.end();
   });
 }
@@ -248,17 +262,36 @@ const server = createServer(async (req, res) => {
       sendJson(res, 400, { error: 'prompt (string) is required' });
       return;
     }
+    // Optional vision input: land the image in a temp file the CLI can Read.
+    let imagePath;
+    if (typeof body.image_base64 === 'string' && body.image_base64) {
+      try {
+        const dir = join(tmpdir(), 'nodx-cli');
+        mkdirSync(dir, { recursive: true });
+        const ext = String(body.image_mime ?? '').includes('jpeg') ? 'jpg' : 'png';
+        imagePath = join(dir, `img-${randomUUID()}.${ext}`);
+        writeFileSync(imagePath, Buffer.from(body.image_base64, 'base64'));
+      } catch (e) {
+        sendJson(res, 500, { error: `failed to stage image: ${e?.message ?? e}` });
+        return;
+      }
+    }
     try {
       const env = await runClaude({
         model: body.model,
         prompt: body.prompt,
         system: typeof body.system === 'string' ? body.system : undefined,
         enableWebSearch: body.enable_web_search === true,
+        imagePath,
       });
       sendJson(res, 200, toGatewayResponse(env, body.model));
     } catch (e) {
       const status = e && typeof e.status === 'number' ? e.status : 500;
       sendJson(res, status, { error: e?.message ?? String(e) });
+    } finally {
+      if (imagePath) {
+        try { unlinkSync(imagePath); } catch { /* already gone */ }
+      }
     }
     return;
   }

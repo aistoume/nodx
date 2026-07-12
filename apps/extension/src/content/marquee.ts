@@ -45,7 +45,7 @@ import {
   copyImageToClipboard,
   dataUrlToBlob,
 } from '../shared/radial-actions.js';
-import { getSettings } from '../shared/settings.js';
+import { getSettings, providerNeedsApiKey } from '../shared/settings.js';
 import { callAI } from '../shared/providers.js';
 
 const OVERLAY_ID = '__nodx_marquee_overlay__';
@@ -1002,7 +1002,7 @@ async function explainHighlight(
 
   try {
     const settings = await getSettings();
-    if (!settings.apiKey) {
+    if (!settings.apiKey && providerNeedsApiKey(settings.provider)) {
       throw new Error('AI key 未设置 —— 打开 ⚙ 设置粘贴你的 Anthropic API key。');
     }
     const b64 = cropped.dataUrl.replace(/^data:[^,]+,/, '');

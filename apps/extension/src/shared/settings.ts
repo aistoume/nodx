@@ -4,7 +4,12 @@
 
 import type { Language } from './i18n.js';
 
-export type Provider = 'anthropic' | 'openai' | 'google' | 'openrouter';
+export type Provider = 'anthropic' | 'openai' | 'google' | 'openrouter' | 'nodx';
+
+/** The nodx local gateway authenticates via your Claude Code login — no key. */
+export function providerNeedsApiKey(p: Provider): boolean {
+  return p !== 'nodx';
+}
 
 export interface Settings {
   language: Language;          // 'auto' | 'zh' | 'en'
