@@ -71,3 +71,6 @@ apps/web/downloads/*.dmg
 apps/web/downloads/*.apk
 apps/extension/*.zip
 apps/lens-mac/*.dmg
+
+# Personal editor config
+.obsidian/
