@@ -38,9 +38,19 @@ enum Actions {
 
     // MARK: runner
 
+    /// Vision payloads don't need full-Retina pixels — Anthropic rejects
+    /// >10MB and models are capped around ~1.6k px anyway. Downscale + JPEG
+    /// keeps payloads ~100× smaller than a full-res PNG crop.
+    private static func visionBase64(_ image: UIImage) throws -> String {
+        let small = downscaled(image, maxDim: 1568)
+        guard let jpeg = small.jpegData(compressionQuality: 0.82) else {
+            throw AIError.badResponse("could not encode crop")
+        }
+        return jpeg.base64EncodedString()
+    }
+
     static func run(_ action: WheelAction, crop: UIImage) async throws -> ActionOutcome {
-        guard let png = crop.pngData() else { throw AIError.badResponse("could not encode crop") }
-        let b64 = png.base64EncodedString()
+        let b64 = try visionBase64(crop)
 
         switch action {
         case .prompt(let prompt):

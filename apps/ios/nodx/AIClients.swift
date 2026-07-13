@@ -53,7 +53,7 @@ enum AnthropicClient {
             "messages": [[
                 "role": "user",
                 "content": [
-                    ["type": "image", "source": ["type": "base64", "media_type": "image/png", "data": imageBase64]],
+                    ["type": "image", "source": ["type": "base64", "media_type": "image/jpeg", "data": imageBase64]],
                     ["type": "text", "text": prompt],
                 ],
             ]],
@@ -85,7 +85,7 @@ enum OpenAIClient {
             "messages": [[
                 "role": "user",
                 "content": [
-                    ["type": "image_url", "image_url": ["url": "data:image/png;base64,\(imageBase64)"]],
+                    ["type": "image_url", "image_url": ["url": "data:image/jpeg;base64,\(imageBase64)"]],
                     ["type": "text", "text": prompt],
                 ],
             ]],
@@ -121,7 +121,7 @@ enum GeminiClient {
             "contents": [[
                 "role": "user",
                 "parts": [
-                    ["inlineData": ["mimeType": "image/png", "data": imageBase64]],
+                    ["inlineData": ["mimeType": "image/jpeg", "data": imageBase64]],
                     ["text": prompt],
                 ],
             ]],
