@@ -26,8 +26,8 @@ describe('AttentionSchema', () => {
     expect(parsed.kind).toBe('quick');
   });
 
-  it('rejects empty text', () => {
-    expect(() => AttentionSchema.parse({ ...BASE, text: '' })).toThrow();
+  it('accepts empty text (image-only captures carry no selection)', () => {
+    expect(() => AttentionSchema.parse({ ...BASE, text: '' })).not.toThrow();
   });
 
   it('rejects unknown sourceKind', () => {
