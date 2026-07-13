@@ -34,7 +34,7 @@ object GeminiClient {
                     "parts",
                     JSONArray()
                         .put(JSONObject().put("inlineData",
-                            JSONObject().put("mimeType", "image/png").put("data", imageBase64)))
+                            JSONObject().put("mimeType", "image/jpeg").put("data", imageBase64)))
                         .put(JSONObject().put("text", prompt)),
                 )
             )

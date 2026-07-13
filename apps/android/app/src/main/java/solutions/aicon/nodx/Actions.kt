@@ -92,7 +92,7 @@ object Actions {
      *  full-text overlay card (scrollable, copyable, user-dismissed). */
     private fun explain(context: Context, crop: Bitmap, prompt: String) {
         if (!ensureKey(context)) return
-        val b64 = toBase64Png(crop)
+        val b64 = toBase64ForVision(crop)
         toast(context, context.getString(R.string.act_recognizing))
         CoroutineScope(Dispatchers.IO).launch {
             val answer = runCatching { vision(context, b64, prompt) }
@@ -115,7 +115,7 @@ object Actions {
     /** kind=search: AI names the image → open browser at `urlPrefix<query>`. */
     private fun aiSearchOpen(context: Context, crop: Bitmap, urlPrefix: String, okMsgRes: Int) {
         if (!ensureKey(context)) return
-        val b64 = toBase64Png(crop)
+        val b64 = toBase64ForVision(crop)
         toast(context, context.getString(R.string.act_identifying))
         CoroutineScope(Dispatchers.IO).launch {
             val query = runCatching {
@@ -160,7 +160,7 @@ object Actions {
             toast(context, context.getString(R.string.gen_need_key), long = true)
             return
         }
-        val b64 = toBase64Png(crop)
+        val b64 = toBase64ForVision(crop)
         toast(context, context.getString(R.string.gen_writing_prompt), long = true)
         CoroutineScope(Dispatchers.IO).launch {
             val subject = runCatching {
@@ -238,9 +238,23 @@ object Actions {
             .onFailure { toast(context, context.getString(R.string.act_browser_failed, it.message)) }
     }
 
-    private fun toBase64Png(bmp: Bitmap): String {
+    /** Vision payloads: downscale to ~1.6k px + JPEG. Anthropic rejects
+     *  images over 10 MB and models are capped around 1568 px anyway — a
+     *  full-res 1440p PNG crop can blow past the limit. Saves to
+     *  Pictures/nodx keep the original PNG (see savePng). */
+    private fun toBase64ForVision(bmp: Bitmap): String {
+        val longest = maxOf(bmp.width, bmp.height)
+        val scaled = if (longest > 1568) {
+            val s = 1568f / longest
+            Bitmap.createScaledBitmap(
+                bmp,
+                (bmp.width * s).toInt().coerceAtLeast(1),
+                (bmp.height * s).toInt().coerceAtLeast(1),
+                true,
+            )
+        } else bmp
         val baos = ByteArrayOutputStream()
-        bmp.compress(Bitmap.CompressFormat.PNG, 100, baos)
+        scaled.compress(Bitmap.CompressFormat.JPEG, 82, baos)
         return Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
     }
 

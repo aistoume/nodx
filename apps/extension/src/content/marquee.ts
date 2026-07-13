@@ -828,7 +828,7 @@ function showImageResultModal(
 async function generatePromptViaServiceWorker(dataUrl: string): Promise<string> {
   const res = (await chrome.runtime.sendMessage({
     type: 'GENERATE_PROMPT_FROM_IMAGE',
-    dataUrl,
+    dataUrl: await visionDataUrl(dataUrl),
   })) as { ok: boolean; prompt?: string; error?: string };
   if (!res?.ok || !res.prompt) {
     throw new Error(res?.error ?? 'Sonnet 没返回 prompt');
@@ -859,7 +859,7 @@ async function generateImageViaServiceWorker(prompt: string): Promise<string> {
 async function generateShoppingQueryViaServiceWorker(dataUrl: string): Promise<string> {
   const res = (await chrome.runtime.sendMessage({
     type: 'SHOPPING_QUERY_FROM_IMAGE',
-    dataUrl,
+    dataUrl: await visionDataUrl(dataUrl),
   })) as { ok: boolean; query?: string; error?: string };
   if (!res?.ok || !res.query) {
     throw new Error(res?.error ?? '没认出商品');
@@ -873,6 +873,40 @@ async function generateShoppingQueryViaServiceWorker(dataUrl: string): Promise<s
  * the user doesn't need a huge hi-res image, and a smaller PNG also fits
  * comfortably inside chrome.storage when saved to the side panel.
  */
+/**
+ * Shrink an AI-bound crop before it leaves the page: vision models cap out
+ * around ~1.6k px and Anthropic hard-rejects >10MB payloads — a full-res
+ * Retina PNG crop can blow past that. JPEG (q0.82) on a white matte keeps
+ * the payload ~100× smaller with no quality the model can actually use
+ * lost. Storage thumbnails / desktop forwarding keep the original PNG.
+ */
+async function visionDataUrl(dataUrl: string): Promise<string> {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      const longest = Math.max(image.naturalWidth, image.naturalHeight);
+      const scale = Math.min(1, 1568 / longest);
+      const w = Math.max(1, Math.round(image.naturalWidth * scale));
+      const h = Math.max(1, Math.round(image.naturalHeight * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(dataUrl);
+        return;
+      }
+      // JPEG has no alpha channel — flatten onto white first.
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(image, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    image.onerror = () => resolve(dataUrl);
+    image.src = dataUrl;
+  });
+}
+
 async function downscaleDataUrl(dataUrl: string, maxEdge: number): Promise<string> {
   return new Promise((resolve) => {
     const image = new Image();
@@ -1005,9 +1039,9 @@ async function explainHighlight(
     if (!settings.apiKey && providerNeedsApiKey(settings.provider)) {
       throw new Error('AI key 未设置 —— 打开 ⚙ 设置粘贴你的 Anthropic API key。');
     }
-    const b64 = cropped.dataUrl.replace(/^data:[^,]+,/, '');
-    const mime =
-      cropped.dataUrl.match(/^data:([^;]+);/)?.[1] ?? 'image/png';
+    const visionUrl = await visionDataUrl(cropped.dataUrl);
+    const b64 = visionUrl.replace(/^data:[^,]+,/, '');
+    const mime = visionUrl.match(/^data:([^;]+);/)?.[1] ?? 'image/jpeg';
 
     let full = '';
     await callAI(

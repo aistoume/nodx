@@ -32,7 +32,7 @@ object OpenAIClient {
             .put(
                 JSONObject().put("type", "image_url").put(
                     "image_url",
-                    JSONObject().put("url", "data:image/png;base64,$imageBase64"),
+                    JSONObject().put("url", "data:image/jpeg;base64,$imageBase64"),
                 )
             )
             .put(JSONObject().put("type", "text").put("text", prompt))

@@ -46,7 +46,7 @@ object AnthropicClient {
     private fun visionCall(apiKey: String, model: String, imageBase64: String, prompt: String): String {
         val content = JSONArray()
             .put(JSONObject().put("type", "image").put("source",
-                JSONObject().put("type", "base64").put("media_type", "image/png").put("data", imageBase64)))
+                JSONObject().put("type", "base64").put("media_type", "image/jpeg").put("data", imageBase64)))
             .put(JSONObject().put("type", "text").put("text", prompt))
         val payload = JSONObject()
             .put("model", model)
