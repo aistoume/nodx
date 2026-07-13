@@ -183,20 +183,30 @@ struct CaptureView: View {
             set: { if $0 == nil { stageImage = nil } })
     }
 
-    /// Deep-link entry: the Shortcut saves a screenshot moments before the
-    /// app opens, so Photos may lag one beat — refetch, and retry once if
-    /// the newest screenshot doesn't look fresh yet.
+    /// Deep-link entry (nodx://capture). The Shortcut saves via the Photos
+    /// API, so the asset is a PLAIN image — it never gets the
+    /// photoScreenshot subtype that the strip filters on. Grab the newest
+    /// image of any kind instead, retrying once for Photos indexing lag.
     private func openFreshestScreenshot() async {
         stageImage = nil
-        await requestAndLoad()
-        if let first = screenshots.first, let created = first.creationDate,
-           Date().timeIntervalSince(created) < 30 {
-            open(asset: first)
-            return
+        let status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+        await MainActor.run { authStatus = status }
+        guard status == .authorized || status == .limited else { return }
+        if let asset = fetchNewestImage(), let created = asset.creationDate,
+           Date().timeIntervalSince(created) < 60 {
+            open(asset: asset)
+        } else {
+            try? await Task.sleep(nanoseconds: 900_000_000)
+            if let asset = fetchNewestImage() { open(asset: asset) }
         }
-        try? await Task.sleep(nanoseconds: 900_000_000)
-        await requestAndLoad()
-        if let first = screenshots.first { open(asset: first) }
+        await requestAndLoad() // refresh the screenshots strip too
+    }
+
+    private func fetchNewestImage() -> PHAsset? {
+        let options = PHFetchOptions()
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        options.fetchLimit = 1
+        return PHAsset.fetchAssets(with: .image, options: options).firstObject
     }
 
     private func requestAndLoad() async {
