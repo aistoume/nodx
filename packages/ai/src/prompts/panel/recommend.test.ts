@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MODELS } from '../../models.js';
 import {
   RECOMMEND_PANEL_PROMPT_MODEL,
   RecommendPanelOutputSchema,
@@ -87,6 +88,6 @@ describe('RecommendPanelOutputSchema', () => {
 
 describe('recommend metadata', () => {
   it('routes to sonnet (composition is reasoning)', () => {
-    expect(RECOMMEND_PANEL_PROMPT_MODEL).toContain('sonnet');
+    expect(RECOMMEND_PANEL_PROMPT_MODEL).toBe(MODELS.sonnet);
   });
 });

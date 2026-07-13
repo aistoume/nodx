@@ -1,7 +1,7 @@
 import { MODELS, type ModelId } from '../models.js';
 import type { DecomposedFactor } from './decompose.js';
 
-export const DOCUMENT_DRAFT_PROMPT_VERSION = '2026-05-05.v1';
+export const DOCUMENT_DRAFT_PROMPT_VERSION = '2026-07-10.v2';
 export const DOCUMENT_DRAFT_PROMPT_MODEL: ModelId = MODELS.sonnet;
 
 export interface DocumentDraftInput {
@@ -49,13 +49,14 @@ ${decomposedBlock}
    - 一段 AI 的核心思考（150-250 字），给出**真实的分析、视角、决策杠杆**。不要含糊的"需要考虑 X"，要给具体观点。
    - 一个 \`### 待回答\` 小节，列出该维度对应的子问题，每条以 \`> [需用户判断]\` 引用块开头，再用一两句给出你的初步判断或参考方向。
 4. **最后一个 H2** 章节叫 \`## 下一步\`，列 3-5 个具体可执行的动作（带主语和时间约束，例如"本周内完成对 3 家头部公司的访谈"）。
-5. **直接输出 Markdown 正文**，不要用 \\\`\\\`\\\` 代码块包装、不要"以下是文档"等前缀，从首段开始即可。
+5. **图例（可选但鼓励）**：当某段逻辑用图表达明显更清楚时——流程/因果链用 \`flowchart TD\`、优先级权衡用 \`quadrantChart\`、阶段推进用 \`timeline\`——在正文合适位置插入一个 \`\`\`mermaid 代码块，图后用一句话点题。每份文档最多 1-2 张，逻辑本身简单时不要硬配图。mermaid 节点文字含中文或标点时必须用双引号包裹（如 A["先验证需求"]）。
+6. **直接输出 Markdown 正文**，不要用 \\\`\\\`\\\` 代码块包装、不要"以下是文档"等前缀，从首段开始即可（mermaid 代码块除外——那是文档内容的一部分）。
 
 开始写：
 `;
 }
 
-export const FOCUSED_DOCUMENT_PROMPT_VERSION = '2026-05-07.v1';
+export const FOCUSED_DOCUMENT_PROMPT_VERSION = '2026-07-10.v2';
 export const FOCUSED_DOCUMENT_PROMPT_MODEL: ModelId = MODELS.sonnet;
 
 export interface FocusedDocumentInput {
@@ -92,7 +93,8 @@ ${input.question}
 4. 每个章节内容：150-250 字的**真实分析**（具体观点、决策杠杆、可能的反例），不要含糊的"需要考虑 X"。可附 \`### 待回答\` 小节，把该角度还需用户判断的点列出来，每条以 \`> [需用户判断]\` 引用块开头。
 5. 最后一个 H2：\`## 下一步\` ——3-5 个具体可执行的动作（带主语和时间约束）。
 6. **不要重复父话题已经讨论过的内容**——专注于这个具体角度的深挖。
-7. **直接输出 Markdown 正文**，不要 \\\`\\\`\\\` 代码块包装，不要"以下是文档"等前缀。
+7. **图例（可选但鼓励）**：当某段逻辑用图表达明显更清楚时——流程/因果链用 \`flowchart TD\`、优先级权衡用 \`quadrantChart\`、阶段推进用 \`timeline\`——在正文合适位置插入一个 \`\`\`mermaid 代码块，图后用一句话点题。每份文档最多 1-2 张，逻辑本身简单时不要硬配图。mermaid 节点文字含中文或标点时必须用双引号包裹（如 A["先验证需求"]）。
+8. **直接输出 Markdown 正文**，不要 \\\`\\\`\\\` 代码块包装，不要"以下是文档"等前缀（mermaid 代码块除外）。
 
 开始写：
 `;

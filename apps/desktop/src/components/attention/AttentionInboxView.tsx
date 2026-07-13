@@ -29,6 +29,8 @@ import {
   updateTags,
 } from '../../db/attentions.js';
 import { explainImage, explainSelection } from '../../ai/explain.js';
+import { appendToDocument } from '../../db/documents.js';
+import { mediaFileFromPath, mediaImageHtml } from '../../lib/media.js';
 import { useT } from '../../i18n/index.js';
 
 interface Props {
@@ -39,6 +41,8 @@ interface Props {
   /** Deep-link from a 素材 graph node: scroll to + highlight this attention id. */
   focusId?: string;
   onFocusConsumed?: () => void;
+  /** Currently open topic — enables 「插入文档」 on image cards. */
+  activeTopicId?: string | null;
 }
 
 const SOURCE_CHIPS: Array<{ key: AttentionSource; emoji: string }> = [
@@ -50,6 +54,7 @@ const SOURCE_CHIPS: Array<{ key: AttentionSource; emoji: string }> = [
 export function AttentionInboxView({
   refreshTick,
   onPromote,
+  activeTopicId,
   focusId,
   onFocusConsumed,
 }: Props) {
@@ -189,6 +194,7 @@ export function AttentionInboxView({
                       })();
                     }}
                     onPromote={() => onPromote(a)}
+                    activeTopicId={activeTopicId}
                   />
                 ))}
               </div>
@@ -218,6 +224,7 @@ interface CardProps {
   onChanged: () => void;
   onPromote: () => void;
   highlighted?: boolean;
+  activeTopicId?: string | null;
 }
 
 function AttentionCard({
@@ -225,11 +232,25 @@ function AttentionCard({
   onChanged,
   onPromote,
   highlighted,
+  activeTopicId,
 }: CardProps) {
   const { t } = useT();
   const [editingTags, setEditingTags] = useState(false);
   const [tagInput, setTagInput] = useState(attention.tags.join(', '));
   const [editingExpl, setEditingExpl] = useState(false);
+  const [inserted, setInserted] = useState(false);
+
+  // 「📎 插入文档」— embed this capture's image into the currently open
+  // topic's thinking document (caption = snippet or source title).
+  const insertIntoDoc = async () => {
+    if (!activeTopicId || !attention.imagePath) return;
+    const file = mediaFileFromPath(attention.imagePath);
+    if (!file) return;
+    const caption = attention.text.trim() || attention.sourceTitle || '';
+    await appendToDocument(activeTopicId, mediaImageHtml(file, caption));
+    setInserted(true);
+    window.setTimeout(() => setInserted(false), 2400);
+  };
   const [explInput, setExplInput] = useState(attention.explanation ?? '');
   const [hovering, setHovering] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -523,6 +544,17 @@ function AttentionCard({
               title={t('attention.askAiTip')}
             >
               {aiLoading ? t('attention.askAiBusy') : t('attention.askAiShort')}
+            </button>
+          )}
+          {attention.imagePath && activeTopicId && (
+            <button
+              type="button"
+              className="px-2 py-1 rounded-md text-ink-muted hover:bg-canvas hover:text-ink disabled:opacity-60"
+              disabled={inserted}
+              onClick={() => void insertIntoDoc()}
+              title={t('attention.insertDocTip')}
+            >
+              {inserted ? t('attention.insertDocDone') : t('attention.insertDoc')}
             </button>
           )}
           {!editingTags && (

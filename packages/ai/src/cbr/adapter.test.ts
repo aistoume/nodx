@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MODELS } from '../models.js';
 import {
   ADAPTER_PROMPT_MODEL,
   AdapterOutputSchema,
@@ -61,6 +62,6 @@ describe('AdapterOutputSchema', () => {
 
 describe('adapter metadata', () => {
   it('routes to sonnet', () => {
-    expect(ADAPTER_PROMPT_MODEL).toContain('sonnet');
+    expect(ADAPTER_PROMPT_MODEL).toBe(MODELS.sonnet);
   });
 });

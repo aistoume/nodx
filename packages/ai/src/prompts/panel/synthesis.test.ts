@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MODELS } from '../../models.js';
 import {
   SYNTHESIS_PROMPT_MODEL,
   SynthesisOutputSchema,
@@ -73,6 +74,6 @@ describe('SynthesisOutputSchema', () => {
 
 describe('synthesis metadata', () => {
   it('routes to sonnet (highest-value step)', () => {
-    expect(SYNTHESIS_PROMPT_MODEL).toContain('sonnet');
+    expect(SYNTHESIS_PROMPT_MODEL).toBe(MODELS.sonnet);
   });
 });

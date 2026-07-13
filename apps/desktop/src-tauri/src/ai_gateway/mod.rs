@@ -279,6 +279,8 @@ fn build_app(state: GatewayState) -> Router {
         .route("/v1/embed", post(embed))
         .route("/v1/capture-image", post(capture_image))
         .route("/v1/capture-text", post(capture_text))
+        .route("/media/:filename", get(serve_media))
+        .route("/v1/generate-image", post(generate_image))
         .layer(
             // Body size limit tuned for image captures — screenshots up to
             // ~10 MB after base64 encoding go through comfortably (a raw
@@ -576,11 +578,130 @@ struct CaptureImagePayload {
     image_height: Option<u32>,
 }
 
+/// POST /v1/generate-image — text prompt → Gemini image → saved under the
+/// media dir → `{ file, url }` for embedding into a thinking document.
+/// Token-gated (it spends the user's Gemini quota).
+async fn generate_image(
+    State(st): State<GatewayState>,
+    headers: HeaderMap,
+    Json(req): Json<gemini::GenerateImageRequest>,
+) -> impl IntoResponse {
+    if let Err(e) = check_auth(&headers, &st) {
+        return e.into_response();
+    }
+    if req.prompt.trim().is_empty() {
+        return error_response(StatusCode::BAD_REQUEST, "prompt must not be empty")
+            .into_response();
+    }
+    let api_key = match keychain::get_key(Provider::Gemini) {
+        Ok(Some(k)) => k,
+        Ok(None) => {
+            return error_with_hint(
+                StatusCode::PAYMENT_REQUIRED,
+                "no Gemini API key configured",
+                "Set your Gemini key in Settings to enable image generation.",
+            )
+            .into_response();
+        }
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("keychain: {}", e),
+            )
+            .into_response();
+        }
+    };
+
+    let bytes = match gemini::generate_image(&api_key, &st.client, &req.prompt).await {
+        Ok(b) => b,
+        Err(e) => {
+            log::error!("ai gateway: gemini image error: {}", e.message);
+            let status = if e.status == 429 {
+                StatusCode::TOO_MANY_REQUESTS
+            } else {
+                StatusCode::BAD_GATEWAY
+            };
+            return error_response(status, e.message).into_response();
+        }
+    };
+
+    let Some(media) = media_dir() else {
+        return error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "could not resolve nodx media dir",
+        )
+        .into_response();
+    };
+    let file = format!("gen_{}.png", uuid::Uuid::new_v4().simple());
+    if let Err(e) = std::fs::write(media.join(&file), &bytes) {
+        return error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("write media file: {}", e),
+        )
+        .into_response();
+    }
+
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({ "file": file, "url": format!("/media/{}", file) })),
+    )
+        .into_response()
+}
+
 fn media_dir() -> Option<std::path::PathBuf> {
     let base = directories_next_data_dir()?;
     let media = base.join("media");
     std::fs::create_dir_all(&media).ok()?;
     Some(media)
+}
+
+/// GET /media/:filename — serve a captured / generated image so the webview
+/// (and thinking documents) can reference it as a plain <img src>. Filename
+/// only, no paths: reject anything with separators or dot-segments so this
+/// can never read outside the media dir.
+async fn serve_media(
+    axum::extract::Path(filename): axum::extract::Path<String>,
+) -> axum::response::Response {
+    if filename.contains('/') || filename.contains('\\') || filename.contains("..") {
+        return error_response(StatusCode::BAD_REQUEST, "invalid filename").into_response();
+    }
+    let Some(dir) = media_dir() else {
+        return error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "could not resolve nodx media dir",
+        )
+        .into_response();
+    };
+    let path = dir.join(&filename);
+    match std::fs::read(&path) {
+        Ok(bytes) => {
+            let mime = match path
+                .extension()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_ascii_lowercase()
+                .as_str()
+            {
+                "jpg" | "jpeg" => "image/jpeg",
+                "webp" => "image/webp",
+                "gif" => "image/gif",
+                "svg" => "image/svg+xml",
+                _ => "image/png",
+            };
+            (
+                StatusCode::OK,
+                [
+                    (axum::http::header::CONTENT_TYPE, mime),
+                    // Media files are content-addressed by unique id and never
+                    // rewritten — let the webview cache them aggressively.
+                    (axum::http::header::CACHE_CONTROL, "public, max-age=31536000, immutable"),
+                ],
+                bytes,
+            )
+                .into_response()
+        }
+        Err(_) => error_response(StatusCode::NOT_FOUND, "no such media file").into_response(),
+    }
 }
 
 fn extension_for(mime: &str) -> &'static str {

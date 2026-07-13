@@ -28,6 +28,7 @@ interface AttentionMaterialRow {
   source_kind: string;
   material_kind: string | null;
   ingested_at: number;
+  image_path: string | null;
 }
 
 function truncate(s: string, n: number): string {
@@ -50,8 +51,8 @@ export async function listMaterials(limit = 200): Promise<MaterialRef[]> {
   );
   const attentions = await db.select<AttentionMaterialRow[]>(
     `SELECT id, text, explanation, source_title, source_kind,
-            material_kind, ingested_at
-     FROM attentions ORDER BY ingested_at DESC LIMIT ${limit}`,
+            material_kind, ingested_at, image_path
+      FROM attentions ORDER BY ingested_at DESC LIMIT ${limit}`,
   );
 
   const solutions: MaterialRef[] = cases.map((r) =>
@@ -74,6 +75,9 @@ export async function listMaterials(limit = 200): Promise<MaterialRef[]> {
         ? truncate(r.source_title, 60)
         : r.source_kind,
       ...(r.explanation ? { body: truncate(r.explanation, 240) } : {}),
+      ...(r.image_path
+        ? { imageFile: r.image_path.split('/').pop() ?? undefined }
+        : {}),
       createdAt: r.ingested_at,
     }),
   );

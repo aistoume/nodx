@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MODELS } from '../../models.js';
 import {
   PANEL_ROUND_PROMPT_MODEL,
   buildCritiquePrompt,
@@ -64,6 +65,6 @@ describe('buildRefinePrompt', () => {
 
 describe('round metadata', () => {
   it('routes to sonnet', () => {
-    expect(PANEL_ROUND_PROMPT_MODEL).toContain('sonnet');
+    expect(PANEL_ROUND_PROMPT_MODEL).toBe(MODELS.sonnet);
   });
 });

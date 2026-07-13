@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MODELS } from '../models.js';
 import {
   REPORT_PROMPT_MODEL,
   ReportOutputSchema,
@@ -86,6 +87,6 @@ describe('reportToMarkdown', () => {
 
 describe('report metadata', () => {
   it('routes to sonnet', () => {
-    expect(REPORT_PROMPT_MODEL).toContain('sonnet');
+    expect(REPORT_PROMPT_MODEL).toBe(MODELS.sonnet);
   });
 });

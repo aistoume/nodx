@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MODELS } from '../models.js';
 import {
   DOCUMENT_DRAFT_PROMPT_MODEL,
   REFINE_SELECTION_PROMPT_MODEL,
@@ -88,8 +89,8 @@ describe('buildFocusedDocumentPrompt', () => {
 describe('document prompt metadata', () => {
   it('routes all three to sonnet (reasoning-heavy)', async () => {
     const { FOCUSED_DOCUMENT_PROMPT_MODEL } = await import('./document.js');
-    expect(DOCUMENT_DRAFT_PROMPT_MODEL).toContain('sonnet');
-    expect(FOCUSED_DOCUMENT_PROMPT_MODEL).toContain('sonnet');
-    expect(REFINE_SELECTION_PROMPT_MODEL).toContain('sonnet');
+    expect(DOCUMENT_DRAFT_PROMPT_MODEL).toBe(MODELS.sonnet);
+    expect(FOCUSED_DOCUMENT_PROMPT_MODEL).toBe(MODELS.sonnet);
+    expect(REFINE_SELECTION_PROMPT_MODEL).toBe(MODELS.sonnet);
   });
 });

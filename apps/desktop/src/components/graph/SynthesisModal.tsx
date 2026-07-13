@@ -9,6 +9,7 @@ import { MATERIAL_KIND_META, type MaterialRef } from '@nodx/models';
 import { synthesizeMaterials } from '../../ai/synthesize.js';
 import { appendToDocument } from '../../db/documents.js';
 import { markdownToHtml } from '../../lib/markdown.js';
+import { mediaImageHtml } from '../../lib/media.js';
 import { useT } from '../../i18n/index.js';
 
 interface SynthesisModalProps {
@@ -42,7 +43,13 @@ export function SynthesisModal({
         question,
         materials,
       );
-      await appendToDocument(topicId, markdownToHtml(md));
+      // Image materials go in right below the synthesis, so the section
+      // reads with its visual evidence attached — 图文一起沉淀。
+      const images = materials
+        .filter((m) => m.imageFile)
+        .map((m) => mediaImageHtml(m.imageFile!, m.title))
+        .join('');
+      await appendToDocument(topicId, markdownToHtml(md) + images);
       onDone(topicId);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

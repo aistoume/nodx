@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MODELS } from '../models.js';
 import {
   RELATION_FINDER_PROMPT_MODEL,
   RelationFinderOutputSchema,
@@ -79,6 +80,6 @@ describe('RelationFinderOutputSchema', () => {
 
 describe('relation-finder metadata', () => {
   it('routes to sonnet', () => {
-    expect(RELATION_FINDER_PROMPT_MODEL).toContain('sonnet');
+    expect(RELATION_FINDER_PROMPT_MODEL).toBe(MODELS.sonnet);
   });
 });

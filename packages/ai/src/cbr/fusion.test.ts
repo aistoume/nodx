@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MODELS } from '../models.js';
 import {
   FUSION_PROMPT_MODEL,
   FusionReportSchema,
@@ -56,6 +57,6 @@ describe('FusionReportSchema', () => {
 
 describe('fusion metadata', () => {
   it('routes to sonnet', () => {
-    expect(FUSION_PROMPT_MODEL).toContain('sonnet');
+    expect(FUSION_PROMPT_MODEL).toBe(MODELS.sonnet);
   });
 });

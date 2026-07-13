@@ -5,6 +5,7 @@ import {
   buildExplainPrompt,
 } from '@nodx/ai';
 import { invoke } from '@tauri-apps/api/core';
+import { visionPayload } from '../lib/media.js';
 import { ai } from './gateway.js';
 
 export interface ExplainResult {
@@ -47,9 +48,15 @@ export async function explainImage(
   context?: string,
 ): Promise<ExplainResult> {
   try {
-    const [imageBase64, imageMime] = await invoke<[string, string]>(
+    const [rawBase64, rawMime] = await invoke<[string, string]>(
       'read_media_file',
       { path: imagePath },
+    );
+    // Retina captures can exceed Anthropic's 10MB image cap — shrink the
+    // API payload (stored file stays full-res).
+    const { base64: imageBase64, mime: imageMime } = await visionPayload(
+      rawBase64,
+      rawMime,
     );
     const prompt =
       '看这张截图，用一句话（50–150 字）说清楚它是什么、展示了什么核心内容。' +
@@ -126,7 +133,7 @@ export async function explainSelection(
  * the most common failure is "key not in keychain yet" (402 from gateway)
  * → tell user to open Settings.
  */
-function friendlierAiError(err: unknown): Error {
+export function friendlierAiError(err: unknown): Error {
   const msg = err instanceof Error ? err.message : String(err);
 
   // In-proc gateway returns 402 when no API key is in the keychain.

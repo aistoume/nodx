@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MODELS } from '../models.js';
 import type { Comment, ThinkingSession, Topic } from '@nodx/models';
 import {
   RECAP_PROMPT_MODEL,
@@ -83,6 +84,6 @@ describe('buildRecapPrompt + schema', () => {
     ).toThrow();
   });
   it('routes to sonnet', () => {
-    expect(RECAP_PROMPT_MODEL).toContain('sonnet');
+    expect(RECAP_PROMPT_MODEL).toBe(MODELS.sonnet);
   });
 });

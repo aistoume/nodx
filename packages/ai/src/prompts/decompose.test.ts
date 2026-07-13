@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MODELS } from '../models.js';
 import {
   DECOMPOSE_PROMPT_MODEL,
   DecomposeOutputSchema,
@@ -66,6 +67,6 @@ describe('DecomposeOutputSchema', () => {
 
 describe('decompose metadata', () => {
   it('routes to sonnet', () => {
-    expect(DECOMPOSE_PROMPT_MODEL).toContain('sonnet');
+    expect(DECOMPOSE_PROMPT_MODEL).toBe(MODELS.sonnet);
   });
 });

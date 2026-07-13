@@ -364,6 +364,7 @@ export function App() {
         ) : view === 'attention' ? (
           <AttentionInboxView
             refreshTick={attentionRefreshTick}
+            activeTopicId={selectedTopicId}
             focusId={
               materialFocus?.kind === 'inspiration'
                 ? materialFocus.id

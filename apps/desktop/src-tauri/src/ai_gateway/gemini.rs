@@ -131,3 +131,83 @@ pub async fn call_gemini_embed(
         model: GEMINI_EMBED_MODEL.to_string(),
     })
 }
+
+// ── Image generation ────────────────────────────────────────────────────
+// gemini-2.5-flash-image via :generateContent — the image comes back as
+// base64 in candidates[0].content.parts[].inlineData.data (same shape the
+// Chrome extension uses; no responseModalities needed for the image-only
+// model).
+
+pub const GEMINI_IMAGE_MODEL: &str = "gemini-2.5-flash-image";
+
+#[derive(Debug, serde::Deserialize)]
+pub struct GenerateImageRequest {
+    pub prompt: String,
+}
+
+/// Generate one image from a text prompt. Returns raw PNG bytes.
+pub async fn generate_image(
+    api_key: &str,
+    client: &reqwest::Client,
+    prompt: &str,
+) -> Result<Vec<u8>, GeminiError> {
+    let url = format!(
+        "{}/models/{}:generateContent?key={}",
+        GEMINI_BASE, GEMINI_IMAGE_MODEL, api_key
+    );
+    let body = serde_json::json!({
+        "contents": [{ "parts": [{ "text": prompt }] }]
+    });
+
+    let response = client
+        .post(&url)
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| GeminiError {
+            status: 502,
+            message: format!("network: {}", e),
+            upstream_body: String::new(),
+        })?;
+
+    let status = response.status();
+    let payload: serde_json::Value = response.json().await.map_err(|e| GeminiError {
+        status: 502,
+        message: format!("bad json from gemini: {}", e),
+        upstream_body: String::new(),
+    })?;
+
+    if !status.is_success() {
+        let msg = payload
+            .pointer("/error/message")
+            .and_then(|v| v.as_str())
+            .unwrap_or("(no message)");
+        return Err(GeminiError {
+            status: status.as_u16(),
+            message: format!("gemini {}: {}", status.as_u16(), msg),
+            upstream_body: payload.to_string().chars().take(400).collect(),
+        });
+    }
+
+    let b64 = payload
+        .pointer("/candidates/0/content/parts")
+        .and_then(|parts| parts.as_array())
+        .and_then(|parts| {
+            parts.iter().find_map(|p| {
+                p.pointer("/inlineData/data").and_then(|d| d.as_str())
+            })
+        })
+        .ok_or_else(|| GeminiError {
+            status: 502,
+            message: "gemini returned no image data".to_string(),
+            upstream_body: payload.to_string().chars().take(400).collect(),
+        })?;
+
+    use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
+    B64.decode(b64).map_err(|e| GeminiError {
+        status: 502,
+        message: format!("invalid base64 image from gemini: {}", e),
+        upstream_body: String::new(),
+    })
+}

@@ -32,6 +32,12 @@ export const MaterialRefSchema = z
     subtitle: z.string().optional(),
     /** Longer body for the node (solution structure / explanation / snippet). */
     body: z.string().optional(),
+    /**
+     * Media filename (no path) when the material carries an image — an
+     * attention captured via Lens marquee or a generated picture. Resolves
+     * to the in-proc gateway's /media/{imageFile} for display / embedding.
+     */
+    imageFile: z.string().optional(),
     createdAt: TimestampSchema,
   })
   .strict();

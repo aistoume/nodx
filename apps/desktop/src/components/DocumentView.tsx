@@ -8,9 +8,13 @@ import {
 } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import Image from '@tiptap/extension-image';
+import { MermaidCodeBlock } from './doc/MermaidCodeBlock.js';
 import type { Comment, Message, Topic } from '@nodx/models';
 import { askCoach } from '../ai/chat.js';
 import { refineSelection } from '../ai/document.js';
+import { illustrateSelection } from '../ai/illustrate.js';
+import { mediaImageHtml } from '../lib/media.js';
 import { explainSelection } from '../ai/explain.js';
 import { isAiConfigured } from '../ai/gateway.js';
 import {
@@ -146,7 +150,12 @@ export function DocumentView({
       extensions: [
         StarterKit.configure({
           heading: { levels: [1, 2, 3] },
+          // Replaced by MermaidCodeBlock below (same node, adds a NodeView
+          // that renders ```mermaid fences as live diagrams).
+          codeBlock: false,
         }),
+        MermaidCodeBlock,
+        Image.configure({ inline: false }),
       ],
       content: initialHtml,
       editorProps: {
@@ -187,6 +196,28 @@ export function DocumentView({
     PendingSelection | null
   >(null);
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
+  const [illustrating, setIllustrating] = useState(false);
+
+  // 🎨 选段配图: Sonnet writes an image prompt from the selected passage,
+  // Gemini renders it, and the result is inserted right below the selection.
+  const handleIllustrate = async () => {
+    if (!editor || !pendingSelection || illustrating) return;
+    setIllustrating(true);
+    try {
+      const r = await illustrateSelection(pendingSelection.text, topic.title);
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(pendingSelection.to, mediaImageHtml(r.file))
+        .run();
+      setPendingSelection(null);
+      setActivePanel(null);
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setIllustrating(false);
+    }
+  };
   const [explaining, setExplaining] = useState(false);
   const [proposing, setProposing] = useState(false);
   const [proposal, setProposal] = useState<ActiveProposal | null>(null);
@@ -706,10 +737,12 @@ export function DocumentView({
           x={pendingSelection.x}
           y={pendingSelection.y}
           explaining={explaining}
+          illustrating={illustrating}
           onExplain={handleExplain}
           onNote={() => setActivePanel('note')}
           onRefine={() => setActivePanel('refine')}
           onStuck={() => setActivePanel('stuck')}
+          onIllustrate={() => void handleIllustrate()}
         />
       )}
 
@@ -768,18 +801,22 @@ function SelectionMenu({
   x,
   y,
   explaining,
+  illustrating,
   onExplain,
   onNote,
   onRefine,
   onStuck,
+  onIllustrate,
 }: {
   x: number;
   y: number;
   explaining: boolean;
+  illustrating: boolean;
   onExplain: () => void;
   onNote: () => void;
   onRefine: () => void;
   onStuck: () => void;
+  onIllustrate: () => void;
 }) {
   const { t } = useT();
   const left = clamp(x, 8, window.innerWidth - 340);
@@ -818,6 +855,15 @@ function SelectionMenu({
         idleLabel={t('doc.toolbar.block.idle')}
         hint={t('doc.toolbar.block.hint')}
         accent="red"
+      />
+      <span className="w-px bg-border" />
+      <MenuButton
+        onClick={onIllustrate}
+        loading={illustrating}
+        loadingLabel={t('doc.toolbar.illustrate.loading')}
+        idleLabel={t('doc.toolbar.illustrate.idle')}
+        hint={t('doc.toolbar.illustrate.hint')}
+        accent="accent"
       />
     </div>
   );
