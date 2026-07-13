@@ -6,6 +6,7 @@ import PhotosUI
 /// is: take a system screenshot anywhere → open nodx → the latest screenshot
 /// is one tap away → box a region → action wheel.
 struct CaptureView: View {
+    @EnvironmentObject private var router: AppRouter
     @State private var authStatus: PHAuthorizationStatus = .notDetermined
     @State private var screenshots: [PHAsset] = []
     @State private var thumbs: [String: UIImage] = [:]
@@ -36,6 +37,11 @@ struct CaptureView: View {
             }
         }
         .task { await requestAndLoad() }
+        .onChange(of: router.captureRequest) { _, _ in
+            // nodx://capture (screenshot Shortcut): open the freshest
+            // screenshot straight into the marquee, no taps.
+            Task { await openFreshestScreenshot() }
+        }
         .onChange(of: pickerItem) { _, item in
             guard let item else { return }
             Task {
@@ -175,6 +181,22 @@ struct CaptureView: View {
         Binding(
             get: { stageImage.map { StagedImage(image: $0) } },
             set: { if $0 == nil { stageImage = nil } })
+    }
+
+    /// Deep-link entry: the Shortcut saves a screenshot moments before the
+    /// app opens, so Photos may lag one beat — refetch, and retry once if
+    /// the newest screenshot doesn't look fresh yet.
+    private func openFreshestScreenshot() async {
+        stageImage = nil
+        await requestAndLoad()
+        if let first = screenshots.first, let created = first.creationDate,
+           Date().timeIntervalSince(created) < 30 {
+            open(asset: first)
+            return
+        }
+        try? await Task.sleep(nanoseconds: 900_000_000)
+        await requestAndLoad()
+        if let first = screenshots.first { open(asset: first) }
     }
 
     private func requestAndLoad() async {

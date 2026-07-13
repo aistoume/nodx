@@ -178,6 +178,7 @@
 				DEVELOPMENT_TEAM = 29V2T5RPN3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = nodx;
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "nodx saves crops and generated images to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "nodx loads your latest screenshot so you can box a region and run AI actions on it.";
@@ -210,6 +211,7 @@
 				DEVELOPMENT_TEAM = 29V2T5RPN3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = nodx;
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "nodx saves crops and generated images to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "nodx loads your latest screenshot so you can box a region and run AI actions on it.";
