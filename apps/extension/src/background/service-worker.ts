@@ -301,26 +301,40 @@ async function beginCapture(
           for (const cs of chrome.runtime.getManifest().content_scripts ?? []) {
             for (const f of cs.js ?? []) files.push(f);
           }
-          if (files.length > 0) {
-            await chrome.scripting.executeScript({
-              target: { tabId: tab.id },
-              files,
-            });
-            // Give the content script a moment to install its listener,
-            // then retry.
-            await new Promise((r) => setTimeout(r, 120));
-            await chrome.tabs.sendMessage(tab.id, {
-              type: 'BEGIN_MARQUEE',
-              dataUrl,
-            });
-          } else {
-            throw err;
+          if (files.length === 0) throw err;
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files,
+          });
+          // The injected file is a LOADER that dynamic-imports the real
+          // chunks — on heavy pages that takes far longer than any fixed
+          // delay. Poll until an onMessage listener exists (sendMessage
+          // stops throwing), then hand over the screenshot.
+          let ready = false;
+          for (let i = 0; i < 20 && !ready; i++) {
+            await new Promise((r) => setTimeout(r, 150));
+            try {
+              await chrome.tabs.sendMessage(tab.id, { type: 'PING' });
+              ready = true;
+            } catch {
+              /* listener not up yet — keep polling */
+            }
           }
+          if (!ready) throw new Error('content script never came up');
+          await chrome.tabs.sendMessage(tab.id, {
+            type: 'BEGIN_MARQUEE',
+            dataUrl,
+          });
         } catch (retryErr) {
+          // Browser-internal / store pages can't be scripted at all —
+          // "refresh and try again" would be misleading there.
+          const rmsg =
+            retryErr instanceof Error ? retryErr.message : String(retryErr);
           sendResponse({
             ok: false,
-            error:
-              'This tab was open before nodx Lens was installed/updated. Please refresh the page (Cmd/Ctrl+R) and try again.',
+            error: /cannot access|cannot be scripted|chrome:\/\/|gallery|error page/i.test(rmsg)
+              ? "This page can't be captured (browser-internal or store page). Try a regular website."
+              : 'This tab was open before nodx Lens was installed/updated. Please refresh the page (Cmd/Ctrl+R) and try again.',
           });
           return;
         }
