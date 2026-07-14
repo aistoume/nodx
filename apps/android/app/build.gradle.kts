@@ -34,7 +34,10 @@ android {
     }
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 code shrinking + obfuscation (Play "App optimization" 项)。
+            // 纯 Kotlin/OkHttp/org.json,无反射;规则见 proguard-rules.pro。
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (keystoreProps.isNotEmpty()) {
                 signingConfig = signingConfigs.getByName("release")
