@@ -45,7 +45,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recentRow: LinearLayout
     private lateinit var recentEmpty: TextView
     private lateinit var logBox: LinearLayout
-    private lateinit var accBtn: Button
 
     private lateinit var tabs: List<View>
     private lateinit var navBtns: List<TextView>
@@ -179,13 +178,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         })
-        accBtn = Button(this).apply {
-            setOnClickListener {
-                toast(getString(R.string.toast_access_howto))
-                runCatching { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-            }
-        }
-        box.addView(accBtn)
+        // 无障碍长效截屏按钮暂随服务一起从 Play 版下线（见 AndroidManifest）。
         box.addView(TextView(this).apply {
             text = getString(R.string.main_instructions)
             setPadding(0, 40, 0, 0)
@@ -363,10 +356,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        accBtn.text = getString(
-            if (CaptureAccessibilityService.instance != null) R.string.btn_access_on
-            else R.string.btn_access
-        )
         refreshRecent()
         refreshLog()
         maybeAutoStart()
