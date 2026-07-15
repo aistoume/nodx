@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
@@ -69,7 +70,11 @@
             android:taskAffinity=""
             android:launchMode="singleTask"
             android:theme="@style/Theme.Nodx.Translucent">
-            <intent-filter>
+            <!-- priority 提升在选字工具栏里的排位（queryIntentActivities 按
+                 priority 降序;上限 1000）。短 label「nodx」也更易留在工具栏内
+                 而非 ⋮ 溢出菜单。注意:One UI 等 OEM 仍有系统级排序 + 常用度加权,
+                 无法保证「永远第一」,但这两项能明显提前。 -->
+            <intent-filter android:priority="900">
                 <action android:name="android.intent.action.PROCESS_TEXT" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />

@@ -28,10 +28,9 @@ import kotlin.math.abs
  *
  * TAP  → runs the current bubble mode (Prefs.bubbleMode): screenshot /
  *        clipboard-text / camera. Factory default is screenshot.
- * LONG-PRESS → fans out a mode wheel (ModeWheelView): slide onto a spoke
- *        and release to run it once, or release near centre then tap a
- *        spoke to make it the new default. The bubble icon shows a small
- *        badge for non-default modes so the user can tell them apart.
+ * LONG-PRESS → pops the mode wheel (ModeWheelView): tap a spoke to switch
+ *        the bubble to that mode + run it once. A badge on the icon marks
+ *        the current non-default mode.
  * DRAG → repositions the bubble (unchanged).
  *
  * Starts WITHOUT projection (specialUse FGS); the screen-share consent is
@@ -63,7 +62,6 @@ class FloatingBubbleService : Service() {
 
     // Mode wheel (long-press) state.
     private var modeWheel: ModeWheelView? = null
-    private var wheelSticky = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -153,9 +151,12 @@ class FloatingBubbleService : Service() {
     }
 
     private fun addBubble() {
-        val container = FrameLayout(this)
+        // Window is 72dp but the icon is 56dp, centred — the 8dp margin gives
+        // room for the press/long-press scale-up (→ ~72dp) without the fixed
+        // overlay window clipping it.
+        val container = FrameLayout(this).apply { clipChildren = false }
         val icon = ImageView(this).apply { setImageResource(R.drawable.ic_bubble) }
-        container.addView(icon, FrameLayout.LayoutParams(dp(56), dp(56)))
+        container.addView(icon, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER))
         // Mode badge — small glyph bottom-right; hidden for the default screen mode.
         val bd = TextView(this).apply {
             textSize = 11f
@@ -168,6 +169,7 @@ class FloatingBubbleService : Service() {
         }
         container.addView(bd, FrameLayout.LayoutParams(dp(20), dp(20)).apply {
             gravity = Gravity.BOTTOM or Gravity.END
+            rightMargin = dp(6); bottomMargin = dp(6)
         })
         badge = bd
 
@@ -175,56 +177,68 @@ class FloatingBubbleService : Service() {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
         val lp = WindowManager.LayoutParams(
-            dp(56), dp(56), type,
+            dp(72), dp(72), type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.TOP or Gravity.START; x = dp(16); y = dp(220) }
+        ).apply { gravity = Gravity.TOP or Gravity.START; x = dp(10); y = dp(214) }
 
-        var downX = 0f; var downY = 0f; var startX = 0; var startY = 0; var moved = false
-        val longPress = Runnable { if (!moved) openModeWheel() }
+        // Platform GestureDetector handles the timing/slop reliably:
+        //   long-press → pop the (touchable) mode wheel; the user lifts, then
+        //               taps a spoke to switch mode (handled by the wheel itself)
+        //   single tap → run the current default mode
+        //   scroll     → drag the bubble
+        var startX = 0; var startY = 0
+        val gd = android.view.GestureDetector(this, object : android.view.GestureDetector.SimpleOnGestureListener() {
+            override fun onDown(e: MotionEvent): Boolean { startX = lp.x; startY = lp.y; return true }
+            override fun onLongPress(e: MotionEvent) {
+                if (modeWheel == null) { growBubble(icon, 1.28f); vibrate(); openModeWheel() }
+            }
+            override fun onSingleTapUp(e: MotionEvent): Boolean {
+                if (modeWheel == null) runMode(Prefs.bubbleMode(this@FloatingBubbleService))
+                return true
+            }
+            override fun onScroll(e1: MotionEvent?, e2: MotionEvent, dX: Float, dY: Float): Boolean {
+                if (modeWheel != null) return false      // wheel is up — ignore bubble drags
+                lp.x = startX + (e2.rawX - (e1?.rawX ?: e2.rawX)).toInt()
+                lp.y = startY + (e2.rawY - (e1?.rawY ?: e2.rawY)).toInt()
+                runCatching { windowManager.updateViewLayout(container, lp) }
+                return true
+            }
+        })
 
         container.setOnTouchListener { _, e ->
+            gd.onTouchEvent(e)
             when (e.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    downX = e.rawX; downY = e.rawY; startX = lp.x; startY = lp.y; moved = false
-                    main.postDelayed(longPress, LONG_PRESS_MS); true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = (e.rawX - downX).toInt(); val dy = (e.rawY - downY).toInt()
-                    if (abs(dx) > 12 || abs(dy) > 12) moved = true
-                    if (modeWheel != null) {
-                        // Wheel open, finger still down → track the highlight.
-                        modeWheel?.updateHighlight(e.rawX, e.rawY)
-                    } else {
-                        if (moved) main.removeCallbacks(longPress)
-                        lp.x = startX + dx; lp.y = startY + dy
-                        windowManager.updateViewLayout(container, lp)
-                    }
-                    true
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    main.removeCallbacks(longPress)
-                    val wheel = modeWheel
-                    when {
-                        wheel != null -> {
-                            val spoke = wheel.spokeAt(e.rawX, e.rawY)
-                            when {
-                                spoke != null -> { closeModeWheel(); runMode(spoke.mode) }
-                                wheel.nearCentre(e.rawX, e.rawY) -> makeWheelSticky()
-                                else -> closeModeWheel()
-                            }
-                        }
-                        !moved -> runMode(Prefs.bubbleMode(this))
-                        // else: was a drag reposition — nothing to do.
-                    }
-                    true
-                }
-                else -> false
+                MotionEvent.ACTION_DOWN -> growBubble(icon, 1.15f)
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> growBubble(icon, 1f)
             }
+            true
         }
         bubble = container
         windowManager.addView(container, lp)
         refreshBadge()
+    }
+
+    /** Spring the bubble to [scale] — press/hold visual affordance. */
+    private fun growBubble(v: View, scale: Float) {
+        v.animate().scaleX(scale).scaleY(scale).setDuration(90).start()
+    }
+
+    private fun vibrate() {
+        runCatching {
+            val vib = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                (getSystemService(Context.VIBRATOR_MANAGER_SERVICE)
+                    as android.os.VibratorManager).defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vib.vibrate(android.os.VibrationEffect.createOneShot(28, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION") vib.vibrate(28)
+            }
+        }
     }
 
     /** Badge glyph reflects the current default mode (screen = none). */
@@ -245,56 +259,38 @@ class FloatingBubbleService : Service() {
         val loc = IntArray(2); b.getLocationOnScreen(loc)
         val cx = loc[0] + b.width / 2f
         val cy = loc[1] + b.height / 2f
-        val wheel = ModeWheelView(this, cx, cy)
+        val wheel = ModeWheelView(
+            this, cx, cy,
+            onSelect = { mode ->
+                Prefs.setBubbleMode(this, mode)   // 点某格 = 切换默认 + 立即执行
+                refreshBadge()
+                closeModeWheel()
+                runMode(mode)
+            },
+            onDismiss = { closeModeWheel() },      // 点空白处 = 关闭
+        )
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
+        // Fully touchable + focusable full-screen scrim: the wheel owns all
+        // taps (the earlier NOT_TOUCHABLE + bubble-forwarding model leaked
+        // taps through to the bubble). Canvas coords == screen coords via
+        // LAYOUT_IN_SCREEN + NO_LIMITS so hit-testing matches what's drawn.
         val lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
             type,
-            // NOT_TOUCHABLE so the in-flight gesture stays with the bubble;
-            // NO_LIMITS + LAYOUT_IN_SCREEN so canvas coords == rawX/rawY.
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
                 or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         )
         modeWheel = wheel
-        wheelSticky = false
         windowManager.addView(wheel, lp)
-    }
-
-    /** Released near centre → keep the wheel up and make it tap-selectable. */
-    private fun makeWheelSticky() {
-        val wheel = modeWheel ?: return
-        wheelSticky = true
-        val lp = wheel.layoutParams as WindowManager.LayoutParams
-        lp.flags = lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-        runCatching { windowManager.updateViewLayout(wheel, lp) }
-        wheel.setOnTouchListener { _, e ->
-            if (e.action == MotionEvent.ACTION_UP) {
-                val spoke = wheel.spokeAt(e.rawX, e.rawY)
-                if (spoke != null) {
-                    Prefs.setBubbleMode(this, spoke.mode)  // tap = set default
-                    refreshBadge()
-                    closeModeWheel()
-                    runMode(spoke.mode)
-                } else {
-                    closeModeWheel()  // tap outside = dismiss
-                }
-            } else if (e.action == MotionEvent.ACTION_MOVE) {
-                wheel.updateHighlight(e.rawX, e.rawY)
-            }
-            true
-        }
     }
 
     private fun closeModeWheel() {
         modeWheel?.let { runCatching { windowManager.removeView(it) } }
         modeWheel = null
-        wheelSticky = false
     }
 
     // ── Mode dispatch ──────────────────────────────────────────────────

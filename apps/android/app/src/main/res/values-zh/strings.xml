@@ -62,6 +62,15 @@
     <string name="prompt_explain">这是什么？简洁回答（2-4 句），关键数字/文字精确引用。用中文回答。</string>
 
     <string name="btn_wheel">⚙️ 自定义动作轮</string>
+    <string name="bubble_mode_title">🫧 悬浮球点按功能</string>
+    <string name="bubble_mode_hint">点一下悬浮球触发的动作。（长按悬浮球可临时切换。）</string>
+    <string name="bubble_mode_screen">📱 截屏框选</string>
+    <string name="bubble_mode_text">📋 处理剪贴板文字</string>
+    <string name="bubble_mode_camera">📷 拍照</string>
+    <string name="bubble_mode_screen_short">屏幕</string>
+    <string name="bubble_mode_text_short">文字</string>
+    <string name="bubble_mode_camera_short">拍照</string>
+    <string name="wheel_action_section">🎡 动作轮（捕获后）</string>
     <string name="wheel_title">自定义动作轮</string>
     <string name="wheel_pos_up">上辐条（蓝）</string>
     <string name="wheel_pos_right">右辐条（琥珀）</string>

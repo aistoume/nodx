@@ -572,6 +572,47 @@ class WheelSettingsActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(32, 32, 32, 64)
         }
+
+        // ── 悬浮球点按模式：直接选默认(免依赖长按手势) ───────────────
+        list.addView(TextView(this).apply {
+            text = getString(R.string.bubble_mode_title); textSize = 16f
+        })
+        list.addView(TextView(this).apply {
+            text = getString(R.string.bubble_mode_hint); textSize = 12f
+            setPadding(0, 4, 0, 12)
+        })
+        val modeGroup = android.widget.RadioGroup(this).apply {
+            orientation = android.widget.RadioGroup.VERTICAL
+        }
+        val modes = listOf(
+            Prefs.MODE_SCREEN to R.string.bubble_mode_screen,
+            Prefs.MODE_TEXT to R.string.bubble_mode_text,
+            Prefs.MODE_CAMERA to R.string.bubble_mode_camera,
+        )
+        val cur = Prefs.bubbleMode(this)
+        val ids = modes.map { (mode, label) ->
+            val rb = android.widget.RadioButton(this).apply {
+                text = getString(label); id = View.generateViewId()
+                if (mode == cur) isChecked = true
+            }
+            modeGroup.addView(rb)
+            rb.id to mode
+        }.toMap()
+        modeGroup.setOnCheckedChangeListener { _, checked ->
+            ids[checked]?.let { Prefs.setBubbleMode(this@WheelSettingsActivity, it) }
+        }
+        list.addView(modeGroup)
+        list.addView(View(this).apply {
+            setBackgroundColor(android.graphics.Color.argb(30, 128, 128, 128))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 2).apply {
+                topMargin = 24; bottomMargin = 24
+            }
+        })
+        list.addView(TextView(this).apply {
+            text = getString(R.string.wheel_action_section); textSize = 16f
+            setPadding(0, 0, 0, 12)
+        })
+
         // Live preview on top — the real RadialMenu drawn from form state.
         val preview = WheelPreviewView(this)
         list.addView(
@@ -610,7 +651,16 @@ class WheelSettingsActivity : AppCompatActivity() {
                 buildForm(WheelConfig.defaults(this@WheelSettingsActivity))
             }
         })
-        setContentView(ScrollView(this).apply { addView(list) })
+        val scroll = ScrollView(this).apply { addView(list) }
+        setContentView(scroll)
+        // targetSdk 35 edge-to-edge: pad by the real system-bar insets so the
+        // top (status bar) and bottom (nav bar) content isn't hidden behind
+        // One UI's system chrome.
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(scroll) { v, insets ->
+            val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            v.setPadding(0, bars.top, 0, bars.bottom)
+            insets
+        }
     }
 
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_SHORT).show()

@@ -62,6 +62,15 @@
     <string name="prompt_explain">What is this? Answer concisely (2–4 sentences), quoting key numbers/text exactly. Answer in English.</string>
 
     <string name="btn_wheel">⚙️ Customize action wheel</string>
+    <string name="bubble_mode_title">🫧 Bubble tap action</string>
+    <string name="bubble_mode_hint">What tapping the floating bubble does. (Long-press the bubble to switch on the fly.)</string>
+    <string name="bubble_mode_screen">📱 Screenshot a region</string>
+    <string name="bubble_mode_text">📋 Process clipboard text</string>
+    <string name="bubble_mode_camera">📷 Take a photo</string>
+    <string name="bubble_mode_screen_short">Screen</string>
+    <string name="bubble_mode_text_short">Text</string>
+    <string name="bubble_mode_camera_short">Camera</string>
+    <string name="wheel_action_section">🎡 Action wheel (after capture)</string>
     <string name="wheel_title">Customize action wheel</string>
     <string name="wheel_pos_up">Up spoke (blue)</string>
     <string name="wheel_pos_right">Right spoke (amber)</string>
