@@ -21,6 +21,37 @@ object OpenAIClient {
     const val OPENAI_BASE = "https://api.openai.com/v1"
     const val OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
+    /** Text-only chat call — for PROCESS_TEXT / clipboard text actions. */
+    fun textOnly(
+        apiKey: String,
+        prompt: String,
+        model: String,
+        baseUrl: String = OPENAI_BASE,
+    ): String {
+        val payload = JSONObject()
+            .put("model", model)
+            .put(
+                "messages",
+                JSONArray().put(JSONObject().put("role", "user").put("content", prompt)),
+            )
+        if (baseUrl.contains("api.openai.com")) payload.put("max_completion_tokens", 4096)
+        else payload.put("max_tokens", 800)
+        val req = Request.Builder()
+            .url("$baseUrl/chat/completions")
+            .addHeader("authorization", "Bearer $apiKey")
+            .addHeader("content-type", "application/json")
+            .post(payload.toString().toRequestBody(JSON))
+            .build()
+        client.newCall(req).execute().use { resp ->
+            val txt = resp.body?.string() ?: return "(empty response)"
+            if (!resp.isSuccessful) return "OpenAI-compat ${resp.code}: ${txt.take(200)}"
+            val choice = JSONObject(txt).optJSONArray("choices")?.optJSONObject(0)
+                ?: return "(no choices)"
+            return choice.optJSONObject("message")?.optString("content")
+                ?.ifBlank { null } ?: "(no text)"
+        }
+    }
+
     fun visionText(
         apiKey: String,
         imageBase64: String,

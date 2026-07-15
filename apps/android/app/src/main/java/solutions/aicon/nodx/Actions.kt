@@ -200,7 +200,7 @@ object Actions {
     }
 
     /** Write a PNG into Pictures/nodx; returns its content Uri (file Uri on API <29). */
-    private fun storeToGallery(context: Context, bmp: Bitmap, prefix: String): android.net.Uri? {
+    fun storeToGallery(context: Context, bmp: Bitmap, prefix: String): android.net.Uri? {
         val name = "$prefix-${System.currentTimeMillis()}.png"
         return runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

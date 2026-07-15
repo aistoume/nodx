@@ -80,6 +80,12 @@
     <string name="wheel_preset_custom">自定义 URL…</string>
     <string name="icon_pick_title">选择图标</string>
     <string name="result_title_explain">💡 nodx · 解释</string>
+    <string name="act_close">关闭</string>
+    <string name="text_panel_title">用 nodx Lens 处理文字</string>
+    <string name="text_panel_hint">粘贴或编辑文字…</string>
+    <string name="text_panel_go">选择动作 ▸</string>
+    <string name="camera_unavailable">没有可用的相机应用</string>
+    <string name="camera_decode_failed">照片读取失败</string>
     <string name="log_title">操作记录</string>
     <string name="recent_log">🕘 记录 ▸</string>
     <string name="log_section">🕘 操作记录</string>

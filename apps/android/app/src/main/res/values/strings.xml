@@ -80,6 +80,12 @@
     <string name="wheel_preset_custom">Custom URL…</string>
     <string name="icon_pick_title">Pick an icon</string>
     <string name="result_title_explain">💡 nodx · answer</string>
+    <string name="act_close">Close</string>
+    <string name="text_panel_title">Process text with nodx Lens</string>
+    <string name="text_panel_hint">Paste or edit the text…</string>
+    <string name="text_panel_go">Choose action ▸</string>
+    <string name="camera_unavailable">No camera app found</string>
+    <string name="camera_decode_failed">Couldn\'t read the photo</string>
     <string name="log_title">Activity log</string>
     <string name="recent_log">🕘 Log ▸</string>
     <string name="log_section">🕘 Activity log</string>

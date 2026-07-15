@@ -7,6 +7,8 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
@@ -16,16 +18,24 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.TextView
 import kotlin.math.abs
 
 /**
- * Foreground service — the floating bubble. Starts WITHOUT any projection
- * (specialUse FGS type), so opening the app puts the bubble up with zero
- * dialogs. The screen-share consent is deferred to the FIRST bubble tap
- * of each session (ProjectionConsentActivity relays the grant back with
- * ACTION_GRANT_AND_CAPTURE, and the tap's capture runs right after);
- * subsequent taps reuse the live projection silently.
+ * Foreground service — the floating bubble.
+ *
+ * TAP  → runs the current bubble mode (Prefs.bubbleMode): screenshot /
+ *        clipboard-text / camera. Factory default is screenshot.
+ * LONG-PRESS → fans out a mode wheel (ModeWheelView): slide onto a spoke
+ *        and release to run it once, or release near centre then tap a
+ *        spoke to make it the new default. The bubble icon shows a small
+ *        badge for non-default modes so the user can tell them apart.
+ * DRAG → repositions the bubble (unchanged).
+ *
+ * Starts WITHOUT projection (specialUse FGS); the screen-share consent is
+ * deferred to the first screenshot of each session.
  */
 class FloatingBubbleService : Service() {
 
@@ -34,36 +44,51 @@ class FloatingBubbleService : Service() {
         const val EXTRA_RESULT_DATA = "result_data"
         const val ACTION_STOP = "solutions.aicon.nodx.STOP"
         const val ACTION_GRANT_AND_CAPTURE = "solutions.aicon.nodx.GRANT_AND_CAPTURE"
+        const val ACTION_SHOW_CAPTURE = "solutions.aicon.nodx.SHOW_CAPTURE"
+        const val EXTRA_CAPTURE_PATH = "capture_path"
         private const val CHANNEL_ID = "nodx_bubble"
         private const val NOTIF_ID = 1001
+        private const val LONG_PRESS_MS = 380L
 
-        /** Lets MainActivity skip auto-start when the bubble already runs. */
         @Volatile var isRunning = false
             private set
     }
 
     private lateinit var windowManager: WindowManager
-    private var bubble: View? = null
+    private var bubble: FrameLayout? = null
+    private var badge: TextView? = null
     private var projection: MediaProjection? = null
     private var capture: ScreenCaptureManager? = null
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
 
+    // Mode wheel (long-press) state.
+    private var modeWheel: ModeWheelView? = null
+    private var wheelSticky = false
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
-            // 通知栏「停止」/ 主界面停止按钮 → 结束录屏会话。
-            stopSelf()
-            return START_NOT_STICKY
+        when (intent?.action) {
+            ACTION_STOP -> { stopSelf(); return START_NOT_STICKY }
+            ACTION_SHOW_CAPTURE -> {
+                // Camera bridge: a photo was saved; show the selection overlay.
+                if (bubble == null) { ensureWindowManager(); addBubble() }
+                startAsForeground(withProjection = projection != null)
+                isRunning = true
+                val path = intent.getStringExtra(EXTRA_CAPTURE_PATH)
+                if (path != null) {
+                    val bmp = runCatching { BitmapFactory.decodeFile(path) }.getOrNull()
+                    java.io.File(path).delete()
+                    if (bmp != null) SelectionOverlayView.show(this, windowManager, bmp)
+                }
+                return START_STICKY
+            }
         }
         val code = intent?.getIntExtra(EXTRA_RESULT_CODE, 0) ?: 0
         @Suppress("DEPRECATION")
         val data = intent?.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
 
         if (projection == null && code != 0 && data != null) {
-            // Consent just granted. Order matters on 14+: upgrade to the
-            // mediaProjection FGS type BEFORE getMediaProjection, and
-            // registerCallback BEFORE any capture.
             startAsForeground(withProjection = true)
             val mgr = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             projection = mgr.getMediaProjection(code, data)
@@ -72,26 +97,19 @@ class FloatingBubbleService : Service() {
             }, null)
             capture = ScreenCaptureManager(this, projection!!)
             if (intent.action == ACTION_GRANT_AND_CAPTURE) {
-                // Run the capture the user's tap asked for, after the
-                // consent dialog has left the screen.
-                main.postDelayed({ onBubbleTap() }, 400)
+                main.postDelayed({ screenshotMode() }, 400)
             }
         } else {
-            // Plain start (app open / sticky revive): bubble only, no
-            // projection — consent comes on first tap.
             startAsForeground(withProjection = projection != null)
         }
-        if (bubble == null) addBubble()
+        if (bubble == null) { ensureWindowManager(); addBubble() }
         isRunning = true
         return START_STICKY
     }
 
-    /** Projection gone (stopped/revoked/expired) — keep the bubble, re-ask next tap. */
     private fun detachProjection() {
         capture?.release(); capture = null
         projection = null
-        // Drop the mediaProjection FGS type — holding it without a live
-        // projection is what the 14+ policy complains about.
         runCatching { startAsForeground(withProjection = false) }
     }
 
@@ -128,9 +146,31 @@ class FloatingBubbleService : Service() {
         }
     }
 
+    private fun ensureWindowManager() {
+        if (!::windowManager.isInitialized) {
+            windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        }
+    }
+
     private fun addBubble() {
-        windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        val iv = ImageView(this).apply { setImageResource(R.drawable.ic_bubble) }
+        val container = FrameLayout(this)
+        val icon = ImageView(this).apply { setImageResource(R.drawable.ic_bubble) }
+        container.addView(icon, FrameLayout.LayoutParams(dp(56), dp(56)))
+        // Mode badge — small glyph bottom-right; hidden for the default screen mode.
+        val bd = TextView(this).apply {
+            textSize = 11f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.OVAL
+                setColor(Color.argb(230, 24, 24, 27))
+            }
+        }
+        container.addView(bd, FrameLayout.LayoutParams(dp(20), dp(20)).apply {
+            gravity = Gravity.BOTTOM or Gravity.END
+        })
+        badge = bd
+
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
@@ -141,71 +181,155 @@ class FloatingBubbleService : Service() {
         ).apply { gravity = Gravity.TOP or Gravity.START; x = dp(16); y = dp(220) }
 
         var downX = 0f; var downY = 0f; var startX = 0; var startY = 0; var moved = false
-        iv.setOnTouchListener { _, e ->
+        val longPress = Runnable { if (!moved) openModeWheel() }
+
+        container.setOnTouchListener { _, e ->
             when (e.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    downX = e.rawX; downY = e.rawY; startX = lp.x; startY = lp.y; moved = false; true
+                    downX = e.rawX; downY = e.rawY; startX = lp.x; startY = lp.y; moved = false
+                    main.postDelayed(longPress, LONG_PRESS_MS); true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (e.rawX - downX).toInt(); val dy = (e.rawY - downY).toInt()
-                    if (abs(dx) > 8 || abs(dy) > 8) moved = true
-                    lp.x = startX + dx; lp.y = startY + dy
-                    windowManager.updateViewLayout(iv, lp); true
+                    if (abs(dx) > 12 || abs(dy) > 12) moved = true
+                    if (modeWheel != null) {
+                        // Wheel open, finger still down → track the highlight.
+                        modeWheel?.updateHighlight(e.rawX, e.rawY)
+                    } else {
+                        if (moved) main.removeCallbacks(longPress)
+                        lp.x = startX + dx; lp.y = startY + dy
+                        windowManager.updateViewLayout(container, lp)
+                    }
+                    true
                 }
-                MotionEvent.ACTION_UP -> { if (!moved) onBubbleTap(); true }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    main.removeCallbacks(longPress)
+                    val wheel = modeWheel
+                    when {
+                        wheel != null -> {
+                            val spoke = wheel.spokeAt(e.rawX, e.rawY)
+                            when {
+                                spoke != null -> { closeModeWheel(); runMode(spoke.mode) }
+                                wheel.nearCentre(e.rawX, e.rawY) -> makeWheelSticky()
+                                else -> closeModeWheel()
+                            }
+                        }
+                        !moved -> runMode(Prefs.bubbleMode(this))
+                        // else: was a drag reposition — nothing to do.
+                    }
+                    true
+                }
                 else -> false
             }
         }
-        bubble = iv
-        windowManager.addView(iv, lp)
+        bubble = container
+        windowManager.addView(container, lp)
+        refreshBadge()
     }
 
-    private fun onBubbleTap() {
-        // Long-lived path: accessibility screenshot (user enabled the nodx
-        // service once in system settings) — silent, survives locks, no
-        // MediaProjection session needed at all.
-        val acc = CaptureAccessibilityService.instance
-        if (acc != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            bubble?.visibility = View.INVISIBLE
-            // Give the bubble a frame to actually vanish before the shot.
-            bubble?.postDelayed({
-                acc.grab { bmp ->
-                    bubble?.visibility = View.VISIBLE
-                    if (bmp != null) {
-                        SelectionOverlayView.show(this, windowManager, bmp)
-                    } else {
-                        projectionTap() // rate-limited/failed → old path
-                    }
-                }
-            }, 90)
-            return
+    /** Badge glyph reflects the current default mode (screen = none). */
+    private fun refreshBadge() {
+        val b = badge ?: return
+        when (Prefs.bubbleMode(this)) {
+            Prefs.MODE_TEXT -> { b.text = "📋"; b.visibility = View.VISIBLE }
+            Prefs.MODE_CAMERA -> { b.text = "📷"; b.visibility = View.VISIBLE }
+            else -> b.visibility = View.GONE
         }
-        projectionTap()
+    }
+
+    // ── Mode wheel (long-press) ────────────────────────────────────────
+
+    private fun openModeWheel() {
+        if (modeWheel != null) return
+        val b = bubble ?: return
+        val loc = IntArray(2); b.getLocationOnScreen(loc)
+        val cx = loc[0] + b.width / 2f
+        val cy = loc[1] + b.height / 2f
+        val wheel = ModeWheelView(this, cx, cy)
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
+        val lp = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            type,
+            // NOT_TOUCHABLE so the in-flight gesture stays with the bubble;
+            // NO_LIMITS + LAYOUT_IN_SCREEN so canvas coords == rawX/rawY.
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        )
+        modeWheel = wheel
+        wheelSticky = false
+        windowManager.addView(wheel, lp)
+    }
+
+    /** Released near centre → keep the wheel up and make it tap-selectable. */
+    private fun makeWheelSticky() {
+        val wheel = modeWheel ?: return
+        wheelSticky = true
+        val lp = wheel.layoutParams as WindowManager.LayoutParams
+        lp.flags = lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+        runCatching { windowManager.updateViewLayout(wheel, lp) }
+        wheel.setOnTouchListener { _, e ->
+            if (e.action == MotionEvent.ACTION_UP) {
+                val spoke = wheel.spokeAt(e.rawX, e.rawY)
+                if (spoke != null) {
+                    Prefs.setBubbleMode(this, spoke.mode)  // tap = set default
+                    refreshBadge()
+                    closeModeWheel()
+                    runMode(spoke.mode)
+                } else {
+                    closeModeWheel()  // tap outside = dismiss
+                }
+            } else if (e.action == MotionEvent.ACTION_MOVE) {
+                wheel.updateHighlight(e.rawX, e.rawY)
+            }
+            true
+        }
+    }
+
+    private fun closeModeWheel() {
+        modeWheel?.let { runCatching { windowManager.removeView(it) } }
+        modeWheel = null
+        wheelSticky = false
+    }
+
+    // ── Mode dispatch ──────────────────────────────────────────────────
+
+    private fun runMode(mode: String) {
+        when (mode) {
+            Prefs.MODE_TEXT -> startActivity(
+                Intent(this, ProcessTextActivity::class.java)
+                    .putExtra(ProcessTextActivity.EXTRA_FROM_BUBBLE, true)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            Prefs.MODE_CAMERA -> startActivity(
+                Intent(this, CameraCaptureActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            else -> screenshotMode()
+        }
     }
 
     /** MediaProjection path — per-session consent, lock ends the grant. */
-    private fun projectionTap() {
+    private fun screenshotMode() {
         val cap = capture
         if (cap == null) {
-            // First tap of this session — ask for screen share now; the
-            // grant flows back as ACTION_GRANT_AND_CAPTURE and finishes
-            // this very capture. (SYSTEM_ALERT_WINDOW exempts us from the
-            // background-activity-start restriction.)
             startActivity(
                 Intent(this, ProjectionConsentActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
             return
         }
-        // Hide the bubble so it isn't in the screenshot, grab one frame, show overlay.
         bubble?.visibility = View.INVISIBLE
         cap.captureOnce { bmp ->
             bubble?.visibility = View.VISIBLE
             if (bmp != null) {
                 SelectionOverlayView.show(this, windowManager, bmp)
             } else {
-                // Dead grant — detach so the next tap re-asks instead of
-                // failing forever.
                 detachProjection()
                 android.widget.Toast.makeText(
                     this, getString(R.string.projection_expired),
@@ -219,6 +343,7 @@ class FloatingBubbleService : Service() {
 
     override fun onDestroy() {
         isRunning = false
+        closeModeWheel()
         bubble?.let { runCatching { windowManager.removeView(it) } }
         capture?.release(); projection?.stop()
         super.onDestroy()

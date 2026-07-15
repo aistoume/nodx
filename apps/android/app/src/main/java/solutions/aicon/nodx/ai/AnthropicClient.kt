@@ -43,6 +43,32 @@ object AnthropicClient {
     fun describeForGeneration(apiKey: String, imageBase64: String, model: String = "claude-sonnet-5"): String =
         visionCall(apiKey, model, imageBase64, DESCRIBE_PROMPT).trim()
 
+    /** Text-only call — for PROCESS_TEXT / clipboard text actions. */
+    fun textCall(apiKey: String, prompt: String, model: String = "claude-haiku-4-5"): String {
+        val payload = JSONObject()
+            .put("model", model)
+            .put("max_tokens", 600)
+            .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
+        val req = Request.Builder()
+            .url("https://api.anthropic.com/v1/messages")
+            .addHeader("x-api-key", apiKey)
+            .addHeader("anthropic-version", "2023-06-01")
+            .addHeader("content-type", "application/json")
+            .post(payload.toString().toRequestBody(JSON))
+            .build()
+        client.newCall(req).execute().use { resp ->
+            val txt = resp.body?.string() ?: return "(empty response)"
+            if (!resp.isSuccessful) return "Anthropic ${resp.code}: ${txt.take(160)}"
+            val arr = JSONObject(txt).optJSONArray("content") ?: return "(no content)"
+            val sb = StringBuilder()
+            for (i in 0 until arr.length()) {
+                val b = arr.getJSONObject(i)
+                if (b.optString("type") == "text") sb.append(b.optString("text"))
+            }
+            return sb.toString().ifBlank { "(no text)" }
+        }
+    }
+
     private fun visionCall(apiKey: String, model: String, imageBase64: String, prompt: String): String {
         val content = JSONArray()
             .put(JSONObject().put("type", "image").put("source",

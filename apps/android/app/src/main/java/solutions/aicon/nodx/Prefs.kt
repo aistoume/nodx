@@ -49,4 +49,16 @@ object Prefs {
         c.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(GEMINI, "") ?: ""
     fun setGeminiKey(c: Context, k: String) =
         c.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putString(GEMINI, k).apply()
+
+    // ── Bubble tap mode (long-press wheel sets the default) ────────────
+    const val MODE_SCREEN = "screen"   // 截屏 → 框选 → 动作轮（出厂默认）
+    const val MODE_TEXT = "text"       // 剪贴板文字 → 文字轮盘
+    const val MODE_CAMERA = "camera"   // 系统相机拍照 → 框选 → 动作轮
+    private const val BUBBLE_MODE = "bubble_mode"
+
+    fun bubbleMode(c: Context): String =
+        c.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(BUBBLE_MODE, MODE_SCREEN)
+            ?: MODE_SCREEN
+    fun setBubbleMode(c: Context, m: String) =
+        c.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putString(BUBBLE_MODE, m).apply()
 }
