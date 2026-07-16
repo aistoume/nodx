@@ -41,7 +41,7 @@ A local-first desktop app that helps managers turn fuzzy decision questions into
 |---|---|---|
 | 🖥 [**nodx desktop**](./apps/desktop) | The thinking workspace: Survey → decomposition → document → expert panels → auto-recursion → case library | macOS release on the [Releases page](https://github.com/aistoume/nodx/releases) |
 | 🌐 [**nodx Lens**](./apps/extension) | Chrome MV3 extension: select text or box any page region → customizable action wheel (explain / search / shop / generate / save) | [Chrome Web Store](https://chromewebstore.google.com/detail/ipljkbefemodjbihcnmmaallcfndmild) · v1.0 |
-| 🤖 [**Lens for Android**](./apps/android) | Same action wheel, system-wide on your phone via a floating bubble | v1.0 — [APK on the website](https://aicon.solutions/nodx/lens/), Play listing in review |
+| 🤖 [**Lens for Android**](./apps/android) | Same action wheel, system-wide on your phone via a floating bubble | v1.0 — [APK on the website](https://aicon.solutions/nodx/lens/) · in Google Play [closed testing](https://play.google.com/apps/testing/solutions.aicon.nodx) |
 | 🧲 [**Lens for Mac**](./apps/lens-mac) | ⌥+E select-to-explain anywhere on macOS | merged into nodx desktop |
 | 🏠 [**Website**](./apps/web) | aicon.solutions — downloads, docs, pricing | live |
 
