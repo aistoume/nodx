@@ -849,7 +849,7 @@ function startStream(
   let received = '';
   let firstChunk = true;
 
-  port.onMessage.addListener((msg: { type: string; text?: string; error?: string }) => {
+  port.onMessage.addListener((msg: { type: string; text?: string; full?: string; error?: string }) => {
     if (msg.type === 'CHUNK' && typeof msg.text === 'string') {
       if (firstChunk) {
         firstChunk = false;
@@ -865,6 +865,10 @@ function startStream(
     } else if (msg.type === 'DONE') {
       body.classList.remove('loading');
       body.querySelector('.cursor')?.remove();
+      // The SW's final `full` is authoritative — a ✏️ directive run (e.g.
+      // "search arXiv" → tab opened) streams nothing and only sends the
+      // outcome note here.
+      if (typeof msg.full === 'string' && msg.full) received = msg.full;
       // Final render: convert the model's Markdown into readable HTML
       // (mdToHtml escapes input first, so this is injection-safe).
       body.innerHTML = mdToHtml(received);

@@ -32,6 +32,31 @@ interface StartMessage {
   title: string;
 }
 
+/**
+ * Intent-dispatch protocol for ✏️ custom instructions ("skill matching").
+ *
+ * Without this, "search arXiv for this" gets a chat answer like "I can't
+ * access arXiv, but here's how you could…" — useless. Instead the model is
+ * offered ONE executable action: emit an open_url directive and we open the
+ * tab for real. Text-only tasks (translate/explain/rewrite/answer) are
+ * explicitly told to answer directly, so nothing changes for them.
+ *
+ * More actions (save, send-to-target, generate) can join this JSON protocol
+ * later — keep the contract in sync with `runCustomDirective`.
+ */
+const CUSTOM_DISPATCH_PROTOCOL = `You can either ANSWER the instruction directly, OR execute an action:
+
+When the instruction asks to SEARCH / look up / find / open something on a website or the web (e.g. "search this on arXiv", "在谷歌学术找找相关论文", "GitHub 上搜同类项目"), reply with ONLY this one-line JSON and absolutely nothing else:
+{"action":"open_url","url":"<real search-results URL for that site with the query filled in>","note":"<one short sentence describing what you opened, in the instruction's language>"}
+Use the site's real search URL pattern, e.g.
+  https://arxiv.org/search/?query=...&searchtype=all
+  https://scholar.google.com/scholar?q=...
+  https://github.com/search?q=...&type=repositories
+  https://www.google.com/search?q=...
+URL-encode the query. If unsure of a site's search URL pattern, fall back to https://www.google.com/search?q=site%3A<domain>+<query>.
+
+For every other kind of instruction (translate, explain, rewrite, extract, summarise, answer a question…), just do the task and output the result directly — no JSON, no mention of this protocol.`;
+
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== 'EXPLAIN') return;
 
@@ -60,9 +85,9 @@ async function handle(
     const locale = resolveLocale(settings.language);
     const prompt =
       msg.mode === 'custom'
-        ? // The user's own instruction, applied to the selection. Kept minimal
-          // so niche/custom workflows aren't second-guessed by a wrapper.
-          `${(msg.customPrompt ?? '').trim()}\n\n---\nText:\n${msg.text}`
+        ? // The user's instruction + the dispatch protocol: the model either
+          // answers, or emits an executable open_url directive (see above).
+          `${CUSTOM_DISPATCH_PROTOCOL}\n\n---\nInstruction: ${(msg.customPrompt ?? '').trim()}\n\nText:\n${msg.text}`
         : msg.mode === 'short'
           ? buildExplainPrompt(msg.text, locale)
           : buildDeepenPrompt(msg.text, locale);
@@ -71,7 +96,7 @@ async function handle(
     const model =
       msg.mode === 'deep' ? settings.model.deepen : settings.model.explain;
 
-    const onChunk = (text: string) => {
+    const send = (text: string) => {
       try {
         port.postMessage({ type: 'CHUNK', text });
       } catch {
@@ -79,18 +104,49 @@ async function handle(
       }
     };
 
+    // For custom mode, hold chunks back until we can tell whether the model
+    // is emitting a JSON directive (leading '{' or a code fence) — those are
+    // swallowed and executed instead of being streamed as prose.
+    let buffered = '';
+    let verdict: 'directive' | 'prose' | null = msg.mode === 'custom' ? null : 'prose';
+    const onChunk = (text: string) => {
+      if (verdict === 'prose') {
+        send(text);
+        return;
+      }
+      buffered += text;
+      if (verdict === null) {
+        const lead = buffered.trimStart();
+        if (!lead) return;
+        if (lead.startsWith('{') || lead.startsWith('```')) {
+          verdict = 'directive';
+        } else {
+          verdict = 'prose';
+          send(buffered);
+        }
+      }
+    };
+
     const full = await callAI(settings.provider, settings.apiKey, model, prompt, onChunk, signal);
+
+    // A buffered "directive" that parses cleanly becomes a real action; on
+    // any mismatch the buffered text is released as a normal answer.
+    // (cast: TS can't see the closure writes callAI made via onChunk)
+    let display = full;
+    if ((verdict as 'directive' | 'prose' | null) === 'directive') {
+      display = (await runCustomDirective(full)) ?? full;
+    }
 
     await recordExplanation({
       selectedText: msg.text,
-      explanation: full,
+      explanation: display,
       sourceUrl: msg.url,
       sourceTitle: msg.title,
       mode: msg.mode,
     });
 
     try {
-      port.postMessage({ type: 'DONE', full });
+      port.postMessage({ type: 'DONE', full: display });
     } catch {
       /* disconnected */
     }
@@ -112,6 +168,41 @@ async function handle(
       /* already gone */
     }
   }
+}
+
+/**
+ * Parse + execute a custom-instruction directive (see CUSTOM_DISPATCH_PROTOCOL).
+ * Returns the note to display in the panel, or null when the text isn't a
+ * valid directive (caller falls back to showing it as a normal answer).
+ */
+async function runCustomDirective(raw: string): Promise<string | null> {
+  let body = raw.trim();
+  // Tolerate a markdown code fence around the JSON.
+  const fenced = body.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+  if (fenced) body = fenced[1].trim();
+  let obj: { action?: string; url?: string; note?: string };
+  try {
+    obj = JSON.parse(body) as { action?: string; url?: string; note?: string };
+  } catch {
+    return null;
+  }
+  if (obj.action !== 'open_url' || typeof obj.url !== 'string') return null;
+  // http(s) only — never open javascript:/data:/chrome: URLs a model made up.
+  let parsed: URL;
+  try {
+    parsed = new URL(obj.url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
+
+  try {
+    await chrome.tabs.create({ url: parsed.href, active: true });
+  } catch (e) {
+    return `⚠️ ${e instanceof Error ? e.message : String(e)}\n\n${parsed.href}`;
+  }
+  const note = typeof obj.note === 'string' && obj.note.trim() ? obj.note.trim() : '已打开搜索结果';
+  return `🔗 ${note}\n\n[${parsed.href}](${parsed.href})`;
 }
 
 // Open options on first install
