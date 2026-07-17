@@ -258,6 +258,29 @@ function ensureHost(): ShadowRoot {
       .panel-close { cursor: pointer; color: #888; font-size: 14px; line-height: 1; padding: 0 4px; }
       .panel-close:hover { color: #000; }
       .panel-body { white-space: pre-wrap; }
+      /* Follow-up chat thread inside the panel */
+      .chat-q {
+        margin-top: 12px; padding: 7px 10px;
+        background: #f3f4f6; border-radius: 8px;
+        font-size: 12.5px; color: #374151; white-space: pre-wrap;
+      }
+      .chat-a { margin-top: 8px; white-space: pre-wrap; }
+      .chat-a.error { color: #b91c1c; }
+      .panel-followup {
+        display: none; gap: 6px; align-items: center;
+        margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;
+      }
+      .panel-followup input {
+        flex: 1; min-width: 0; border: 1px solid #d1d5db; border-radius: 6px;
+        padding: 6px 9px; font-size: 12.5px; color: #1a1a1a; outline: none;
+        font-family: inherit;
+      }
+      .panel-followup input:focus { border-color: #F59E0B; }
+      .panel-followup button {
+        flex-shrink: 0; width: 30px; height: 30px; border: 0; border-radius: 6px;
+        background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+        color: #fff; font-size: 14px; cursor: pointer;
+      }
       .panel-body .cursor { display:inline-block; width: 6px; background: #2C5282; opacity: 0.6;
                             animation: blink 1s steps(2, start) infinite; margin-left: 1px; }
       @keyframes blink { to { opacity: 0; } }
@@ -378,7 +401,12 @@ function abortActivePort() {
   }
 }
 
-function createPanelAt(top: number, left: number, deepened: boolean): HTMLDivElement {
+function createPanelAt(
+  top: number,
+  left: number,
+  deepened: boolean,
+  title?: string,
+): HTMLDivElement {
   const root = ensureHost();
   hidePanel();
   const panel = document.createElement('div');
@@ -397,15 +425,32 @@ function createPanelAt(top: number, left: number, deepened: boolean): HTMLDivEle
       <button class="panel-btn" data-action="save"></button>
       <button class="panel-btn" data-action="copy"></button>
     </div>
+    <div class="panel-followup">
+      <input type="text">
+      <button>▸</button>
+    </div>
   `;
-  (panel.querySelector('.panel-title') as HTMLElement).textContent = t('panelTitle');
+  (panel.querySelector('.panel-title') as HTMLElement).textContent = title ?? t('panelTitle');
   const [deepBtn, saveBtn, copyBtn] = Array.from(panel.querySelectorAll('.panel-btn')) as HTMLButtonElement[];
   deepBtn.textContent = t('deepen');
   saveBtn.textContent = t('saveExplain');
   copyBtn.textContent = t('copy');
+  (panel.querySelector('.panel-followup input') as HTMLInputElement).placeholder = t('followupPh');
   root.appendChild(panel);
   requestAnimationFrame(() => panel.classList.add('show'));
   return panel;
+}
+
+/**
+ * Per-panel conversation memory (for the follow-up thread). Turns include
+ * the initial explain/instruction and every follow-up Q&A — the whole
+ * transcript is replayed to the model on each new follow-up.
+ */
+const panelChats = new WeakMap<HTMLDivElement, { turns: Array<{ q: string; a: string }> }>();
+
+function revealFollowup(panel: HTMLDivElement): void {
+  const fu = panel.querySelector('.panel-followup') as HTMLDivElement | null;
+  if (fu) fu.style.display = 'flex';
 }
 
 function openPanelForNewSelection(
@@ -430,7 +475,7 @@ function openPanelForCustom(
   const rects = range.getClientRects();
   if (rects.length === 0) return;
   const firstRect = rects[0];
-  const panel = createPanelAt(firstRect.bottom + 8, firstRect.left, false);
+  const panel = createPanelAt(firstRect.bottom + 8, firstRect.left, false, t('panelTitleInstruct'));
   // Remember the instruction so 💾 保存 can hand it to nodx structurally.
   panel.dataset.instruction = instruction;
   wirePanelClicks(panel, selectedText, range);
@@ -527,7 +572,7 @@ function openStatusPanel(range: Range): HTMLDivElement | null {
   const rects = range.getClientRects();
   if (rects.length === 0) return null;
   const firstRect = rects[0];
-  const panel = createPanelAt(firstRect.bottom + 8, firstRect.left, false);
+  const panel = createPanelAt(firstRect.bottom + 8, firstRect.left, false, t('panelTitleInstruct'));
   const body = panel.querySelector('.panel-body') as HTMLDivElement;
   body.textContent = t('targetSending');
   return panel;
@@ -708,6 +753,10 @@ function openPanelForAnnotation(ann: Annotation) {
   footer.style.display = 'flex';
   activeAnnotationId = ann.id;
   wirePanelClicks(panel, ann.text, ann.range);
+  // A reopened annotation can be conversed with too — seed its memory from
+  // the stored explanation.
+  panelChats.set(panel, { turns: [{ q: 'Explain this text.', a: ann.explanation }] });
+  revealFollowup(panel);
 }
 
 function wirePanelClicks(panel: HTMLDivElement, selectedText: string, range: Range) {
@@ -723,6 +772,117 @@ function wirePanelClicks(panel: HTMLDivElement, selectedText: string, range: Ran
     } else if (action === 'save') {
       void handleSaveExplanation(panel, selectedText);
     }
+  });
+
+  // Follow-up input → continue the conversation in this panel.
+  const fuInput = panel.querySelector('.panel-followup input') as HTMLInputElement | null;
+  const fuBtn = panel.querySelector('.panel-followup button') as HTMLButtonElement | null;
+  const sendFollowUp = () => {
+    const q = fuInput?.value.trim();
+    if (!q || !fuInput) return;
+    fuInput.value = '';
+    followUp(panel, selectedText, q);
+  };
+  fuBtn?.addEventListener('click', sendFollowUp);
+  fuInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendFollowUp();
+    }
+  });
+}
+
+/**
+ * Continue the panel's conversation: append a Q bubble + streaming answer
+ * below the existing content. The full prior transcript is replayed to the
+ * model, so the intent protocol still applies — a follow-up that resolves
+ * an earlier clarification ("search Temu for X" → "which X?" → "折叠椅")
+ * can end in a real open_url action.
+ */
+function followUp(panel: HTMLDivElement, selectedText: string, question: string): void {
+  const body = panel.querySelector('.panel-body') as HTMLDivElement;
+  const st = panelChats.get(panel) ?? { turns: [] };
+  panelChats.set(panel, st);
+
+  const qEl = document.createElement('div');
+  qEl.className = 'chat-q';
+  qEl.textContent = question;
+  const aEl = document.createElement('div');
+  aEl.className = 'chat-a loading';
+  aEl.textContent = t('connecting');
+  body.append(qEl, aEl);
+  aEl.scrollIntoView({ block: 'nearest' });
+
+  abortActivePort();
+  if (!isExtensionValid()) {
+    aEl.classList.remove('loading');
+    aEl.classList.add('error');
+    aEl.textContent = t('extReloadedInline');
+    handleInvalidation();
+    return;
+  }
+  let port: chrome.runtime.Port;
+  try {
+    port = chrome.runtime.connect({ name: 'EXPLAIN' });
+  } catch {
+    aEl.classList.remove('loading');
+    aEl.classList.add('error');
+    aEl.textContent = t('extInvalidatedInline');
+    handleInvalidation();
+    return;
+  }
+  activePort = port;
+
+  const transcript = st.turns
+    .map((turn) => `[User] ${turn.q}\n[Assistant] ${turn.a}`)
+    .join('\n\n');
+  const composed =
+    `This is an ongoing conversation about the selected text below. Earlier turns:\n\n${transcript}\n\n` +
+    `New user message: ${question}\n\nRespond to the new message only — don't repeat earlier answers.`;
+
+  let received = '';
+  let first = true;
+  let settled = false;
+  port.onMessage.addListener((msg: { type: string; text?: string; full?: string; error?: string }) => {
+    if (msg.type === 'CHUNK' && typeof msg.text === 'string') {
+      if (first) {
+        first = false;
+        aEl.classList.remove('loading');
+        aEl.textContent = '';
+      }
+      received += msg.text;
+      aEl.textContent = received;
+    } else if (msg.type === 'DONE') {
+      settled = true;
+      aEl.classList.remove('loading');
+      if (typeof msg.full === 'string' && msg.full) received = msg.full;
+      aEl.innerHTML = mdToHtml(received);
+      aEl.scrollIntoView({ block: 'nearest' });
+      st.turns.push({ q: question, a: received });
+      activePort = null;
+    } else if (msg.type === 'ERROR') {
+      settled = true;
+      aEl.classList.remove('loading');
+      aEl.classList.add('error');
+      aEl.textContent = t('errorPrefix', { msg: msg.error ?? 'unknown' });
+      activePort = null;
+    }
+  });
+  port.onDisconnect.addListener(() => {
+    if (settled) return;
+    aEl.classList.remove('loading');
+    aEl.classList.add('error');
+    aEl.textContent = t('connectionBroken');
+    activePort = null;
+  });
+
+  port.postMessage({
+    type: 'START',
+    text: selectedText,
+    mode: 'custom',
+    customPrompt: composed,
+    url: location.href,
+    title: document.title,
   });
 }
 
@@ -874,6 +1034,14 @@ function startStream(
       body.innerHTML = mdToHtml(received);
       footer.style.display = 'flex';
       activePort = null;
+      // Seed the panel's conversation memory and open the follow-up input.
+      const chat = panelChats.get(panel) ?? { turns: [] };
+      chat.turns.push({
+        q: customPrompt ?? (mode === 'deep' ? 'Explain this text in depth.' : 'Explain this text.'),
+        a: received,
+      });
+      panelChats.set(panel, chat);
+      revealFollowup(panel);
       if (mode === 'short' || mode === 'custom') {
         // Create persistent annotation under the original selection
         const id = createAnnotation(selectedText, received, range);
