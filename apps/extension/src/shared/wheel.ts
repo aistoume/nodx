@@ -10,6 +10,9 @@
 
 export type WheelAction =
   | { kind: 'prompt'; prompt: string }
+  /** ✏️ Ask the user to TYPE an instruction at use time (input popover),
+   *  then run it as the vision prompt — like `prompt` minus the template. */
+  | { kind: 'instruct' }
   | { kind: 'search'; urlPrefix: string }
   | { kind: 'save' }
   | {

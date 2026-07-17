@@ -208,6 +208,87 @@ async function handleCrop(
  *   save     → fresh crop saves a highlight; existing box forwards to nodx
  *   generate → Sonnet writes the subject prompt → Gemini 2×2 grid
  */
+/**
+ * ✏️ instruct wheel action — small input popover anchored under the box;
+ * the user types a one-off instruction for THIS screenshot. Resolves with
+ * the instruction, or null on Esc / click-outside.
+ */
+function promptInstruction(viewX: number, viewY: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    const ID = '__nodx_instruct_box__';
+    document.getElementById(ID)?.remove();
+    const box = document.createElement('div');
+    box.id = ID;
+    Object.assign(box.style, {
+      position: 'fixed',
+      left: `${Math.min(window.innerWidth - 372, Math.max(8, viewX - 180))}px`,
+      top: `${Math.min(window.innerHeight - 60, Math.max(8, viewY))}px`,
+      zIndex: '2147483647',
+      display: 'flex',
+      gap: '6px',
+      alignItems: 'center',
+      width: '360px',
+      padding: '6px',
+      background: '#fff',
+      borderRadius: '10px',
+      boxShadow: '0 8px 28px rgba(0,0,0,0.22)',
+    } as unknown as CSSStyleDeclaration);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = '输入指令，如"翻译成中文""这是什么型号"…';
+    Object.assign(input.style, {
+      flex: '1',
+      minWidth: '0',
+      border: '1px solid #d1d5db',
+      borderRadius: '6px',
+      padding: '7px 9px',
+      fontSize: '13px',
+      color: '#1a1a1a',
+      outline: 'none',
+    } as unknown as CSSStyleDeclaration);
+
+    const go = document.createElement('button');
+    go.textContent = '▸';
+    Object.assign(go.style, {
+      flexShrink: '0',
+      width: '34px',
+      height: '34px',
+      border: '0',
+      borderRadius: '6px',
+      background: 'linear-gradient(180deg, #f59e0b 0%, #d97706 100%)',
+      color: '#fff',
+      fontSize: '16px',
+      cursor: 'pointer',
+    } as unknown as CSSStyleDeclaration);
+
+    const close = (v: string | null) => {
+      document.removeEventListener('mousedown', outside, true);
+      box.remove();
+      resolve(v);
+    };
+    const outside = (e: MouseEvent) => {
+      if (!box.contains(e.target as Node)) close(null);
+    };
+    document.addEventListener('mousedown', outside, true);
+
+    const submit = () => {
+      const v = input.value.trim();
+      if (v) close(v);
+    };
+    go.addEventListener('click', submit);
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') submit();
+      else if (e.key === 'Escape') close(null);
+    });
+
+    box.append(input, go);
+    document.documentElement.appendChild(box);
+    requestAnimationFrame(() => input.focus());
+  });
+}
+
 async function routeWheelAction(
   action: WheelAction,
   cropped: { dataUrl: string; width: number; height: number },
@@ -219,6 +300,17 @@ async function routeWheelAction(
       if (onBox) await explainHighlight(onBox, action.prompt);
       else await runExplain(cropped, rect, action.prompt);
       break;
+    case 'instruct': {
+      // Same pipeline as 'prompt', but the prompt is typed at use time.
+      const instruction = await promptInstruction(
+        rect.x + rect.w / 2,
+        rect.y + rect.h + 8,
+      );
+      if (!instruction) break;
+      if (onBox) await explainHighlight(onBox, instruction);
+      else await runExplain(cropped, rect, instruction);
+      break;
+    }
     case 'search':
       if (action.urlPrefix === DEFAULT_IMAGE_SEARCH_PREFIX) {
         runSearch(cropped.dataUrl, rect, onBox);

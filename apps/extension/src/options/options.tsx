@@ -597,17 +597,19 @@ function WheelPreview({
   );
 }
 
-const KIND_ORDER = ['prompt', 'search', 'save', 'generate'] as const;
+const KIND_ORDER = ['prompt', 'instruct', 'search', 'save', 'generate'] as const;
 type KindKey = (typeof KIND_ORDER)[number];
 
 function kindLabel(k: KindKey): string {
   return k === 'prompt'
     ? t('wheelKindPrompt')
-    : k === 'search'
-      ? t('wheelKindSearch')
-      : k === 'save'
-        ? t('wheelKindSave')
-        : t('wheelKindGenerate');
+    : k === 'instruct'
+      ? t('wheelKindInstruct')
+      : k === 'search'
+        ? t('wheelKindSearch')
+        : k === 'save'
+          ? t('wheelKindSave')
+          : t('wheelKindGenerate');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -709,6 +711,8 @@ function defaultActionFor(k: KindKey): WheelAction {
   switch (k) {
     case 'prompt':
       return { kind: 'prompt', prompt: DEFAULT_EXPLAIN_PROMPT };
+    case 'instruct':
+      return { kind: 'instruct' };
     case 'search':
       return { kind: 'search', urlPrefix: DEFAULT_IMAGE_SEARCH_PREFIX };
     case 'save':
@@ -722,6 +726,8 @@ function actionOf(kind: KindKey, param: string): WheelAction {
   switch (kind) {
     case 'prompt':
       return { kind: 'prompt', prompt: param };
+    case 'instruct':
+      return { kind: 'instruct' };
     case 'search':
       return { kind: 'search', urlPrefix: param };
     case 'save':
