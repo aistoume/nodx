@@ -50,7 +50,8 @@ function dispatchProtocolHeader(): string {
   return `You can either ANSWER the instruction directly, OR execute an action:
 
 When the instruction asks to SEARCH / look up / find / open something on a website or the web (e.g. "search this on arXiv", "在谷歌学术找找相关论文", "打开 temu 找这东西"), reply with ONLY this one-line JSON and absolutely nothing else:
-{"action":"open_url","url":"<search-results URL with the query filled in>","note":"<one short sentence describing what you opened, in the instruction's language>"}`;
+{"action":"open_url","url":"<search-results URL with the query filled in>","note":"<one short sentence describing what you opened, in the instruction's language>"}
+CRITICAL: emitting this JSON is the ONLY way the page actually opens. Do not describe the action in prose, do not add any text before or after the JSON, and never claim a page was opened unless your reply IS this JSON.`;
 }
 
 /**
@@ -159,12 +160,14 @@ async function handle(
 
     const full = await callAI(settings.provider, settings.apiKey, model, prompt, onChunk, signal);
 
-    // A buffered "directive" that parses cleanly becomes a real action; on
-    // any mismatch the buffered text is released as a normal answer.
-    // (cast: TS can't see the closure writes callAI made via onChunk)
+    // Custom mode: ALWAYS scan the final text for a directive — buffered
+    // JSON-only replies execute silently, and a directive the model embedded
+    // in prose (protocol slip) still runs; DONE's `full` replaces whatever
+    // streamed, so the raw JSON never survives on screen. No directive
+    // found → the text stands as a normal answer.
     let display = full;
     let actionUrl: string | undefined;
-    if ((verdict as 'directive' | 'prose' | null) === 'directive') {
+    if (msg.mode === 'custom') {
       const r = await runCustomDirective(full);
       if (r) {
         display = r.display;
@@ -205,18 +208,9 @@ async function handle(
   }
 }
 
-/**
- * Parse + execute a custom-instruction directive (see buildDispatchProtocol).
- * Returns the display note + the opened URL, or null when the text isn't a
- * valid directive (caller falls back to showing it as a normal answer).
- */
-async function runCustomDirective(
-  raw: string,
-): Promise<{ display: string; url?: string } | null> {
-  let body = raw.trim();
-  // Tolerate a markdown code fence around the JSON.
-  const fenced = body.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
-  if (fenced) body = fenced[1].trim();
+/** Validate one candidate directive JSON. http(s) URLs only — never open
+ *  javascript:/data:/chrome: URLs a model made up. */
+function parseDirectiveJson(body: string): { url: URL; note?: string } | null {
   let obj: { action?: string; url?: string; note?: string };
   try {
     obj = JSON.parse(body) as { action?: string; url?: string; note?: string };
@@ -224,7 +218,6 @@ async function runCustomDirective(
     return null;
   }
   if (obj.action !== 'open_url' || typeof obj.url !== 'string') return null;
-  // http(s) only — never open javascript:/data:/chrome: URLs a model made up.
   let parsed: URL;
   try {
     parsed = new URL(obj.url);
@@ -232,17 +225,65 @@ async function runCustomDirective(
     return null;
   }
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
+  return {
+    url: parsed,
+    note: typeof obj.note === 'string' && obj.note.trim() ? obj.note.trim() : undefined,
+  };
+}
 
+async function execDirective(d: {
+  url: URL;
+  note?: string;
+}): Promise<{ display: string; url: string }> {
   try {
-    await chrome.tabs.create({ url: parsed.href, active: true });
+    await chrome.tabs.create({ url: d.url.href, active: true });
   } catch (e) {
     return {
-      display: `⚠️ ${e instanceof Error ? e.message : String(e)}\n\n${parsed.href}`,
-      url: parsed.href,
+      display: `⚠️ ${e instanceof Error ? e.message : String(e)}\n\n${d.url.href}`,
+      url: d.url.href,
     };
   }
-  const note = typeof obj.note === 'string' && obj.note.trim() ? obj.note.trim() : '已打开搜索结果';
-  return { display: `🔗 ${note}\n\n[${parsed.href}](${parsed.href})`, url: parsed.href };
+  return {
+    display: `🔗 ${d.note ?? '已打开搜索结果'}\n\n[${d.url.href}](${d.url.href})`,
+    url: d.url.href,
+  };
+}
+
+/**
+ * Parse + execute a custom-instruction directive (see buildDispatchProtocol).
+ * Handles BOTH shapes the model produces:
+ *   1. the whole reply is the JSON (optionally code-fenced) — the intended
+ *      protocol shape;
+ *   2. the JSON embedded in prose ("这个指令要求我… {json}") — models slip
+ *      despite the protocol, and a narrated-but-unexecuted action reads as
+ *      a lie ("已经为您打开了"). The embedded directive still runs, and the
+ *      surrounding prose is kept with the JSON blob swapped for the 🔗 note.
+ * Returns null when no valid directive is present anywhere.
+ */
+async function runCustomDirective(
+  raw: string,
+): Promise<{ display: string; url?: string } | null> {
+  let body = raw.trim();
+  const fenced = body.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+  if (fenced) body = fenced[1].trim();
+  const whole = parseDirectiveJson(body);
+  if (whole) return execDirective(whole);
+
+  // Embedded scan — the directive JSON is flat, so brace-free matching works.
+  for (const m of raw.matchAll(/\{[^{}]*"action"\s*:\s*"open_url"[^{}]*\}/g)) {
+    const parsed = parseDirectiveJson(m[0]);
+    if (!parsed) continue;
+    const out = await execDirective(parsed);
+    const prose = raw
+      .replace(m[0], '')
+      .replace(/```(?:json)?\s*```/g, '')
+      .trim();
+    return {
+      display: prose ? `${prose}\n\n${out.display}` : out.display,
+      url: out.url,
+    };
+  }
+  return null;
 }
 
 // Open options on first install
