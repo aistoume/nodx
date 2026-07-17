@@ -19,6 +19,9 @@
 
 import { wheelBg, type WheelAction, type WheelItem } from '../shared/wheel.js';
 
+// Since the wheel unification (v1.0.4) BOTH text selections and screenshots
+// run the user-customized wheel config through showWheelMenu — these fixed
+// choices only remain for the hardcoded IMAGE_OPTIONS fallback menu.
 export type RadialChoice =
   | 'explain'
   | 'search'
@@ -26,17 +29,6 @@ export type RadialChoice =
   | 'shopping-google'
   | 'shopping-amazon'
   | 'generate'
-  // Text-selection actions mirror the image menu one-for-one.
-  | 'txt-explain'
-  | 'txt-custom'
-  | 'txt-search'
-  | 'txt-save'
-  | 'txt-shopping-google'
-  | 'txt-shopping-amazon'
-  | 'txt-generate'
-  // Legacy text leaves — still routable (panel footer), no longer spokes.
-  | 'txt-deepen'
-  | 'txt-copy'
   | 'cancel';
 
 type LeafChoice = Exclude<RadialChoice, 'cancel'>;
@@ -96,45 +88,6 @@ export const IMAGE_OPTIONS: RadialOption[] = [
     ],
   },
   { emoji: '🎨', label: '', title: '生成', angleDeg: 270, bg: 'rgba(168, 85, 247, 0.95)', choice: 'generate' },
-];
-
-/**
- * Text-selection actions — structurally identical to IMAGE_OPTIONS (same
- * spokes, same two-level expansion), so the two menus feel like one tool.
- * The selected text is the query/prompt, so no "identify the image" step
- * is needed. 深入 / 复制 still live in the explanation panel's footer.
- *
- *     up    = 🔍  → 解释 / 搜索
- *     right = 💡  保存        (hand the selection to nodx desktop's pool)
- *     down  = 🛒  → Shopping / Amazon   (text query)
- *     left  = 🎨  生成        (image from the selected text)
- */
-export const TEXT_OPTIONS: RadialOption[] = [
-  {
-    emoji: '🔍',
-    label: '',
-    title: '搜索 / 解释',
-    angleDeg: 0,
-    bg: 'rgba(59, 130, 246, 0.95)',
-    children: [
-      { key: 'txt-explain', emoji: '📖', label: '解释' },
-      { key: 'txt-custom', emoji: '✏️', label: '自定义' },
-      { key: 'txt-search', emoji: '🔎', label: '搜索' },
-    ],
-  },
-  { emoji: '💡', label: '', title: '保存', angleDeg: 90, bg: 'rgba(217, 119, 6, 0.95)', choice: 'txt-save' },
-  {
-    emoji: '🛒',
-    label: '',
-    title: '购物',
-    angleDeg: 180,
-    bg: 'rgba(16, 185, 129, 0.95)',
-    children: [
-      { key: 'txt-shopping-google', emoji: '🏷', label: 'Google shop' },
-      { key: 'txt-shopping-amazon', emoji: '📦', label: 'Amazon' },
-    ],
-  },
-  { emoji: '🎨', label: '', title: '生成', angleDeg: 270, bg: 'rgba(168, 85, 247, 0.95)', choice: 'txt-generate' },
 ];
 
 /** Fixed spoke colours by position (up/right/down/left). */

@@ -26,7 +26,13 @@ import {
   showToast,
 } from './marquee.js';
 import { installHighlightsLayer } from './highlights-layer.js';
-import { showRadialMenu, TEXT_OPTIONS, type RadialChoice } from './radial-menu.js';
+import { showWheelMenu } from './radial-menu.js';
+import {
+  DEFAULT_EXPLAIN_PROMPT,
+  DEFAULT_IMAGE_SEARCH_PREFIX,
+  getWheelConfig,
+  type WheelAction,
+} from '../shared/wheel.js';
 import { mdToHtml } from '../shared/markdown.js';
 
 /**
@@ -336,9 +342,14 @@ function showTrigger(rect: DOMRect, selectedText: string, range: Range) {
     const mx = r.left + r.width / 2;
     const my = r.top + r.height / 2;
     hideTrigger();
-    void showRadialMenu(mx, my, TEXT_OPTIONS).then((choice) =>
-      handleTextChoice(choice, selectedText, range),
-    );
+    // ONE wheel for everything: the same user-customized config that drives
+    // screenshot boxes (marquee.ts) drives text selections — each action
+    // kind just gets its text-native meaning in routeTextWheelAction.
+    void (async () => {
+      const { spokes } = await getWheelConfig();
+      const action = await showWheelMenu(mx, my, spokes);
+      if (action !== 'cancel') await routeTextWheelAction(action, selectedText, range);
+    })();
   });
 }
 
@@ -587,17 +598,32 @@ async function sendInstructionToTarget(
 }
 
 /**
- * Route a text-selection radial pick. The menu mirrors the image menu:
- *   🔍 解释 / 搜索 · 💡 保存 · 🛒 Shopping / Amazon · 🎨 生成
- * The selected text is the query/prompt, so no "identify" step is needed.
- * (深入 / 复制 stay on the explanation panel's footer.)
+ * Route a wheel action against a TEXT selection. The wheel itself is the
+ * user-customized config shared with screenshots (marquee.ts holds the
+ * image routing); every action kind gets its text-native meaning here:
+ *
+ *   prompt   → stock explain template keeps the classic locale-aware text
+ *              explain; a customized template runs verbatim on the selection
+ *   instruct → ✏️ input popover (with the send-target dropdown)
+ *   search   → urlPrefix + encoded selection; the stock IMAGE search prefix
+ *              (udm=2) is swapped for plain Google web search
+ *   save     → hand the selection to nodx desktop's inspiration pool
+ *   generate → the selection IS the subject; the user's style template applies
  */
-function handleTextChoice(choice: RadialChoice, text: string, range: Range): void {
-  switch (choice) {
-    case 'txt-explain':
-      openPanelForNewSelection(text, range, 'short');
+async function routeTextWheelAction(
+  action: WheelAction,
+  text: string,
+  range: Range,
+): Promise<void> {
+  switch (action.kind) {
+    case 'prompt':
+      if (action.prompt === DEFAULT_EXPLAIN_PROMPT) {
+        openPanelForNewSelection(text, range, 'short');
+      } else {
+        openPanelForCustom(text, range, action.prompt);
+      }
       break;
-    case 'txt-custom':
+    case 'instruct':
       void promptForInstruction(range, (instruction, target) => {
         if (target === 'nodx') {
           void sendInstructionToNodx(text, range, instruction);
@@ -608,45 +634,34 @@ function handleTextChoice(choice: RadialChoice, text: string, range: Range): voi
         }
       });
       break;
-    case 'txt-deepen':
-      openPanelForNewSelection(text, range, 'deep');
-      break;
-    case 'txt-search': {
-      const url = `https://www.google.com/search?q=${encodeURIComponent(text)}`;
+    case 'search': {
+      const prefix =
+        action.urlPrefix === DEFAULT_IMAGE_SEARCH_PREFIX
+          ? 'https://www.google.com/search?q='
+          : action.urlPrefix;
+      const url = `${prefix}${encodeURIComponent(text)}`;
       window.open(url, '_blank', 'noopener,noreferrer');
+      const shopping = /amazon\.|udm=28/.test(prefix);
       recordTextAction(
-        { kind: 'search', label: '文字搜索 · Google', query: text, url },
+        {
+          kind: shopping ? 'shopping' : 'search',
+          label: shopping ? '购物' : '文字搜索',
+          query: text,
+          url,
+        },
         text,
       );
       break;
     }
-    case 'txt-shopping-google': {
-      const url = `https://www.google.com/search?udm=28&q=${encodeURIComponent(text)}`;
-      window.open(url, '_blank', 'noopener,noreferrer');
-      recordTextAction(
-        { kind: 'shopping', label: 'Google Shopping', query: text, url },
-        text,
-      );
+    case 'save':
+      await saveTextToPool(text);
       break;
-    }
-    case 'txt-shopping-amazon': {
-      const url = `https://www.amazon.com/s?k=${encodeURIComponent(text)}`;
-      window.open(url, '_blank', 'noopener,noreferrer');
-      recordTextAction(
-        { kind: 'shopping', label: 'Amazon', query: text, url },
-        text,
-      );
-      break;
-    }
-    case 'txt-save':
-      void saveTextToPool(text);
-      break;
-    case 'txt-generate':
+    case 'generate':
       // The selected text IS the subject — skip the image-认图 step. On
       // success, underline the source text like an explain annotation so
       // the page shows what was generated from (click → note, right-click
       // → remove).
-      void runGenerateFromSubject(text)
+      await runGenerateFromSubject(text, undefined, undefined, action.stylePrompt)
         .then(() => {
           createAnnotation(text, t('generatedForText'), range);
         })
@@ -654,12 +669,6 @@ function handleTextChoice(choice: RadialChoice, text: string, range: Range): voi
           console.error('[nodx Lens] text generate failed:', e);
           showToast(`生成失败: ${e instanceof Error ? e.message : e}`);
         });
-      break;
-    case 'txt-copy':
-      void navigator.clipboard.writeText(text);
-      break;
-    default:
-      // 'cancel' or an image-only choice — nothing to do here.
       break;
   }
 }

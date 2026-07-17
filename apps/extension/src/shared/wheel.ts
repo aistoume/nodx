@@ -102,6 +102,7 @@ export function defaultWheel(): WheelConfigV1 {
         emoji: '🔍', label: '', action: null,
         children: [
           { emoji: '📖', label: 'Explain', action: { kind: 'prompt', prompt: DEFAULT_EXPLAIN_PROMPT }, children: [] },
+          { emoji: '✏️', label: 'Instruct', action: { kind: 'instruct' }, children: [] },
           { emoji: '🔎', label: 'Search', action: { kind: 'search', urlPrefix: DEFAULT_IMAGE_SEARCH_PREFIX }, children: [] },
         ],
       },
