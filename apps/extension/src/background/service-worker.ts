@@ -25,7 +25,9 @@ import { resolveLocale, t, setLocale } from '../shared/i18n.js';
 interface StartMessage {
   type: 'START';
   text: string;
-  mode: 'short' | 'deep';
+  mode: 'short' | 'deep' | 'custom';
+  /** For mode==='custom': the user's own instruction for the selected text. */
+  customPrompt?: string;
   url: string;
   title: string;
 }
@@ -57,12 +59,17 @@ async function handle(
 
     const locale = resolveLocale(settings.language);
     const prompt =
-      msg.mode === 'short'
-        ? buildExplainPrompt(msg.text, locale)
-        : buildDeepenPrompt(msg.text, locale);
+      msg.mode === 'custom'
+        ? // The user's own instruction, applied to the selection. Kept minimal
+          // so niche/custom workflows aren't second-guessed by a wrapper.
+          `${(msg.customPrompt ?? '').trim()}\n\n---\nText:\n${msg.text}`
+        : msg.mode === 'short'
+          ? buildExplainPrompt(msg.text, locale)
+          : buildDeepenPrompt(msg.text, locale);
 
+    // Custom prompts use the fast/short model tier (cheap, snappy).
     const model =
-      msg.mode === 'short' ? settings.model.explain : settings.model.deepen;
+      msg.mode === 'deep' ? settings.model.deepen : settings.model.explain;
 
     const onChunk = (text: string) => {
       try {

@@ -28,6 +28,7 @@ export type RadialChoice =
   | 'generate'
   // Text-selection actions mirror the image menu one-for-one.
   | 'txt-explain'
+  | 'txt-custom'
   | 'txt-search'
   | 'txt-save'
   | 'txt-shopping-google'
@@ -117,6 +118,7 @@ export const TEXT_OPTIONS: RadialOption[] = [
     bg: 'rgba(59, 130, 246, 0.95)',
     children: [
       { key: 'txt-explain', emoji: '📖', label: '解释' },
+      { key: 'txt-custom', emoji: '✏️', label: '自定义' },
       { key: 'txt-search', emoji: '🔎', label: '搜索' },
     ],
   },

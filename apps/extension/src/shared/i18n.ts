@@ -31,6 +31,7 @@ const STRINGS = {
     extReloadedToast: '🔁 nodx Lens 已更新 · 请刷新本页继续使用',
     annotationTitle: '点击查看解释 · 右键删除',
     generatedForText: '🎨 已为这段文字生成图片 — 打开侧栏「生成记录」查看或保存。',
+    customPh: '输入你的指令，如"翻译成法语""提取日期""改写得更正式"…',
 
     // Service worker
     missingApiKey: '请先在 Settings 配置 API Key',
@@ -120,6 +121,7 @@ const STRINGS = {
     extReloadedToast: '🔁 nodx Lens updated · refresh this page to continue',
     annotationTitle: 'Click to view · right-click to remove',
     generatedForText: '🎨 An image was generated from this text — see the side panel history to view or save it.',
+    customPh: 'Type your instruction — e.g. "translate to French", "extract the dates"…',
 
     // Service worker
     missingApiKey: 'Please set your API key in Settings first.',

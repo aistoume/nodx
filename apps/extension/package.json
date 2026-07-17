@@ -1,6 +1,6 @@
 {
   "name": "@nodx/extension",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "private": true,
   "type": "module",
   "description": "nodx Lens - Chrome extension for inline AI explanations on any webpage",

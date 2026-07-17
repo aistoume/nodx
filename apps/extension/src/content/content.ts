@@ -201,6 +201,30 @@ function ensureHost(): ShadowRoot {
       }
       .trigger-btn.quick:hover { background: #F59E0B; color: #1a1a1a; }
 
+      /* ✏️ custom-instruction input popover */
+      .prompt-box {
+        position: fixed; z-index: 2147483647;
+        pointer-events: auto;
+        display: flex; gap: 6px; align-items: center;
+        width: 300px; padding: 6px;
+        background: #fff; border-radius: 10px;
+        box-shadow: 0 8px 28px rgba(0,0,0,0.22);
+        opacity: 0; transform: translateY(4px);
+        transition: opacity 120ms ease, transform 120ms ease;
+      }
+      .prompt-box.show { opacity: 1; transform: translateY(0); }
+      .prompt-box input {
+        flex: 1; min-width: 0; border: 1px solid #d1d5db; border-radius: 6px;
+        padding: 7px 9px; font-size: 13px; color: #1a1a1a; outline: none;
+        font-family: inherit;
+      }
+      .prompt-box input:focus { border-color: #F59E0B; }
+      .prompt-box button {
+        flex-shrink: 0; width: 34px; height: 34px; border: 0; border-radius: 6px;
+        background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+        color: #fff; font-size: 16px; cursor: pointer;
+      }
+
       .panel {
         position: fixed; z-index: 2147483647;
         pointer-events: auto;
@@ -380,6 +404,64 @@ function openPanelForNewSelection(
   startStream(panel, selectedText, mode, range);
 }
 
+/** Run the user's own instruction on the selection (✏️ 自定义). */
+function openPanelForCustom(
+  selectedText: string,
+  range: Range,
+  instruction: string,
+) {
+  const rects = range.getClientRects();
+  if (rects.length === 0) return;
+  const firstRect = rects[0];
+  const panel = createPanelAt(firstRect.bottom + 8, firstRect.left, false);
+  wirePanelClicks(panel, selectedText, range);
+  startStream(panel, selectedText, 'custom', range, instruction);
+}
+
+/**
+ * Small input popover anchored under the selection — the user types a
+ * one-off instruction ("translate to French", "extract the dates", "rewrite
+ * formally"…) for the selected text. Enter or ▸ runs it; Esc cancels.
+ */
+function promptForInstruction(range: Range, onSubmit: (instruction: string) => void): void {
+  const rects = range.getClientRects();
+  if (rects.length === 0) return;
+  const first = rects[0];
+  const root = ensureHost();
+  hideTrigger();
+  const box = document.createElement('div');
+  box.className = 'prompt-box';
+  box.style.top = `${Math.min(window.innerHeight - 80, Math.max(8, first.bottom + 8))}px`;
+  box.style.left = `${Math.min(window.innerWidth - 320, Math.max(8, first.left))}px`;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = t('customPh');
+  const go = document.createElement('button');
+  go.textContent = '▸';
+  box.append(input, go);
+  root.appendChild(box);
+  requestAnimationFrame(() => {
+    box.classList.add('show');
+    input.focus();
+  });
+  const close = () => box.remove();
+  const submit = () => {
+    const v = input.value.trim();
+    if (!v) return;
+    close();
+    onSubmit(v);
+  };
+  go.addEventListener('click', submit);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    else if (e.key === 'Escape') { e.preventDefault(); close(); }
+  });
+  // Dismiss when focus leaves the box.
+  input.addEventListener('blur', () => setTimeout(() => {
+    if (root.activeElement !== go) close();
+  }, 120));
+}
+
 /**
  * Route a text-selection radial pick. The menu mirrors the image menu:
  *   🔍 解释 / 搜索 · 💡 保存 · 🛒 Shopping / Amazon · 🎨 生成
@@ -390,6 +472,11 @@ function handleTextChoice(choice: RadialChoice, text: string, range: Range): voi
   switch (choice) {
     case 'txt-explain':
       openPanelForNewSelection(text, range, 'short');
+      break;
+    case 'txt-custom':
+      promptForInstruction(range, (instruction) => {
+        openPanelForCustom(text, range, instruction);
+      });
       break;
     case 'txt-deepen':
       openPanelForNewSelection(text, range, 'deep');
@@ -586,8 +673,9 @@ function showAppMissingHint(footer: HTMLDivElement | null) {
 function startStream(
   panel: HTMLDivElement,
   selectedText: string,
-  mode: 'short' | 'deep',
+  mode: 'short' | 'deep' | 'custom',
   range: Range,
+  customPrompt?: string,
 ) {
   if (mode === 'deep') panel.classList.add('deepened');
   const body = panel.querySelector('.panel-body') as HTMLDivElement;
@@ -641,7 +729,7 @@ function startStream(
       body.innerHTML = mdToHtml(received);
       footer.style.display = 'flex';
       activePort = null;
-      if (mode === 'short') {
+      if (mode === 'short' || mode === 'custom') {
         // Create persistent annotation under the original selection
         const id = createAnnotation(selectedText, received, range);
         activeAnnotationId = id;
@@ -671,6 +759,7 @@ function startStream(
     type: 'START',
     text: selectedText,
     mode,
+    ...(mode === 'custom' && customPrompt ? { customPrompt } : {}),
     url: location.href,
     title: document.title,
   });

@@ -8,7 +8,7 @@ export interface ExplanationRecord {
   explanation: string;
   sourceUrl: string;
   sourceTitle: string;
-  mode: 'short' | 'deep';
+  mode: 'short' | 'deep' | 'custom';
   createdAt: number;
 }
 
