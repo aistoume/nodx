@@ -57,6 +57,11 @@ function keyFormatWarning(p: Provider, key: string): string | null {
 function App() {
   const [settings, setSettingsState] = useState<Settings | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  // Persist failures were previously SILENT: the UI updates optimistically,
+  // so a stale options page (left open across an extension reload — its
+  // chrome.* context is invalidated) LOOKED like it saved while nothing
+  // reached storage. Surface that loudly instead.
+  const [saveError, setSaveError] = useState<string | null>(null);
   // forceTick is bumped whenever the locale changes so the whole tree re-renders
   const [, force] = useState(0);
 
@@ -81,7 +86,16 @@ function App() {
     if (patch.apiKey !== undefined) keys[provider] = patch.apiKey;
     const apiKey = patch.apiKey !== undefined ? patch.apiKey : (keys[provider] ?? '');
     setSettingsState({ ...s, ...patch, apiKeys: keys, apiKey });
-    await setSettings(patch);
+    try {
+      await setSettings(patch);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setSaveError(
+        /context invalidated/i.test(msg) ? t('optionsStaleError') : `⚠ ${msg}`,
+      );
+      return;
+    }
+    setSaveError(null);
     setSavedAt(Date.now());
     if (patch.language !== undefined) {
       setLocale(patch.language);
@@ -379,7 +393,10 @@ function App() {
 
       <WheelEditor onSaved={() => setSavedAt(Date.now())} />
 
-      {savedAt && <div className="saved">{t('savedAt')} · {new Date(savedAt).toLocaleTimeString()}</div>}
+      {saveError && <div className="save-error">{saveError}</div>}
+      {savedAt && !saveError && (
+        <div className="saved">{t('savedAt')} · {new Date(savedAt).toLocaleTimeString()}</div>
+      )}
     </div>
   );
 }
@@ -1114,7 +1131,10 @@ function WheelEditor({ onSaved }: { onSaved: () => void }) {
               return;
             }
             setError(null);
-            void setWheelConfig(cfg).then(onSaved);
+            setWheelConfig(cfg).then(onSaved, (e) => {
+              const msg = e instanceof Error ? e.message : String(e);
+              setError(/context invalidated/i.test(msg) ? t('optionsStaleError') : `⚠ ${msg}`);
+            });
           }}
         >
           {t('wheelSaveBtn')}
@@ -1122,11 +1142,17 @@ function WheelEditor({ onSaved }: { onSaved: () => void }) {
         <button
           type="button"
           onClick={() => {
-            void resetWheelConfig().then(() => {
-              setCfg(defaultWheel());
-              setError(null);
-              onSaved();
-            });
+            resetWheelConfig().then(
+              () => {
+                setCfg(defaultWheel());
+                setError(null);
+                onSaved();
+              },
+              (e) => {
+                const msg = e instanceof Error ? e.message : String(e);
+                setError(/context invalidated/i.test(msg) ? t('optionsStaleError') : `⚠ ${msg}`);
+              },
+            );
           }}
         >
           {t('wheelResetBtn')}

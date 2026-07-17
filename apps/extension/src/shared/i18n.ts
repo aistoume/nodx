@@ -56,6 +56,7 @@ const STRINGS = {
     nativeOk: '✓ native host 就绪 — 网关不在时自动直连本地 Claude',
     nativeNoPerm: '尚未授权 nativeMessaging — 点「连接本地 Claude」授权',
     nativeNoHost: '⚠ 已授权，但找不到 native host — 先跑一次 install.sh，并重启 Chrome',
+    optionsStaleError: '⚠ 保存失败：扩展刚重载过，这个设置页已失效 — 关闭本页后重新打开设置，再改一遍。',
 
     // Service worker
     missingApiKey: '请先在 Settings 配置 API Key',
@@ -171,6 +172,7 @@ const STRINGS = {
     nativeOk: '✓ native host ready — falls back to local Claude when the gateway is down',
     nativeNoPerm: 'nativeMessaging not granted yet — click "Connect local Claude"',
     nativeNoHost: '⚠ Permission granted, but the native host was not found — run install.sh once and restart Chrome',
+    optionsStaleError: '⚠ Save failed: the extension was reloaded and this settings page is stale — close it, reopen Settings, and redo the change.',
 
     // Service worker
     missingApiKey: 'Please set your API key in Settings first.',
