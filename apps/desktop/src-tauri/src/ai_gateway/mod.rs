@@ -559,6 +559,10 @@ struct CaptureImagePayload {
     /// from the JSON for image captures so their payload is unchanged.
     #[serde(rename = "explanation", skip_serializing_if = "Option::is_none")]
     explanation: Option<String>,
+    /// The user's ✏️ custom instruction (v15) — only text saves that came
+    /// from Lens's custom-instruction flow carry it.
+    #[serde(rename = "instruction", skip_serializing_if = "Option::is_none")]
+    instruction: Option<String>,
     #[serde(rename = "sourceUrl")]
     source_url: String,
     #[serde(rename = "sourceTitle")]
@@ -797,6 +801,7 @@ async fn capture_image(
         id: id.clone(),
         text: req.text,
         explanation: None,
+        instruction: None,
         source_url: req.source_url,
         source_title: req.source_title,
         source_kind,
@@ -846,6 +851,10 @@ struct CaptureTextRequest {
     text: String,
     #[serde(default)]
     explanation: Option<String>,
+    /// The ✏️ custom instruction that produced this capture (v15+). Lens
+    /// sends '' when absent — normalized to None below.
+    #[serde(default)]
+    instruction: Option<String>,
     #[serde(default)]
     #[serde(rename = "sourceUrl")]
     source_url: String,
@@ -884,12 +893,14 @@ async fn capture_text(
     // A snippet with an explanation is an "explain" capture; a bare snippet
     // is a "quick" one — the two kinds the frontend already understands.
     let explanation = req.explanation.filter(|s| !s.trim().is_empty());
+    let instruction = req.instruction.filter(|s| !s.trim().is_empty());
     let kind = if explanation.is_some() { "explain" } else { "quick" };
 
     let payload = CaptureImagePayload {
         id: id.clone(),
         text: req.text,
         explanation,
+        instruction,
         source_url: req.source_url,
         source_title: req.source_title,
         source_kind,

@@ -470,6 +470,125 @@ async function generateImageFromPrompt(
   }
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// SEND_TO_TARGET (v1.0.4) — ✏️ custom instruction → user-defined endpoint
+//
+// The prompt-box lets the user pick a destination besides the built-in AI:
+// any HTTP endpoint from settings.customTargets (their own LLM proxy, a
+// local automation server, a work tool's webhook). We POST from here — the
+// SW has <all_urls> host permission, so page CORS never interferes.
+// ────────────────────────────────────────────────────────────────────────────
+
+interface SendToTargetMessage {
+  type: 'SEND_TO_TARGET';
+  targetId: string;
+  instruction: string;
+  text: string;
+  url: string;
+  title: string;
+}
+
+chrome.runtime.onMessage.addListener((msg: SendToTargetMessage, _sender, sendResponse) => {
+  if (msg?.type !== 'SEND_TO_TARGET') return false;
+  void sendToTarget(msg).then((r) => sendResponse(r));
+  return true;
+});
+
+async function sendToTarget(
+  msg: SendToTargetMessage,
+): Promise<{ ok: boolean; reply?: string; error?: string }> {
+  try {
+    const settings = await getSettings();
+    setLocale(settings.language);
+    const target = settings.customTargets.find((ct) => ct.id === msg.targetId);
+    if (!target || !target.url.trim()) {
+      return { ok: false, error: t('targetMissing') };
+    }
+
+    // 'ai-forward': run the instruction through the built-in AI first, so
+    // the endpoint receives an adapted `answer` alongside the raw inputs.
+    let answer: string | undefined;
+    if (target.mode === 'ai-forward') {
+      if (!settings.apiKey && providerNeedsApiKey(settings.provider)) {
+        return { ok: false, error: t('missingApiKey') };
+      }
+      let full = '';
+      await callAI(
+        settings.provider,
+        settings.apiKey,
+        settings.model.explain,
+        `${msg.instruction.trim()}\n\n---\nText:\n${msg.text}`,
+        (chunk) => (full += chunk),
+      );
+      answer = full.trim();
+    }
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 20000);
+    let res: Response;
+    try {
+      res = await fetch(target.url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        signal: ctrl.signal,
+        body: JSON.stringify({
+          instruction: msg.instruction,
+          text: msg.text,
+          ...(answer !== undefined ? { answer } : {}),
+          sourceUrl: msg.url,
+          sourceTitle: msg.title,
+          capturedAt: Date.now(),
+        }),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!res.ok) {
+      return { ok: false, error: `${target.name || target.url}: HTTP ${res.status}` };
+    }
+
+    const reply = (await extractReply(res)) || answer || '';
+    await recordExplanation({
+      selectedText: msg.text,
+      explanation: reply || `📮 → ${target.name || target.url} ✓`,
+      sourceUrl: msg.url,
+      sourceTitle: msg.title,
+      mode: 'custom',
+    });
+    return { ok: true, ...(reply ? { reply } : {}) };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/**
+ * Pull display text out of a target's response. Accepts JSON with a
+ * conventional string field, a bare JSON string, or a plain-text body.
+ * HTML (endpoints that answer with a page) is treated as "no reply".
+ */
+async function extractReply(res: Response): Promise<string> {
+  let raw = '';
+  try {
+    raw = (await res.text()).trim();
+  } catch {
+    return '';
+  }
+  if (!raw) return '';
+  try {
+    const j: unknown = JSON.parse(raw);
+    if (typeof j === 'string') return j.trim();
+    if (j && typeof j === 'object') {
+      for (const k of ['reply', 'text', 'answer', 'output', 'message', 'result']) {
+        const v = (j as Record<string, unknown>)[k];
+        if (typeof v === 'string' && v.trim()) return v.trim();
+      }
+    }
+    return '';
+  } catch {
+    return raw.startsWith('<') ? '' : raw;
+  }
+}
+
 async function shoppingQueryFromImage(
   dataUrl: string,
 ): Promise<{ ok: boolean; query?: string; error?: string }> {

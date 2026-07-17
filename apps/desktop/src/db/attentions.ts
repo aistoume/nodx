@@ -22,6 +22,7 @@ interface AttentionRow {
   id: string;
   text: string;
   explanation: string | null;
+  instruction: string | null;
   source_url: string;
   source_title: string;
   source_kind: string;
@@ -37,7 +38,7 @@ interface AttentionRow {
 }
 
 const SELECT_COLUMNS =
-  'id, text, explanation, source_url, source_title, source_kind, kind, ' +
+  'id, text, explanation, instruction, source_url, source_title, source_kind, kind, ' +
   'tags_json, promoted_to_topic_id, captured_at, ingested_at, ' +
   'image_path, image_mime, image_width, image_height';
 
@@ -53,6 +54,7 @@ function rowToAttention(r: AttentionRow): Attention {
     id: r.id,
     text: r.text,
     ...(r.explanation != null ? { explanation: r.explanation } : {}),
+    ...(r.instruction != null ? { instruction: r.instruction } : {}),
     sourceUrl: r.source_url,
     sourceTitle: r.source_title,
     sourceKind: r.source_kind,
@@ -98,9 +100,9 @@ export async function listAttentions(
   }
 
   if (filter.search && filter.search.trim()) {
-    where.push('(text LIKE ? OR explanation LIKE ?)');
+    where.push('(text LIKE ? OR explanation LIKE ? OR instruction LIKE ?)');
     const q = `%${filter.search.trim()}%`;
-    params.push(q, q);
+    params.push(q, q, q);
   }
 
   if (filter.sourceKinds && filter.sourceKinds.length > 0) {
@@ -164,6 +166,8 @@ export interface CreateAttentionInput {
   id?: string;
   text: string;
   explanation?: string;
+  /** The ✏️ custom instruction behind this capture (v15). */
+  instruction?: string;
   sourceUrl?: string;
   sourceTitle?: string;
   sourceKind: AttentionSource;
@@ -186,15 +190,16 @@ export async function createAttention(
 
   await db.execute(
     `INSERT INTO attentions (
-       id, text, explanation, source_url, source_title,
+       id, text, explanation, instruction, source_url, source_title,
        source_kind, kind, tags_json, promoted_to_topic_id,
        captured_at, ingested_at,
        image_path, image_mime, image_width, image_height
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       input.text,
       input.explanation ?? null,
+      input.instruction ?? null,
       input.sourceUrl ?? '',
       input.sourceTitle ?? '',
       input.sourceKind,

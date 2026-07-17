@@ -38,6 +38,13 @@ export const AttentionSchema = z.object({
   text: z.string(),
   /** AI explanation. Optional — bare 'quick' captures have none. */
   explanation: z.string().optional(),
+  /**
+   * The user's ✏️ custom instruction (v15+), when the capture came from
+   * Lens's custom-instruction flow — records WHAT was asked of this text
+   * (e.g. "翻译成法语"), so the inbox shows the question, not just the
+   * snippet. `explanation` then holds the AI's answer to it.
+   */
+  instruction: z.string().optional(),
   /** Source page / document URL. */
   sourceUrl: z.string().url().or(z.string().length(0)),
   /** Source page title (for display). */

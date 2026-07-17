@@ -377,6 +377,14 @@ function AttentionCard({
         </blockquote>
       )}
 
+      {/* ── ✏️ Instruction (v15 — Lens custom-instruction captures) ── */}
+      {attention.instruction && (
+        <div className="mb-2 flex items-start gap-1.5 text-[12px] text-amber-700 bg-amber-50 rounded-md px-2.5 py-1.5">
+          <span className="shrink-0 font-medium">{t('attention.instruction')}</span>
+          <span className="min-w-0 break-words">{attention.instruction}</span>
+        </div>
+      )}
+
       {/* ── Explanation ─────────────────────────────────────────── */}
       {editingExpl ? (
         <div className="mb-3 bg-canvas rounded-md p-2">

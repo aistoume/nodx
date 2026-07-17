@@ -4,6 +4,7 @@ import { useEffect, useState } from 'preact/hooks';
 import {
   getSettings,
   setSettings,
+  type CustomTarget,
   type Provider,
   type Settings,
 } from '../shared/settings.js';
@@ -278,6 +279,81 @@ function App() {
           />
           <span> {t('selectionSuffix')}</span>
         </div>
+      </section>
+
+      <section>
+        <label>{t('targetsSection')}</label>
+        <p className="hint">{t('targetsHelp')}</p>
+        {settings.customTargets.map((ct) => (
+          <div key={ct.id} className="target-row">
+            <input
+              type="text"
+              className="target-name"
+              value={ct.name}
+              placeholder={t('targetName')}
+              onInput={(e) =>
+                void save({
+                  customTargets: settings.customTargets.map((x) =>
+                    x.id === ct.id ? { ...x, name: (e.target as HTMLInputElement).value } : x,
+                  ),
+                })
+              }
+            />
+            <input
+              type="text"
+              className="target-url"
+              value={ct.url}
+              placeholder="http://127.0.0.1:5000/hook"
+              onInput={(e) =>
+                void save({
+                  customTargets: settings.customTargets.map((x) =>
+                    x.id === ct.id ? { ...x, url: (e.target as HTMLInputElement).value } : x,
+                  ),
+                })
+              }
+            />
+            <select
+              value={ct.mode}
+              onChange={(e) =>
+                void save({
+                  customTargets: settings.customTargets.map((x) =>
+                    x.id === ct.id
+                      ? { ...x, mode: (e.target as HTMLSelectElement).value as CustomTarget['mode'] }
+                      : x,
+                  ),
+                })
+              }
+            >
+              <option value="forward">{t('targetModeForward')}</option>
+              <option value="ai-forward">{t('targetModeAiForward')}</option>
+            </select>
+            <button
+              className="target-del"
+              title="✕"
+              onClick={() =>
+                void save({
+                  customTargets: settings.customTargets.filter((x) => x.id !== ct.id),
+                })
+              }
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        <button
+          className="target-add"
+          onClick={() =>
+            void save({
+              customTargets: [
+                ...settings.customTargets,
+                { id: crypto.randomUUID(), name: '', url: '', mode: 'forward' },
+              ],
+            })
+          }
+        >
+          ＋ {t('targetAdd')}
+        </button>
+        <p className="hint">{t('targetsContract')}</p>
       </section>
 
       <WheelEditor onSaved={() => setSavedAt(Date.now())} />

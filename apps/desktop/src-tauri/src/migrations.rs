@@ -562,6 +562,16 @@ CREATE INDEX idx_attentions_image ON attentions(image_path)
     WHERE image_path IS NOT NULL;
 "#;
 
+/// Schema v15 — the ✏️ custom instruction behind a Lens text capture.
+///
+/// Lens's custom-instruction flow lets the user run their own prompt on a
+/// selection ("翻译成法语", "提取日期"…) and save the result to nodx. The
+/// instruction is stored structurally — not merged into `explanation` — so
+/// the inbox can show WHAT was asked separately from the AI's answer.
+const V15_SQL: &str = r#"
+ALTER TABLE attentions ADD COLUMN instruction TEXT NULL;
+"#;
+
 pub fn all() -> Vec<Migration> {
     vec![
         Migration {
@@ -646,6 +656,12 @@ pub fn all() -> Vec<Migration> {
             version: 14,
             description: "attentions_image_columns",
             sql: V14_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 15,
+            description: "attentions_instruction_column",
+            sql: V15_SQL,
             kind: MigrationKind::Up,
         },
     ]

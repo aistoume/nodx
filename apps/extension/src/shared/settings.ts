@@ -11,6 +11,27 @@ export function providerNeedsApiKey(p: Provider): boolean {
   return p !== 'nodx';
 }
 
+/**
+ * A user-defined destination for the ✏️ custom-instruction action. Instead of
+ * (or in addition to) asking the built-in AI, the instruction + selection can
+ * be POSTed to any HTTP endpoint the user runs — their own LLM proxy, a local
+ * automation server, a work tool's webhook…
+ *
+ * POST body (JSON): { instruction, text, answer?, sourceUrl, sourceTitle, capturedAt }
+ *   - mode 'forward':    sent as-is, no AI involved. `answer` absent.
+ *   - mode 'ai-forward': the built-in AI runs the instruction first and its
+ *                        output is included as `answer` (AI 适配后再转发).
+ * Response: JSON with a string `reply`/`text`/`answer`/`output`/`message`
+ * field, or a plain-text body — shown in the result panel. Anything else
+ * just shows "sent ✓".
+ */
+export interface CustomTarget {
+  id: string;
+  name: string;
+  url: string;
+  mode: 'forward' | 'ai-forward';
+}
+
 export interface Settings {
   language: Language;          // 'auto' | 'zh' | 'en'
   provider: Provider;
@@ -37,6 +58,8 @@ export interface Settings {
     apiKey: string;
     model: string;
   };
+  /** Custom send targets for the ✏️ custom-instruction action. */
+  customTargets: CustomTarget[];
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -57,6 +80,7 @@ const DEFAULT_SETTINGS: Settings = {
     apiKey: '',
     model: 'gemini-3.1-flash-image',
   },
+  customTargets: [],
 };
 
 /**

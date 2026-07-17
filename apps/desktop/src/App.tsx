@@ -31,6 +31,8 @@ interface CapturePayload {
   id: string;
   text: string;
   explanation?: string;
+  /** ✏️ custom instruction behind the capture (v15+, Lens custom flow). */
+  instruction?: string;
   sourceUrl: string;
   sourceTitle: string;
   sourceKind: 'lens-chrome' | 'lens-mac' | 'manual';
@@ -241,6 +243,7 @@ export function App() {
           id: p.id,
           text: p.text,
           explanation: p.explanation,
+          instruction: p.instruction,
           sourceUrl: p.sourceUrl,
           sourceTitle: p.sourceTitle,
           sourceKind: p.sourceKind,

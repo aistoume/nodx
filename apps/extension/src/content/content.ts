@@ -206,13 +206,19 @@ function ensureHost(): ShadowRoot {
         position: fixed; z-index: 2147483647;
         pointer-events: auto;
         display: flex; gap: 6px; align-items: center;
-        width: 300px; padding: 6px;
+        width: 360px; padding: 6px;
         background: #fff; border-radius: 10px;
         box-shadow: 0 8px 28px rgba(0,0,0,0.22);
         opacity: 0; transform: translateY(4px);
         transition: opacity 120ms ease, transform 120ms ease;
       }
       .prompt-box.show { opacity: 1; transform: translateY(0); }
+      .prompt-box select {
+        flex-shrink: 0; max-width: 118px;
+        border: 1px solid #d1d5db; border-radius: 6px;
+        padding: 6px 4px; font-size: 12px; color: #1a1a1a;
+        background: #f9fafb; outline: none; font-family: inherit;
+      }
       .prompt-box input {
         flex: 1; min-width: 0; border: 1px solid #d1d5db; border-radius: 6px;
         padding: 7px 9px; font-size: 13px; color: #1a1a1a; outline: none;
@@ -414,6 +420,8 @@ function openPanelForCustom(
   if (rects.length === 0) return;
   const firstRect = rects[0];
   const panel = createPanelAt(firstRect.bottom + 8, firstRect.left, false);
+  // Remember the instruction so 💾 保存 can hand it to nodx structurally.
+  panel.dataset.instruction = instruction;
   wirePanelClicks(panel, selectedText, range);
   startStream(panel, selectedText, 'custom', range, instruction);
 }
@@ -421,24 +429,58 @@ function openPanelForCustom(
 /**
  * Small input popover anchored under the selection — the user types a
  * one-off instruction ("translate to French", "extract the dates", "rewrite
- * formally"…) for the selected text. Enter or ▸ runs it; Esc cancels.
+ * formally"…) for the selected text, and picks WHERE it goes: the built-in
+ * AI (default), the running nodx app, or any custom endpoint from settings.
+ * Enter or ▸ runs it; Esc cancels. The last-used destination is remembered.
+ *
+ * `target` passed to onSubmit: 'ai' | 'nodx' | 't:<customTarget.id>'.
  */
-function promptForInstruction(range: Range, onSubmit: (instruction: string) => void): void {
+const LAST_TARGET_KEY = 'lastCustomTarget';
+
+async function promptForInstruction(
+  range: Range,
+  onSubmit: (instruction: string, target: string) => void,
+): Promise<void> {
   const rects = range.getClientRects();
   if (rects.length === 0) return;
   const first = rects[0];
   const root = ensureHost();
   hideTrigger();
+
+  const settings = await getSettings();
   const box = document.createElement('div');
   box.className = 'prompt-box';
   box.style.top = `${Math.min(window.innerHeight - 80, Math.max(8, first.bottom + 8))}px`;
-  box.style.left = `${Math.min(window.innerWidth - 320, Math.max(8, first.left))}px`;
+  box.style.left = `${Math.min(window.innerWidth - 380, Math.max(8, first.left))}px`;
+
+  const sel = document.createElement('select');
+  const options: Array<[string, string]> = [
+    ['ai', t('targetAiOption')],
+    ['nodx', t('targetNodxOption')],
+    ...settings.customTargets
+      .filter((ct) => ct.url.trim())
+      .map((ct): [string, string] => [`t:${ct.id}`, `📮 ${ct.name || ct.url}`]),
+  ];
+  for (const [value, label] of options) {
+    const o = document.createElement('option');
+    o.value = value;
+    o.textContent = label;
+    sel.appendChild(o);
+  }
+  try {
+    const stored = await chrome.storage.local.get(LAST_TARGET_KEY);
+    const last = stored[LAST_TARGET_KEY];
+    if (typeof last === 'string' && options.some(([v]) => v === last)) sel.value = last;
+  } catch {
+    /* default stays 'ai' */
+  }
+
   const input = document.createElement('input');
   input.type = 'text';
   input.placeholder = t('customPh');
   const go = document.createElement('button');
   go.textContent = '▸';
-  box.append(input, go);
+  box.append(sel, input, go);
   root.appendChild(box);
   requestAnimationFrame(() => {
     box.classList.add('show');
@@ -448,18 +490,98 @@ function promptForInstruction(range: Range, onSubmit: (instruction: string) => v
   const submit = () => {
     const v = input.value.trim();
     if (!v) return;
+    try {
+      void chrome.storage.local.set({ [LAST_TARGET_KEY]: sel.value });
+    } catch {
+      /* remembering is best-effort */
+    }
     close();
-    onSubmit(v);
+    onSubmit(v, sel.value);
   };
   go.addEventListener('click', submit);
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); submit(); }
     else if (e.key === 'Escape') { e.preventDefault(); close(); }
   });
-  // Dismiss when focus leaves the box.
-  input.addEventListener('blur', () => setTimeout(() => {
-    if (root.activeElement !== go) close();
+  // Dismiss when focus leaves the whole box (input ↔ select ↔ ▸ moves stay).
+  box.addEventListener('focusout', () => setTimeout(() => {
+    if (!box.contains(root.activeElement)) close();
   }, 120));
+}
+
+/** Panel that opens in "status" mode (sending → outcome), no stream. */
+function openStatusPanel(range: Range): HTMLDivElement | null {
+  const rects = range.getClientRects();
+  if (rects.length === 0) return null;
+  const firstRect = rects[0];
+  const panel = createPanelAt(firstRect.bottom + 8, firstRect.left, false);
+  const body = panel.querySelector('.panel-body') as HTMLDivElement;
+  body.textContent = t('targetSending');
+  return panel;
+}
+
+/** ✏️ instruction → the running nodx app's inspiration pool (structured). */
+async function sendInstructionToNodx(
+  text: string,
+  range: Range,
+  instruction: string,
+): Promise<void> {
+  const panel = openStatusPanel(range);
+  if (!panel) return;
+  const body = panel.querySelector('.panel-body') as HTMLDivElement;
+  const outcome = await postTextToNodx(text, {
+    instruction,
+    sourceUrl: location.href,
+    sourceTitle: document.title,
+  });
+  if (outcome.ok) {
+    body.textContent = t('targetSentNodx');
+    recordTextAction(
+      { kind: 'save', label: `✏️ ${instruction}`, query: text },
+      text,
+    );
+  } else {
+    body.textContent = outcome.appMissing
+      ? t('targetNodxMissing')
+      : `⚠️ ${outcome.error ?? ''}`;
+  }
+}
+
+/** ✏️ instruction → a user-defined HTTP endpoint (via the service worker). */
+async function sendInstructionToTarget(
+  text: string,
+  range: Range,
+  instruction: string,
+  targetId: string,
+): Promise<void> {
+  const panel = openStatusPanel(range);
+  if (!panel) return;
+  const body = panel.querySelector('.panel-body') as HTMLDivElement;
+  let resp: { ok: boolean; reply?: string; error?: string } | undefined;
+  try {
+    resp = (await chrome.runtime.sendMessage({
+      type: 'SEND_TO_TARGET',
+      targetId,
+      instruction,
+      text,
+      url: location.href,
+      title: document.title,
+    })) as { ok: boolean; reply?: string; error?: string };
+  } catch (e) {
+    resp = { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+  if (!resp?.ok) {
+    body.textContent = `⚠️ ${resp?.error ?? 'failed'}`;
+    return;
+  }
+  if (resp.reply) {
+    body.innerHTML = mdToHtml(resp.reply);
+    const footer = panel.querySelector('.panel-footer') as HTMLDivElement;
+    footer.style.display = 'flex';
+    wirePanelClicks(panel, text, range);
+  } else {
+    body.textContent = t('targetSent');
+  }
 }
 
 /**
@@ -474,8 +596,14 @@ function handleTextChoice(choice: RadialChoice, text: string, range: Range): voi
       openPanelForNewSelection(text, range, 'short');
       break;
     case 'txt-custom':
-      promptForInstruction(range, (instruction) => {
-        openPanelForCustom(text, range, instruction);
+      void promptForInstruction(range, (instruction, target) => {
+        if (target === 'nodx') {
+          void sendInstructionToNodx(text, range, instruction);
+        } else if (target.startsWith('t:')) {
+          void sendInstructionToTarget(text, range, instruction, target.slice(2));
+        } else {
+          openPanelForCustom(text, range, instruction);
+        }
       });
       break;
     case 'txt-deepen':
@@ -613,8 +741,10 @@ async function handleSaveExplanation(panel: HTMLDivElement, selectedText: string
   // Go through the running app's local gateway (same channel as image
   // captures) rather than the `nodx://` scheme, so the snippet lands in the
   // install that's actually open.
+  const instruction = panel.dataset.instruction;
   const outcome = await postTextToNodx(selectedText, {
     explanation,
+    ...(instruction ? { instruction } : {}),
     sourceUrl: location.href,
     sourceTitle: document.title,
   });

@@ -26,6 +26,16 @@ describe('AttentionSchema', () => {
     expect(parsed.kind).toBe('quick');
   });
 
+  it('accepts a custom-instruction capture (v15) and keeps instruction optional', () => {
+    const a = {
+      ...BASE,
+      instruction: '翻译成法语',
+      explanation: 'La pensée par premiers principes',
+    };
+    expect(AttentionSchema.parse(a)).toMatchObject(a);
+    expect(AttentionSchema.parse(BASE).instruction).toBeUndefined();
+  });
+
   it('accepts empty text (image-only captures carry no selection)', () => {
     expect(() => AttentionSchema.parse({ ...BASE, text: '' })).not.toThrow();
   });

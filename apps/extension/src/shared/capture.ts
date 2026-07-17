@@ -111,6 +111,12 @@ export interface TextCaptureMeta {
   sourceTitle: string;
   /** Optional AI explanation (set when saving from the explanation panel). */
   explanation?: string;
+  /**
+   * The user's ✏️ custom instruction, when the snippet came from that flow.
+   * Stored structurally on the desktop side (attentions.instruction) so the
+   * inspiration pool shows WHAT was asked of this text, not just the text.
+   */
+  instruction?: string;
 }
 
 /**
@@ -135,6 +141,7 @@ export async function postTextToNodx(
       body: JSON.stringify({
         text,
         explanation: meta.explanation ?? '',
+        instruction: meta.instruction ?? '',
         sourceUrl: meta.sourceUrl,
         sourceTitle: meta.sourceTitle,
         capturedAt: Date.now(),
