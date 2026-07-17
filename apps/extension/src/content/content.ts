@@ -454,12 +454,14 @@ async function promptForInstruction(
   box.style.left = `${Math.min(window.innerWidth - 380, Math.max(8, first.left))}px`;
 
   const sel = document.createElement('select');
+  // 'nodx' (direct-to-inspiration-pool) is deliberately absent for now —
+  // the routing + sendInstructionToNodx path stays wired for when it
+  // returns. Plain-text labels, no emoji.
   const options: Array<[string, string]> = [
     ['ai', t('targetAiOption')],
-    ['nodx', t('targetNodxOption')],
     ...settings.customTargets
       .filter((ct) => ct.url.trim())
-      .map((ct): [string, string] => [`t:${ct.id}`, `📮 ${ct.name || ct.url}`]),
+      .map((ct): [string, string] => [`t:${ct.id}`, ct.name || ct.url]),
   ];
   for (const [value, label] of options) {
     const o = document.createElement('option');
