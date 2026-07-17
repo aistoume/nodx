@@ -326,7 +326,25 @@ function App() {
             >
               <option value="forward">{t('targetModeForward')}</option>
               <option value="ai-forward">{t('targetModeAiForward')}</option>
+              <option value="openai-compat">{t('targetModeOpenAI')}</option>
             </select>
+            {ct.mode === 'openai-compat' && (
+              <input
+                type="text"
+                className="target-model"
+                value={ct.model ?? ''}
+                placeholder={t('targetModelPh')}
+                onInput={(e) =>
+                  void save({
+                    customTargets: settings.customTargets.map((x) =>
+                      x.id === ct.id
+                        ? { ...x, model: (e.target as HTMLInputElement).value }
+                        : x,
+                    ),
+                  })
+                }
+              />
+            )}
             <button
               className="target-del"
               title="✕"
@@ -354,6 +372,7 @@ function App() {
           ＋ {t('targetAdd')}
         </button>
         <p className="hint">{t('targetsContract')}</p>
+        <p className="hint">{t('targetsCliHint')}</p>
       </section>
 
       <WheelEditor onSaved={() => setSavedAt(Date.now())} />

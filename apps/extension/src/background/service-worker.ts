@@ -16,7 +16,7 @@
  * disconnect early to abort (AbortSignal flows down to fetch).
  */
 
-import { getSettings, providerNeedsApiKey } from '../shared/settings.js';
+import { getSettings, providerNeedsApiKey, type CustomTarget } from '../shared/settings.js';
 import { buildExplainPrompt, buildDeepenPrompt } from '../shared/prompts.js';
 import { callAI, generateGeminiImage } from '../shared/providers.js';
 import { recordExplanation } from '../shared/history.js';
@@ -505,6 +505,13 @@ async function sendToTarget(
       return { ok: false, error: t('targetMissing') };
     }
 
+    // 'openai-compat': the endpoint IS the model — speak OpenAI
+    // chat-completions to a local port (Ollama :11434, LM Studio :1234,
+    // vLLM, a CLI wrapper…) and surface its answer directly.
+    if (target.mode === 'openai-compat') {
+      return openAICompatCall(target, msg);
+    }
+
     // 'ai-forward': run the instruction through the built-in AI first, so
     // the endpoint receives an adapted `answer` alongside the raw inputs.
     let answer: string | undefined;
@@ -559,6 +566,68 @@ async function sendToTarget(
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+/**
+ * 'openai-compat' target: POST OpenAI chat-completions to the endpoint and
+ * return `choices[0].message.content`. Local models can be slow to first
+ * token, so the timeout is much longer than the webhook modes'.
+ */
+async function openAICompatCall(
+  target: CustomTarget,
+  msg: SendToTargetMessage,
+): Promise<{ ok: boolean; reply?: string; error?: string }> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 120000);
+  let res: Response;
+  try {
+    res = await fetch(target.url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        ...(target.model?.trim() ? { model: target.model.trim() } : {}),
+        messages: [
+          {
+            role: 'user',
+            content: `${msg.instruction.trim()}\n\n---\nText:\n${msg.text}`,
+          },
+        ],
+        stream: false,
+      }),
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+  clearTimeout(timer);
+
+  let j: unknown;
+  try {
+    j = await res.json();
+  } catch {
+    return { ok: false, error: `${target.name || target.url}: HTTP ${res.status} (non-JSON body)` };
+  }
+  const o = j as {
+    error?: { message?: string } | string;
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  if (!res.ok || o.error) {
+    const detail =
+      typeof o.error === 'string' ? o.error : o.error?.message ?? `HTTP ${res.status}`;
+    return { ok: false, error: `${target.name || target.url}: ${detail}` };
+  }
+  const reply = o.choices?.[0]?.message?.content?.trim() ?? '';
+  if (!reply) return { ok: false, error: `${target.name || target.url}: empty completion` };
+
+  await recordExplanation({
+    selectedText: msg.text,
+    explanation: reply,
+    sourceUrl: msg.url,
+    sourceTitle: msg.title,
+    mode: 'custom',
+  });
+  return { ok: true, reply };
 }
 
 /**

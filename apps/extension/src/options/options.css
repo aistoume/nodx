@@ -181,10 +181,12 @@ select { width: auto; min-width: 200px; }
 /* 📮 Custom send targets (✏️ instruction action) */
 .target-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
   margin-bottom: 6px;
 }
+.target-row .target-model { flex: 0 0 140px; }
 .target-row .target-name { flex: 0 0 110px; }
 .target-row .target-url { flex: 1; min-width: 0; }
 .target-row select { flex: 0 0 auto; width: auto; }

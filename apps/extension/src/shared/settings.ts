@@ -17,19 +17,27 @@ export function providerNeedsApiKey(p: Provider): boolean {
  * be POSTed to any HTTP endpoint the user runs — their own LLM proxy, a local
  * automation server, a work tool's webhook…
  *
- * POST body (JSON): { instruction, text, answer?, sourceUrl, sourceTitle, capturedAt }
- *   - mode 'forward':    sent as-is, no AI involved. `answer` absent.
- *   - mode 'ai-forward': the built-in AI runs the instruction first and its
- *                        output is included as `answer` (AI 适配后再转发).
- * Response: JSON with a string `reply`/`text`/`answer`/`output`/`message`
- * field, or a plain-text body — shown in the result panel. Anything else
- * just shows "sent ✓".
+ * Modes:
+ *   - 'forward':       POST our JSON {instruction, text, sourceUrl, sourceTitle,
+ *                      capturedAt} as-is, no AI involved.
+ *   - 'ai-forward':    the built-in AI runs the instruction first and its
+ *                      output is included as `answer` (AI 适配后再转发).
+ *   - 'openai-compat': the endpoint IS the model — speak OpenAI
+ *                      chat-completions to it (Ollama / LM Studio / vLLM /
+ *                      any local CLI serving an OpenAI-style port). `model`
+ *                      goes into the request body when set.
+ * Response ('forward'/'ai-forward'): JSON with a string `reply`/`text`/
+ * `answer`/`output`/`message` field, or a plain-text body — shown in the
+ * result panel; anything else just shows "sent ✓". For 'openai-compat' the
+ * reply is `choices[0].message.content`.
  */
 export interface CustomTarget {
   id: string;
   name: string;
   url: string;
-  mode: 'forward' | 'ai-forward';
+  mode: 'forward' | 'ai-forward' | 'openai-compat';
+  /** Model name for 'openai-compat' (Ollama requires one, e.g. "llama3.2"). */
+  model?: string;
 }
 
 export interface Settings {

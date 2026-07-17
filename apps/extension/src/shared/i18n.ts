@@ -44,8 +44,11 @@ const STRINGS = {
     targetName: '名称',
     targetModeForward: '直接转发',
     targetModeAiForward: 'AI 先适配再转发',
+    targetModeOpenAI: 'OpenAI 兼容接口',
+    targetModelPh: '模型名，如 llama3.2',
     targetAdd: '添加目标',
-    targetsContract: '契约：POST JSON {instruction, text, answer?, sourceUrl, sourceTitle, capturedAt}。响应带 reply/text/answer/output/message 字符串字段（或纯文本）时会显示在结果面板；否则只提示已发送。',
+    targetsContract: '契约：直接转发 / AI 先适配 → POST JSON {instruction, text, answer?, sourceUrl, sourceTitle, capturedAt}，响应带 reply/text/answer/output/message 字符串字段（或纯文本）时显示在结果面板。OpenAI 兼容接口 → 按 chat-completions 协议调本地端口（Ollama http://127.0.0.1:11434/v1/chat/completions、LM Studio :1234 等），回答直接进面板。',
+    targetsCliHint: '💡 想用本地 Claude CLI（Claude Code 订阅、免 key）？不用配目标——把上面 AI Provider 切到 nodx（本地网关），「问 AI」就会走 127.0.0.1:8787（nodx 桌面 App，或仓库里 pnpm cli-gateway）。',
 
     // Service worker
     missingApiKey: '请先在 Settings 配置 API Key',
@@ -148,8 +151,11 @@ const STRINGS = {
     targetName: 'Name',
     targetModeForward: 'Forward as-is',
     targetModeAiForward: 'AI adapts, then forward',
+    targetModeOpenAI: 'OpenAI-compatible API',
+    targetModelPh: 'model, e.g. llama3.2',
     targetAdd: 'Add target',
-    targetsContract: 'Contract: POST JSON {instruction, text, answer?, sourceUrl, sourceTitle, capturedAt}. If the response carries a reply/text/answer/output/message string field (or a plain-text body) it is shown in the result panel; otherwise you just get a "sent" tick.',
+    targetsContract: 'Contract: forward / AI-adapt modes POST JSON {instruction, text, answer?, sourceUrl, sourceTitle, capturedAt}; a reply/text/answer/output/message string field (or plain-text body) in the response is shown in the result panel. OpenAI-compatible mode speaks chat-completions to a local port (Ollama http://127.0.0.1:11434/v1/chat/completions, LM Studio :1234, …) and shows the completion.',
+    targetsCliHint: '💡 Want your local Claude CLI (Claude Code subscription, no key)? No target needed — switch the AI Provider above to nodx (local gateway) and "Ask AI" goes through 127.0.0.1:8787 (nodx desktop, or pnpm cli-gateway from the repo).',
 
     // Service worker
     missingApiKey: 'Please set your API key in Settings first.',
