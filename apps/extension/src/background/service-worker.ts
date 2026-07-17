@@ -17,6 +17,8 @@
  */
 
 import { getSettings, providerNeedsApiKey, type CustomTarget } from '../shared/settings.js';
+import { SEARCH_PRESETS } from '../shared/search-presets.js';
+import { getWheelConfig } from '../shared/wheel.js';
 import { buildExplainPrompt, buildDeepenPrompt } from '../shared/prompts.js';
 import { callAI, generateGeminiImage } from '../shared/providers.js';
 import { recordExplanation } from '../shared/history.js';
@@ -44,18 +46,46 @@ interface StartMessage {
  * More actions (save, send-to-target, generate) can join this JSON protocol
  * later — keep the contract in sync with `runCustomDirective`.
  */
-const CUSTOM_DISPATCH_PROTOCOL = `You can either ANSWER the instruction directly, OR execute an action:
+function dispatchProtocolHeader(): string {
+  return `You can either ANSWER the instruction directly, OR execute an action:
 
-When the instruction asks to SEARCH / look up / find / open something on a website or the web (e.g. "search this on arXiv", "在谷歌学术找找相关论文", "GitHub 上搜同类项目"), reply with ONLY this one-line JSON and absolutely nothing else:
-{"action":"open_url","url":"<real search-results URL for that site with the query filled in>","note":"<one short sentence describing what you opened, in the instruction's language>"}
-Use the site's real search URL pattern, e.g.
-  https://arxiv.org/search/?query=...&searchtype=all
-  https://scholar.google.com/scholar?q=...
-  https://github.com/search?q=...&type=repositories
-  https://www.google.com/search?q=...
-URL-encode the query. If unsure of a site's search URL pattern, fall back to https://www.google.com/search?q=site%3A<domain>+<query>.
+When the instruction asks to SEARCH / look up / find / open something on a website or the web (e.g. "search this on arXiv", "在谷歌学术找找相关论文", "打开 temu 找这东西"), reply with ONLY this one-line JSON and absolutely nothing else:
+{"action":"open_url","url":"<search-results URL with the query filled in>","note":"<one short sentence describing what you opened, in the instruction's language>"}`;
+}
+
+/**
+ * Compose the dispatch protocol with GROUNDED search-URL prefixes: the
+ * verified preset library plus any search prefixes from the user's own
+ * wheel config. Models hallucinate site URL patterns (e.g. inventing
+ * temu.com/search?q= — a dead page); a matched site MUST use the exact
+ * prefix below, guessing is only allowed for unlisted sites it is sure of.
+ */
+async function buildDispatchProtocol(): Promise<string> {
+  const prefixes = new Map<string, string>();
+  for (const p of SEARCH_PRESETS) prefixes.set(p.label, p.url);
+  try {
+    const { spokes } = await getWheelConfig();
+    for (const s of spokes) {
+      const items = [s, ...s.children];
+      for (const it of items) {
+        if (it.action?.kind === 'search' && it.action.urlPrefix.trim() && it.label) {
+          prefixes.set(it.label, it.action.urlPrefix);
+        }
+      }
+    }
+  } catch {
+    /* presets alone are fine */
+  }
+  const list = [...prefixes.entries()].map(([label, url]) => `  ${label}: ${url}`).join('\n');
+  return `${dispatchProtocolHeader()}
+
+Known site search prefixes — when the target site matches one of these, you MUST use the exact prefix and append the URL-encoded query (never invent a different pattern for these sites):
+${list}
+For a site NOT in this list, use its real search URL only if you are certain of the pattern; otherwise fall back to https://www.google.com/search?q=site%3A<domain>+<query>.
+Make the query practical for that site's audience — translate or simplify it when appropriate (e.g. Chinese keywords for Taobao/JD, concise product words for shopping sites instead of academic phrases).
 
 For every other kind of instruction (translate, explain, rewrite, extract, summarise, answer a question…), just do the task and output the result directly — no JSON, no mention of this protocol.`;
+}
 
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== 'EXPLAIN') return;
@@ -87,7 +117,7 @@ async function handle(
       msg.mode === 'custom'
         ? // The user's instruction + the dispatch protocol: the model either
           // answers, or emits an executable open_url directive (see above).
-          `${CUSTOM_DISPATCH_PROTOCOL}\n\n---\nInstruction: ${(msg.customPrompt ?? '').trim()}\n\nText:\n${msg.text}`
+          `${await buildDispatchProtocol()}\n\n---\nInstruction: ${(msg.customPrompt ?? '').trim()}\n\nText:\n${msg.text}`
         : msg.mode === 'short'
           ? buildExplainPrompt(msg.text, locale)
           : buildDeepenPrompt(msg.text, locale);
@@ -171,7 +201,7 @@ async function handle(
 }
 
 /**
- * Parse + execute a custom-instruction directive (see CUSTOM_DISPATCH_PROTOCOL).
+ * Parse + execute a custom-instruction directive (see buildDispatchProtocol).
  * Returns the note to display in the panel, or null when the text isn't a
  * valid directive (caller falls back to showing it as a normal answer).
  */
