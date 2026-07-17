@@ -1,9 +1,33 @@
 {
-  "name": "@nodx/cli-gateway",
-  "version": "0.0.0",
-  "private": true,
+  "name": "nodx-lens-gateway",
+  "version": "0.1.0",
   "type": "module",
-  "description": "Local AI gateway backed by the Claude Code CLI (claude -p). Speaks the same HTTP contract as @nodx/ai-gateway, but instead of an Anthropic API key it shells out to your authenticated Claude Code session (subscription or key). Run this instead of the worker to use nodx on your Claude subscription — no API key in nodx.",
+  "description": "Local AI gateway backed by the Claude Code CLI (claude -p). Lets nodx Lens (Chrome extension) and nodx desktop talk to your locally-authenticated Claude Code session — subscription or key, no API key pasted anywhere. Zero dependencies.",
+  "bin": {
+    "nodx-lens-gateway": "src/server.mjs"
+  },
+  "files": [
+    "src/server.mjs",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aistoume/nodx.git",
+    "directory": "workers/cli-gateway"
+  },
+  "homepage": "https://aicon.solutions/nodx/lens.html",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "chrome-extension",
+    "local-ai",
+    "gateway",
+    "nodx"
+  ],
   "scripts": {
     "dev": "node src/server.mjs",
     "start": "node src/server.mjs"

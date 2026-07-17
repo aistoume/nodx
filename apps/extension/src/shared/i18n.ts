@@ -48,7 +48,14 @@ const STRINGS = {
     targetModelPh: '模型名，如 llama3.2',
     targetAdd: '添加目标',
     targetsContract: '契约：直接转发 / AI 先适配 → POST JSON {instruction, text, answer?, sourceUrl, sourceTitle, capturedAt}，响应带 reply/text/answer/output/message 字符串字段（或纯文本）时显示在结果面板。OpenAI 兼容接口 → 按 chat-completions 协议调本地端口（Ollama http://127.0.0.1:11434/v1/chat/completions、LM Studio :1234 等），回答直接进面板。',
-    targetsCliHint: '💡 想用本地 Claude CLI（Claude Code 订阅、免 key）？不用配目标——把上面 AI Provider 切到 nodx（本地网关），「问 AI」就会走 127.0.0.1:8787（nodx 桌面 App，或仓库里 pnpm cli-gateway）。',
+    targetsCliHint: '💡 想用本地 Claude CLI（Claude Code 订阅、免 key）？不用配目标——终端跑 `npx nodx-lens-gateway`，再把上面 AI Provider 切到 nodx（本地网关），「问 AI」就会走 127.0.0.1:8787。装了 nodx 桌面 App 的话它自带网关，连命令都不用跑。',
+    nativeSection: '本地 Claude 直连（免网关命令）',
+    nativeHelp: 'Chrome 需要时自动拉起 claude CLI——无端口、无终端窗口。一次性安装：跑一遍仓库里的 apps/extension/native-host/install.sh，然后点下面按钮授权。网关(:8787)不在时自动走这条路。',
+    nativeConnect: '连接本地 Claude',
+    nativeChecking: '检测中…',
+    nativeOk: '✓ native host 就绪 — 网关不在时自动直连本地 Claude',
+    nativeNoPerm: '尚未授权 nativeMessaging — 点「连接本地 Claude」授权',
+    nativeNoHost: '⚠ 已授权，但找不到 native host — 先跑一次 install.sh，并重启 Chrome',
 
     // Service worker
     missingApiKey: '请先在 Settings 配置 API Key',
@@ -155,7 +162,14 @@ const STRINGS = {
     targetModelPh: 'model, e.g. llama3.2',
     targetAdd: 'Add target',
     targetsContract: 'Contract: forward / AI-adapt modes POST JSON {instruction, text, answer?, sourceUrl, sourceTitle, capturedAt}; a reply/text/answer/output/message string field (or plain-text body) in the response is shown in the result panel. OpenAI-compatible mode speaks chat-completions to a local port (Ollama http://127.0.0.1:11434/v1/chat/completions, LM Studio :1234, …) and shows the completion.',
-    targetsCliHint: '💡 Want your local Claude CLI (Claude Code subscription, no key)? No target needed — switch the AI Provider above to nodx (local gateway) and "Ask AI" goes through 127.0.0.1:8787 (nodx desktop, or pnpm cli-gateway from the repo).',
+    targetsCliHint: '💡 Want your local Claude CLI (Claude Code subscription, no key)? No target needed — run `npx nodx-lens-gateway` in a terminal, then switch the AI Provider above to nodx (local gateway); "Ask AI" goes through 127.0.0.1:8787. If you have the nodx desktop app, it ships the gateway built-in — no command needed.',
+    nativeSection: 'Direct local Claude (no gateway command)',
+    nativeHelp: 'Chrome spawns the claude CLI on demand — no port, no terminal window. One-time setup: run apps/extension/native-host/install.sh from the repo, then grant the permission below. Used automatically whenever the gateway (:8787) is down.',
+    nativeConnect: 'Connect local Claude',
+    nativeChecking: 'Checking…',
+    nativeOk: '✓ native host ready — falls back to local Claude when the gateway is down',
+    nativeNoPerm: 'nativeMessaging not granted yet — click "Connect local Claude"',
+    nativeNoHost: '⚠ Permission granted, but the native host was not found — run install.sh once and restart Chrome',
 
     // Service worker
     missingApiKey: 'Please set your API key in Settings first.',

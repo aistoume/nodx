@@ -174,6 +174,8 @@ function App() {
         <p className="hint">{helps.help}</p>
       </section>
 
+      {settings.provider === 'nodx' && <NativeBridge />}
+
       <section>
         <label>{t('explainModelLabel')}</label>
         <select
@@ -379,6 +381,86 @@ function App() {
 
       {savedAt && <div className="saved">{t('savedAt')} · {new Date(savedAt).toLocaleTimeString()}</div>}
     </div>
+  );
+}
+
+/**
+ * "Direct local Claude" block, shown for the nodx provider — grants the
+ * optional nativeMessaging permission and pings the registered host
+ * (solutions.aicon.nodx_lens). With both in place, the provider falls back
+ * to spawning `claude -p` via Chrome when the :8787 gateway is down.
+ */
+function NativeBridge() {
+  const [state, setState] = useState<'checking' | 'no-perm' | 'ok' | 'no-host'>('checking');
+
+  const check = async () => {
+    setState('checking');
+    let has = false;
+    try {
+      has = await chrome.permissions.contains({ permissions: ['nativeMessaging'] });
+    } catch {
+      /* treated as not granted */
+    }
+    if (!has) {
+      setState('no-perm');
+      return;
+    }
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const port = chrome.runtime.connectNative('solutions.aicon.nodx_lens');
+        let settled = false;
+        port.onMessage.addListener(() => {
+          settled = true;
+          try {
+            port.disconnect();
+          } catch {
+            /* gone */
+          }
+          resolve();
+        });
+        port.onDisconnect.addListener(() => {
+          if (!settled) reject(new Error(chrome.runtime.lastError?.message ?? 'disconnected'));
+        });
+        port.postMessage({ id: 'ping', type: 'ping' });
+      });
+      setState('ok');
+    } catch {
+      setState('no-host');
+    }
+  };
+
+  useEffect(() => {
+    void check();
+  }, []);
+
+  const connect = async () => {
+    try {
+      const granted = await chrome.permissions.request({ permissions: ['nativeMessaging'] });
+      if (granted) await check();
+    } catch {
+      /* user dismissed the prompt */
+    }
+  };
+
+  return (
+    <section>
+      <label>{t('nativeSection')}</label>
+      <p className="hint">{t('nativeHelp')}</p>
+      <p className={`hint${state === 'no-host' ? ' wheel-error' : ''}`}>
+        {state === 'checking'
+          ? t('nativeChecking')
+          : state === 'ok'
+            ? t('nativeOk')
+            : state === 'no-host'
+              ? t('nativeNoHost')
+              : t('nativeNoPerm')}
+      </p>
+      {state !== 'ok' && state !== 'checking' && (
+        <button className="target-add" onClick={() => void connect()}>
+          {t('nativeConnect')}
+        </button>
+      )}
+    </section>
   );
 }
 

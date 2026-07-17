@@ -273,7 +273,67 @@ async function wakeNodxAndWait(): Promise<boolean> {
 
 const NODX_DOWN_MSG =
   '本地 nodx 网关未运行（127.0.0.1:8787），尝试用 nodx:// 唤起桌面 app 也没等到它上线 — ' +
-  '请手动打开 nodx 桌面版，或在 nodx 目录跑 `pnpm cli-gateway`（仅网关）/ `pnpm start:cli`（网关+桌面）后重试。';
+  '三条路任选：① 打开 nodx 桌面版；② 终端跑 `npx nodx-lens-gateway`；' +
+  '③ 装 native host（免终端直连本地 Claude，见 ⚙ 设置 nodx provider 区）。';
+
+// ── Native-messaging fallback (v1.0.4) ─────────────────────────────────
+//
+// The zero-terminal bridge for "extension + claude CLI only" users: Chrome
+// spawns the registered host (apps/extension/native-host) on demand and we
+// speak {type:'complete'} messages to it — no port, no gateway process.
+// Requires the optional `nativeMessaging` permission (granted via the
+// options page) and a one-time run of the host's install.sh.
+
+const NATIVE_HOST = 'solutions.aicon.nodx_lens';
+
+async function hasNativePermission(): Promise<boolean> {
+  try {
+    return await chrome.permissions.contains({ permissions: ['nativeMessaging'] });
+  } catch {
+    return false;
+  }
+}
+
+/** One request/reply over a native-messaging port, closed after the call. */
+function callNodxNative(
+  model: string,
+  prompt: string,
+  image?: AnthropicImageInput,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let port: chrome.runtime.Port;
+    try {
+      port = chrome.runtime.connectNative(NATIVE_HOST);
+    } catch (e) {
+      reject(e instanceof Error ? e : new Error(String(e)));
+      return;
+    }
+    let settled = false;
+    port.onMessage.addListener((msg: { ok?: boolean; text?: string; error?: string }) => {
+      settled = true;
+      try {
+        port.disconnect();
+      } catch {
+        /* already gone */
+      }
+      if (msg?.ok) resolve(msg.text ?? '');
+      else reject(new Error(msg?.error ?? 'native host error'));
+    });
+    port.onDisconnect.addListener(() => {
+      if (settled) return;
+      reject(
+        new Error(chrome.runtime.lastError?.message ?? 'native host disconnected'),
+      );
+    });
+    port.postMessage({
+      id: `c-${Date.now()}`,
+      type: 'complete',
+      model,
+      prompt,
+      ...(image ? { imageBase64: image.base64, imageMime: image.mime } : {}),
+    });
+  });
+}
 
 export async function callNodxCli(
   model: string,
@@ -304,8 +364,24 @@ export async function callNodxCli(
   try {
     res = await post();
   } catch {
-    // Gateway down — deep-link launch nodx desktop, wait for /health,
-    // then retry the call once.
+    // Gateway down. Preferred fallback: the native-messaging host — Chrome
+    // spawns `claude -p` directly, zero terminal. Only then try waking the
+    // desktop app (whose in-proc gateway serves :8787) and retry once.
+    if (await hasNativePermission()) {
+      try {
+        const text = await callNodxNative(model, prompt, image);
+        if (text) onChunk(text);
+        return text;
+      } catch (e) {
+        // "host not found/disconnected" → keep falling back. A REAL claude
+        // error (not logged in, timeout…) is worth surfacing as-is instead
+        // of burying it under the generic gateway-down message.
+        const m = e instanceof Error ? e.message : String(e);
+        if (!/native messaging host|host disconnected|forbidden/i.test(m)) {
+          throw new Error(`本地 Claude（native host）出错：${m}`);
+        }
+      }
+    }
     if (!(await wakeNodxAndWait())) throw new Error(NODX_DOWN_MSG);
     try {
       res = await post();

@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // ──────────────────────────────────────────────────────────────────────
 // nodx CLI gateway — local AI gateway backed by the Claude Code CLI.
 //
