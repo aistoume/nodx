@@ -42,7 +42,7 @@ export interface HighlightQA {
   error?: string;
 }
 
-export type HighlightActionKind = 'search' | 'shopping' | 'generate' | 'save';
+export type HighlightActionKind = 'search' | 'shopping' | 'generate' | 'save' | 'instruct';
 
 export interface HighlightAction {
   /** Which action produced this record. */
@@ -260,6 +260,27 @@ export async function addAction(h: Highlight): Promise<void> {
 export async function deleteAction(id: string): Promise<void> {
   const list = await listActions();
   await chrome.storage.local.set({ [ACTIONS_KEY]: list.filter((x) => x.id !== id) });
+}
+
+/**
+ * Append a Q&A turn to a record in the GLOBAL action log (✏️ instruct
+ * follow-ups land on the same card as the initial run). Optionally updates
+ * the record's action.url — a follow-up that resolved into an open_url
+ * (clarify → answer → tab opened) makes the card reopenable.
+ */
+export async function appendActionQA(
+  actionId: string,
+  question: string,
+  answer: string,
+  url?: string,
+): Promise<void> {
+  const list = await listActions();
+  const h = list.find((x) => x.id === actionId);
+  if (!h) return;
+  h.qa.push({ id: crypto.randomUUID(), question, answer, createdAt: Date.now() });
+  if (url && h.action) h.action.url = url;
+  await chrome.storage.local.set({ [ACTIONS_KEY]: list });
+  void enforceStorageBudget();
 }
 
 /** Subscribe to the global action log — fires on add/delete. */

@@ -435,7 +435,13 @@ function recordAction(
   action: HighlightAction,
   thumbnailDataUrl: string,
   dims: { width: number; height: number },
-  opts: { openPanel?: boolean; rect?: MarqueeRect; onBox?: Highlight } = {},
+  opts: {
+    openPanel?: boolean;
+    rect?: MarqueeRect;
+    onBox?: Highlight;
+    /** Seed Q&A turns (✏️ instruct runs store instruction+answer here). */
+    qa?: Highlight['qa'];
+  } = {},
 ): string {
   // Re-running an action FROM an existing box: log the run on that box
   // (chip updates via the storage subscription) instead of giving the new
@@ -469,7 +475,7 @@ function recordAction(
     thumbnailDataUrl,
     imageWidth: dims.width,
     imageHeight: dims.height,
-    qa: [],
+    qa: opts.qa ?? [],
     syncedToNodx: false,
     action,
   };
@@ -492,8 +498,12 @@ function recordAction(
  * side-panel card, mirroring what image actions get. Text has no crop, so
  * the thumbnail is the snippet itself rendered onto a small canvas card.
  */
-export function recordTextAction(action: HighlightAction, text: string): void {
-  recordAction(action, textThumbnail(text), { width: 320, height: 180 });
+export function recordTextAction(
+  action: HighlightAction,
+  text: string,
+  qa?: Highlight['qa'],
+): string {
+  return recordAction(action, textThumbnail(text), { width: 320, height: 180 }, { qa });
 }
 
 /** Render a text snippet as a small quote-card PNG data URL. */

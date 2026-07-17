@@ -371,7 +371,9 @@ function ActionCard({
         ? '🛒 购物'
         : a.kind === 'save'
           ? '💡 保存'
-          : '🎨 生成';
+          : a.kind === 'instruct'
+            ? '✏️ 指令'
+            : '🎨 生成';
   const openUrl = () => {
     if (a.url) chrome.tabs.create({ url: a.url });
   };
@@ -420,6 +422,27 @@ function ActionCard({
           </button>
         )}
       </div>
+      {/* ✏️ instruct records carry the conversation — Q as summary, A inside. */}
+      {item.qa.length > 0 && (
+        <div style={{ fontSize: '12px', margin: '2px 0 4px' }}>
+          {item.qa.map((q) => (
+            <details key={q.id} style={{ marginBottom: '4px' }}>
+              <summary style={{ cursor: 'pointer', color: '#374151' }}>{q.question}</summary>
+              <div
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  color: '#4b5563',
+                  marginTop: '4px',
+                  maxHeight: '220px',
+                  overflowY: 'auto',
+                }}
+              >
+                {q.answer}
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -456,7 +479,9 @@ function HighlightCard({
           ? '🎨 生成'
           : action?.kind === 'save'
             ? '💡 保存'
-            : null;
+            : action?.kind === 'instruct'
+              ? '✏️ 指令'
+              : null;
 
   const submit = useCallback(async () => {
     const q = question.trim();
@@ -555,7 +580,7 @@ function HighlightCard({
         </button>
       </div>
 
-      {action && (action.kind === 'search' || action.kind === 'shopping') && (
+      {action && (action.kind === 'search' || action.kind === 'shopping' || action.kind === 'instruct') && (
         <div
           style={{
             display: 'flex',

@@ -163,8 +163,13 @@ async function handle(
     // any mismatch the buffered text is released as a normal answer.
     // (cast: TS can't see the closure writes callAI made via onChunk)
     let display = full;
+    let actionUrl: string | undefined;
     if ((verdict as 'directive' | 'prose' | null) === 'directive') {
-      display = (await runCustomDirective(full)) ?? full;
+      const r = await runCustomDirective(full);
+      if (r) {
+        display = r.display;
+        actionUrl = r.url;
+      }
     }
 
     await recordExplanation({
@@ -176,7 +181,7 @@ async function handle(
     });
 
     try {
-      port.postMessage({ type: 'DONE', full: display });
+      port.postMessage({ type: 'DONE', full: display, ...(actionUrl ? { actionUrl } : {}) });
     } catch {
       /* disconnected */
     }
@@ -202,10 +207,12 @@ async function handle(
 
 /**
  * Parse + execute a custom-instruction directive (see buildDispatchProtocol).
- * Returns the note to display in the panel, or null when the text isn't a
+ * Returns the display note + the opened URL, or null when the text isn't a
  * valid directive (caller falls back to showing it as a normal answer).
  */
-async function runCustomDirective(raw: string): Promise<string | null> {
+async function runCustomDirective(
+  raw: string,
+): Promise<{ display: string; url?: string } | null> {
   let body = raw.trim();
   // Tolerate a markdown code fence around the JSON.
   const fenced = body.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
@@ -229,10 +236,13 @@ async function runCustomDirective(raw: string): Promise<string | null> {
   try {
     await chrome.tabs.create({ url: parsed.href, active: true });
   } catch (e) {
-    return `⚠️ ${e instanceof Error ? e.message : String(e)}\n\n${parsed.href}`;
+    return {
+      display: `⚠️ ${e instanceof Error ? e.message : String(e)}\n\n${parsed.href}`,
+      url: parsed.href,
+    };
   }
   const note = typeof obj.note === 'string' && obj.note.trim() ? obj.note.trim() : '已打开搜索结果';
-  return `🔗 ${note}\n\n[${parsed.href}](${parsed.href})`;
+  return { display: `🔗 ${note}\n\n[${parsed.href}](${parsed.href})`, url: parsed.href };
 }
 
 // Open options on first install

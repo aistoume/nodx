@@ -26,6 +26,7 @@ import {
   showToast,
 } from './marquee.js';
 import { installHighlightsLayer } from './highlights-layer.js';
+import { appendActionQA } from '../shared/highlights.js';
 import { showWheelMenu } from './radial-menu.js';
 import {
   DEFAULT_EXPLAIN_PROMPT,
@@ -843,7 +844,7 @@ function followUp(panel: HTMLDivElement, selectedText: string, question: string)
   let received = '';
   let first = true;
   let settled = false;
-  port.onMessage.addListener((msg: { type: string; text?: string; full?: string; error?: string }) => {
+  port.onMessage.addListener((msg: { type: string; text?: string; full?: string; actionUrl?: string; error?: string }) => {
     if (msg.type === 'CHUNK' && typeof msg.text === 'string') {
       if (first) {
         first = false;
@@ -859,6 +860,17 @@ function followUp(panel: HTMLDivElement, selectedText: string, question: string)
       aEl.innerHTML = mdToHtml(received);
       aEl.scrollIntoView({ block: 'nearest' });
       st.turns.push({ q: question, a: received });
+      // Follow-ups extend the SAME side-panel record as the initial run;
+      // a directive that opened a page also makes the card reopenable.
+      const recId = panel.dataset.recordId;
+      if (recId) {
+        void appendActionQA(
+          recId,
+          question,
+          received,
+          typeof msg.actionUrl === 'string' ? msg.actionUrl : undefined,
+        );
+      }
       activePort = null;
     } else if (msg.type === 'ERROR') {
       settled = true;
@@ -1009,7 +1021,7 @@ function startStream(
   let received = '';
   let firstChunk = true;
 
-  port.onMessage.addListener((msg: { type: string; text?: string; full?: string; error?: string }) => {
+  port.onMessage.addListener((msg: { type: string; text?: string; full?: string; actionUrl?: string; error?: string }) => {
     if (msg.type === 'CHUNK' && typeof msg.text === 'string') {
       if (firstChunk) {
         firstChunk = false;
@@ -1042,6 +1054,21 @@ function startStream(
       });
       panelChats.set(panel, chat);
       revealFollowup(panel);
+      // ✏️ instruct runs land in the side-panel record stream too — one
+      // card per conversation; follow-ups append to it (see followUp).
+      if (mode === 'custom' && customPrompt) {
+        const recId = recordTextAction(
+          {
+            kind: 'instruct',
+            label: '指令',
+            query: customPrompt,
+            ...(typeof msg.actionUrl === 'string' ? { url: msg.actionUrl } : {}),
+          },
+          selectedText,
+          [{ id: crypto.randomUUID(), question: customPrompt, answer: received, createdAt: Date.now() }],
+        );
+        panel.dataset.recordId = recId;
+      }
       if (mode === 'short' || mode === 'custom') {
         // Create persistent annotation under the original selection
         const id = createAnnotation(selectedText, received, range);
