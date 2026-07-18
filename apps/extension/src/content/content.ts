@@ -749,7 +749,9 @@ function openPanelForAnnotation(ann: Annotation) {
   const firstRect = rects[0];
   const panel = createPanelAt(firstRect.bottom + 8, firstRect.left, false);
   const body = panel.querySelector('.panel-body') as HTMLDivElement;
-  body.textContent = ann.explanation;
+  // Stored explanations are Markdown (a directive run stores 「🔗 note +
+  // [host ↗](url)」) — render them, don't show raw markup.
+  body.innerHTML = mdToHtml(ann.explanation);
   const footer = panel.querySelector('.panel-footer') as HTMLDivElement;
   footer.style.display = 'flex';
   activeAnnotationId = ann.id;

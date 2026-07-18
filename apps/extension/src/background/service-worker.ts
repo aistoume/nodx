@@ -168,7 +168,7 @@ async function handle(
     let display = full;
     let actionUrl: string | undefined;
     if (msg.mode === 'custom') {
-      const r = await runCustomDirective(full);
+      const r = runCustomDirective(full);
       if (r) {
         display = r.display;
         actionUrl = r.url;
@@ -187,6 +187,16 @@ async function handle(
       port.postMessage({ type: 'DONE', full: display, ...(actionUrl ? { actionUrl } : {}) });
     } catch {
       /* disconnected */
+    }
+    // Open the directive's tab only AFTER the panel has its DONE — creating
+    // the tab first deactivates the page mid-delivery, which occasionally
+    // drops the port message and strands the panel on 「连接中断」.
+    if (actionUrl) {
+      try {
+        await chrome.tabs.create({ url: actionUrl, active: true });
+      } catch (e) {
+        console.warn('[nodx Lens] directive tab open failed:', e);
+      }
     }
     try {
       port.disconnect();
@@ -231,20 +241,14 @@ function parseDirectiveJson(body: string): { url: URL; note?: string } | null {
   };
 }
 
-async function execDirective(d: {
+function execDirective(d: {
   url: URL;
   note?: string;
-}): Promise<{ display: string; url: string }> {
-  try {
-    await chrome.tabs.create({ url: d.url.href, active: true });
-  } catch (e) {
-    return {
-      display: `⚠️ ${e instanceof Error ? e.message : String(e)}\n\n${d.url.href}`,
-      url: d.url.href,
-    };
-  }
+}): { display: string; url: string } {
+  // Formatting only — the caller opens the tab AFTER the panel has its
+  // DONE message (see handle()). Link text is the host, not the full URL.
   return {
-    display: `🔗 ${d.note ?? '已打开搜索结果'}\n\n[${d.url.href}](${d.url.href})`,
+    display: `🔗 ${d.note ?? '已打开搜索结果'}\n\n[${d.url.host} ↗](${d.url.href})`,
     url: d.url.href,
   };
 }
@@ -260,9 +264,7 @@ async function execDirective(d: {
  *      surrounding prose is kept with the JSON blob swapped for the 🔗 note.
  * Returns null when no valid directive is present anywhere.
  */
-async function runCustomDirective(
-  raw: string,
-): Promise<{ display: string; url?: string } | null> {
+function runCustomDirective(raw: string): { display: string; url?: string } | null {
   let body = raw.trim();
   const fenced = body.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
   if (fenced) body = fenced[1].trim();
@@ -273,7 +275,7 @@ async function runCustomDirective(
   for (const m of raw.matchAll(/\{[^{}]*"action"\s*:\s*"open_url"[^{}]*\}/g)) {
     const parsed = parseDirectiveJson(m[0]);
     if (!parsed) continue;
-    const out = await execDirective(parsed);
+    const out = execDirective(parsed);
     const prose = raw
       .replace(m[0], '')
       .replace(/```(?:json)?\s*```/g, '')
