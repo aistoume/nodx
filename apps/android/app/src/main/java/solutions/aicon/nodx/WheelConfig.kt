@@ -23,6 +23,9 @@ sealed class WheelAction {
     class Search(val urlPrefix: String) : WheelAction()
     object Save : WheelAction()
 
+    /** ✏️ ask for the instruction at use time (extension's 'instruct'). */
+    object Instruct : WheelAction()
+
     /**
      * layout: "single" | "grid"; stylePrompt is a template where {subject}
      * is replaced by the AI's description of the crop.
@@ -33,6 +36,7 @@ sealed class WheelAction {
         is Prompt -> JSONObject().put("kind", "prompt").put("prompt", prompt)
         is Search -> JSONObject().put("kind", "search").put("urlPrefix", urlPrefix)
         Save -> JSONObject().put("kind", "save")
+        Instruct -> JSONObject().put("kind", "instruct")
         is Generate -> JSONObject().put("kind", "generate")
             .put("layout", layout).put("stylePrompt", stylePrompt)
     }
@@ -44,6 +48,13 @@ sealed class WheelAction {
         const val DEFAULT_EXPLAIN_PROMPT =
             "What is this? Answer concisely (2\u20134 sentences), quoting key numbers/text exactly."
         const val DEFAULT_SEARCH_PREFIX = "https://www.google.com/search?udm=2&q="
+
+        /** Text runs of the stock (image-phrased) explain prompt swap to
+         *  this; plain web search replaces the image-search prefix. Mirrors
+         *  the extension's routeTextWheelAction semantics. */
+        const val DEFAULT_TEXT_EXPLAIN_PROMPT =
+            "Explain this text concisely (2\u20134 sentences), in the same language as the text."
+        const val TEXT_PLAIN_SEARCH_PREFIX = "https://www.google.com/search?q="
 
         const val DEFAULT_GRID_STYLE_PROMPT = """Create ONE single image composed as a clean 2×2 grid of four equal quadrants. Each quadrant shows the SAME subject rendered in a different visual style. Keep the subject identical across all four quadrants.
 
@@ -64,6 +75,7 @@ Subject: {subject}"""
             "prompt" -> Prompt(o.optString("prompt"))
             "search" -> Search(o.optString("urlPrefix"))
             "save" -> Save
+            "instruct" -> Instruct
             "generate" -> {
                 // Older configs stored a bare {kind:"generate"} — fill gaps.
                 val layout = if (o.optString("layout") == LAYOUT_SINGLE) LAYOUT_SINGLE else LAYOUT_GRID
@@ -133,10 +145,18 @@ object SearchPresets {
         "Taobao 淘宝" to "https://s.taobao.com/search?q=",
         "JD 京东" to "https://search.jd.com/Search?keyword=",
         "Xiaohongshu 小红书" to "https://www.xiaohongshu.com/search_result?keyword=",
+        "Temu" to "https://www.temu.com/search_result.html?search_key=",
+        "AliExpress" to "https://www.aliexpress.com/wholesale?SearchText=",
         "Bing" to "https://www.bing.com/search?q=",
         "YouTube" to "https://www.youtube.com/results?search_query=",
+        "Bilibili" to "https://search.bilibili.com/all?keyword=",
         "X (Twitter)" to "https://x.com/search?q=",
+        "Reddit" to "https://www.reddit.com/search/?q=",
+        "Zhihu 知乎" to "https://www.zhihu.com/search?type=content&q=",
         "Wikipedia" to "https://en.wikipedia.org/w/index.php?search=",
+        "arXiv" to "https://arxiv.org/search/?searchtype=all&query=",
+        "Google Scholar" to "https://scholar.google.com/scholar?q=",
+        "GitHub" to "https://github.com/search?q=",
         "Perplexity" to "https://www.perplexity.ai/search?q=",
     )
     val LABELS = ITEMS.map { it.first }
@@ -152,6 +172,7 @@ object WheelConfig {
     fun defaults(@Suppress("UNUSED_PARAMETER") c: Context): List<WheelItem> = listOf(
         WheelItem("🔍", "", null, listOf(
             WheelItem("📖", "Explain", WheelAction.Prompt(WheelAction.DEFAULT_EXPLAIN_PROMPT)),
+            WheelItem("✏️", "Instruct", WheelAction.Instruct),
             WheelItem("🔎", "Search", WheelAction.Search(WheelAction.DEFAULT_SEARCH_PREFIX)),
         )),
         WheelItem("💡", "", WheelAction.Save),
