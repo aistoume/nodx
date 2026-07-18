@@ -5,7 +5,20 @@
 
 ---
 
-## v1.0.0 更新说明（What's new — 贴到 Description 开头）
+## v1.0.4 更新说明（What's new — 贴到 Description 开头,替换 v1.0.0 段）
+
+```
+What's new in 1.0.4 — The instruction release
+• ✏️ Type your own instruction: select text (or screenshot a region), hit the new Instruct spoke, and tell the AI exactly what to do — "translate to French", "extract the dates", "rewrite formally".
+• Instructions that ACT: say "search this on arXiv / Temu / GitHub" and the extension opens the real search-results page for you (21 sites' URL patterns built in, plus your own wheel destinations).
+• Follow-up conversations right in the result panel — clarify, refine, or fire another instruction without reselecting.
+• Every instruction run lands in the side-panel history: instruction, answer, and a reopen link, with follow-ups on the same card.
+• Send instructions to YOUR endpoints: forward selection+instruction to a local LLM (Ollama / LM Studio via OpenAI-compatible mode), an automation webhook, or let the AI adapt the content first.
+• Run on your local Claude with no API key: `npx nodx-lens-gateway` (Claude Code subscription), or the new one-command native host for a zero-terminal direct connection (optional permission, off by default).
+• Text and screenshot wheels are now ONE customizable wheel — edit once, applies everywhere. New default layout puts Instruct on the right spoke.
+```
+
+## v1.0.0 更新说明（历史存档）
 
 ```
 What's new in 1.0 — The customization release
@@ -321,6 +334,10 @@ We use storage to persist (1) the user's API keys — one slot per provider (Ant
 ```
 The capture history stores screenshot thumbnails and AI-generated images as data URLs, which real-world usage pushes past chrome.storage.local's default 10 MB quota within days (users hit QUOTA_BYTES errors in v0.8). unlimitedStorage removes the hard quota; the extension then enforces its OWN budget in code: total local storage is capped at 1 GB, and when the cap is reached the oldest history entries are deleted first (down to 85% of the budget). Users can also delete any individual capture or clear history manually. All of this data is local-only — nothing is uploaded anywhere.
 ```
+
+### nativeMessaging (OPTIONAL permission — off by default)
+
+Declared under optional_permissions and requested ONLY when the user explicitly clicks "Connect local Claude" in Settings. It connects to a native messaging host the user installs themselves beforehand (an open-source one-command script shown on the same Settings page), which bridges to their locally installed Claude Code CLI — so AI requests can run through the user's own local Claude session with no API key, and no data ever leaves their machine. If the user never opts in, the permission is never requested and no native host is contacted. It is never triggered by web content.
 
 ### Host permission — http://127.0.0.1:8787/*
 ```
