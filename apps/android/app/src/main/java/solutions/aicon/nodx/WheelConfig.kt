@@ -170,17 +170,19 @@ object WheelConfig {
     /** The stock wheel — mirrors Lens 0.9. Defaults are plain English on
      *  every locale (same as the extension); users customize from there. */
     fun defaults(@Suppress("UNUSED_PARAMETER") c: Context): List<WheelItem> = listOf(
-        WheelItem("🔍", "", null, listOf(
+        WheelItem("🔍", "Search", null, listOf(
             WheelItem("📖", "Explain", WheelAction.Prompt(WheelAction.DEFAULT_EXPLAIN_PROMPT)),
-            WheelItem("✏️", "Instruct", WheelAction.Instruct),
-            WheelItem("🔎", "Search", WheelAction.Search(WheelAction.DEFAULT_SEARCH_PREFIX)),
+            WheelItem("🔎", "Web search", WheelAction.Search(WheelAction.DEFAULT_SEARCH_PREFIX)),
+            WheelItem("💡", "Save", WheelAction.Save),
         )),
-        WheelItem("💡", "", WheelAction.Save),
-        WheelItem("🛒", "", null, listOf(
+        // Right spoke IS the instruct entry (Save lives in 🔍's submenu) —
+        // mirrors the extension's default wheel exactly.
+        WheelItem("✏️", "Instruct", WheelAction.Instruct),
+        WheelItem("🛒", "Shopping", null, listOf(
             WheelItem("🏷", "Google shop", WheelAction.Search("https://www.google.com/search?udm=28&q=")),
             WheelItem("📦", "Amazon", WheelAction.Search("https://www.amazon.com/s?k=")),
         )),
-        WheelItem("🎨", "",
+        WheelItem("🎨", "Generate",
             WheelAction.Generate(WheelAction.LAYOUT_GRID, WheelAction.DEFAULT_GRID_STYLE_PROMPT)),
     )
 

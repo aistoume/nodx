@@ -99,23 +99,25 @@ export function defaultWheel(): WheelConfigV1 {
     version: 1,
     spokes: [
       {
-        emoji: '🔍', label: '', action: null,
+        emoji: '🔍', label: 'Search', action: null,
         children: [
           { emoji: '📖', label: 'Explain', action: { kind: 'prompt', prompt: DEFAULT_EXPLAIN_PROMPT }, children: [] },
-          { emoji: '✏️', label: 'Instruct', action: { kind: 'instruct' }, children: [] },
-          { emoji: '🔎', label: 'Search', action: { kind: 'search', urlPrefix: DEFAULT_IMAGE_SEARCH_PREFIX }, children: [] },
+          { emoji: '🔎', label: 'Web search', action: { kind: 'search', urlPrefix: DEFAULT_IMAGE_SEARCH_PREFIX }, children: [] },
+          { emoji: '💡', label: 'Save', action: { kind: 'save' }, children: [] },
         ],
       },
-      { emoji: '💡', label: '', action: { kind: 'save' }, children: [] },
+      // Right spoke IS the instruct entry — one tap from the wheel to the
+      // type-your-own-instruction box (Save moved into 🔍's submenu).
+      { emoji: '✏️', label: 'Instruct', action: { kind: 'instruct' }, children: [] },
       {
-        emoji: '🛒', label: '', action: null,
+        emoji: '🛒', label: 'Shopping', action: null,
         children: [
           { emoji: '🏷', label: 'Google shop', action: { kind: 'search', urlPrefix: 'https://www.google.com/search?udm=28&q=' }, children: [] },
           { emoji: '📦', label: 'Amazon', action: { kind: 'search', urlPrefix: 'https://www.amazon.com/s?k=' }, children: [] },
         ],
       },
       {
-        emoji: '🎨', label: '',
+        emoji: '🎨', label: 'Generate',
         action: { kind: 'generate', layout: 'grid', stylePrompt: DEFAULT_GRID_STYLE_PROMPT },
         children: [],
       },
