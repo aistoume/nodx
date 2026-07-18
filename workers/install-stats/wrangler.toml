@@ -1,0 +1,18 @@
+# Anonymous install counter for aicon.solutions/api/* — a zone-routed
+# Worker, NOT part of the static site's hosting. The aicon.solutions zone
+# is Cloudflare-proxied, so these routes intercept /api/* at the edge no
+# matter where the static pages are served from.
+name = "aicon-install-stats"
+main = "src/index.mjs"
+compatibility_date = "2026-07-01"
+account_id = "f2a1cb443cfb87b526fac0886f1b34c8"
+
+# One wildcard route — CF route patterns match the FULL URL including the
+# query string, so exact patterns miss "?src=…" requests (learned the 404 way).
+routes = [
+  { pattern = "aicon.solutions/api/*", zone_name = "aicon.solutions" },
+]
+
+[[kv_namespaces]]
+binding = "STATS"
+id = "92d08abed3f64697980695bbdacf29eb"
