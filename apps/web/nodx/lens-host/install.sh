@@ -115,6 +115,10 @@ if [ "$INSTALLED" -eq 0 ]; then
   echo "✗ no Chromium-family browser profile found — is Chrome installed?"; exit 1
 fi
 
+# Anonymous install counter — a bare "+1" ping, nothing else is sent
+# (no ID, no machine info). Failure is ignored; remove this line to opt out.
+curl -fsS -m 5 -o /dev/null "https://aicon.solutions/api/install-ping?src=native-host" 2>/dev/null || true
+
 echo ""
 echo "Done. In the extension: ⚙ Settings → AI Provider → nodx (local gateway),"
 echo "then click 「连接本地 Claude / Connect local Claude」 to grant the"
