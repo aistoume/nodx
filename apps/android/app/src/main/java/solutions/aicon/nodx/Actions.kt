@@ -8,7 +8,17 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.graphics.Color
+import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.util.Base64
+import android.view.Gravity
+import android.view.WindowManager
+import android.widget.Button
+import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -82,10 +92,88 @@ object Actions {
     fun run(context: Context, action: WheelAction, crop: Bitmap) {
         when (action) {
             is WheelAction.Prompt -> explain(context, crop, action.prompt)
+            WheelAction.Instruct -> instructOverlay(context, crop)
             is WheelAction.Search -> aiSearchOpen(context, crop, action.urlPrefix, R.string.act_searched)
             WheelAction.Save -> save(context, crop)
             is WheelAction.Generate -> generate(context, crop, action)
         }
+    }
+
+    /**
+     * kind=instruct: focusable overlay input (unlike ResultCard this window
+     * takes focus so the soft keyboard works over any app) → the typed
+     * instruction runs through the SAME vision pipeline as kind=prompt.
+     */
+    private fun instructOverlay(context: Context, crop: Bitmap) {
+        val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val d = context.resources.displayMetrics.density
+        fun dp(v: Int) = (v * d).toInt()
+
+        var win: FrameLayout? = null
+        fun close() { win?.let { runCatching { wm.removeView(it) } }; win = null }
+
+        val input = EditText(context).apply {
+            hint = context.getString(R.string.instruct_hint)
+            setTextColor(Color.WHITE)
+            setHintTextColor(Color.argb(140, 255, 255, 255))
+        }
+        val card = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                setColor(Color.argb(242, 24, 24, 27)); cornerRadius = 16 * d
+            }
+            setPadding(dp(20), dp(16), dp(20), dp(12))
+            addView(TextView(context).apply {
+                text = context.getString(R.string.instruct_title)
+                setTextColor(Color.argb(255, 245, 158, 11)); textSize = 14f
+            })
+            addView(input)
+            addView(LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.END
+                addView(Button(context).apply {
+                    text = context.getString(R.string.act_close)
+                    setOnClickListener { close() }
+                })
+                addView(Button(context).apply {
+                    text = context.getString(R.string.instruct_run)
+                    setOnClickListener {
+                        val instruction = input.text.toString().trim()
+                        close()
+                        if (instruction.isNotEmpty()) explain(context, crop, instruction)
+                    }
+                })
+            })
+        }
+        card.isClickable = true
+        val scrim = FrameLayout(context).apply {
+            setBackgroundColor(Color.argb(90, 0, 0, 0))
+            setOnClickListener { close() }
+            addView(
+                card,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.TOP,
+                ).apply { leftMargin = dp(16); rightMargin = dp(16); topMargin = dp(90) },
+            )
+        }
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
+        val lp = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            type,
+            0, // focusable — the EditText needs the IME
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE or
+                WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN
+        }
+        win = scrim
+        wm.addView(scrim, lp)
+        input.requestFocus()
     }
 
     /** kind=prompt：vision call with the (user-customizable) prompt →

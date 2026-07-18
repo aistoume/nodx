@@ -66,9 +66,23 @@ object TextActions {
      */
     fun run(activity: Activity, action: WheelAction, text: String, onDone: () -> Unit) {
         when (action) {
-            is WheelAction.Prompt -> explain(activity, action.prompt, text, onDone)
+            is WheelAction.Prompt -> explain(
+                activity,
+                // The stock explain template is image-phrased ("What is
+                // this?") — text runs swap it for the text variant. A
+                // customized template runs verbatim (extension parity).
+                if (action.prompt == WheelAction.DEFAULT_EXPLAIN_PROMPT)
+                    WheelAction.DEFAULT_TEXT_EXPLAIN_PROMPT else action.prompt,
+                text, onDone,
+            )
+            WheelAction.Instruct -> instruct(activity, text, onDone)
             is WheelAction.Search -> {
-                val url = action.urlPrefix + URLEncoder.encode(text.take(200), "UTF-8")
+                // Image-search prefix (udm=2) makes no sense for a text
+                // query — swap the stock one for plain Google web search.
+                val prefix =
+                    if (action.urlPrefix == WheelAction.DEFAULT_SEARCH_PREFIX)
+                        WheelAction.TEXT_PLAIN_SEARCH_PREFIX else action.urlPrefix
+                val url = prefix + URLEncoder.encode(text.take(200), "UTF-8")
                 runCatching {
                     activity.startActivity(
                         Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -116,15 +130,150 @@ object TextActions {
             }
             waiting.dismiss()
             if (activity.isFinishing || activity.isDestroyed) return@launch
-            AlertDialog.Builder(activity)
-                .setTitle(activity.getString(R.string.result_title_explain))
-                .setMessage(answer)
-                .setPositiveButton(R.string.result_copy) { _, _ ->
-                    copy(activity, answer); onDone()
+            answerDialog(activity, activity.getString(R.string.result_title_explain), answer, onDone)
+        }
+    }
+
+    /** Scrollable, copyable answer dialog shared by explain / instruct. */
+    private fun answerDialog(activity: Activity, title: String, answer: String, onDone: () -> Unit) {
+        AlertDialog.Builder(activity)
+            .setTitle(title)
+            .setMessage(answer)
+            .setPositiveButton(R.string.result_copy) { _, _ ->
+                copy(activity, answer); onDone()
+            }
+            .setNegativeButton(R.string.act_close) { _, _ -> onDone() }
+            .setOnCancelListener { onDone() }
+            .show()
+    }
+
+    // ── instruct: 用时现输指令 → 意图路由(搜索类真开页)或普通回答 ──────
+
+    /** A parsed open_url directive from the dispatch protocol. */
+    private class Directive(val url: String, val note: String?)
+
+    /**
+     * The dispatch protocol (port of the extension's buildDispatchProtocol):
+     * search/open intents come back as one-line open_url JSON grounded in
+     * the verified preset prefixes + the user's own wheel search prefixes;
+     * anything else is answered directly.
+     */
+    private fun dispatchProtocol(context: Context): String {
+        val prefixes = LinkedHashMap<String, String>()
+        SearchPresets.ITEMS.forEach { (label, url) -> prefixes[label] = url }
+        WheelConfig.load(context).forEach { spoke ->
+            (listOf(spoke) + spoke.children).forEach { item ->
+                val a = item.action
+                if (a is WheelAction.Search && a.urlPrefix.isNotBlank() && item.label.isNotBlank()) {
+                    prefixes[item.label] = a.urlPrefix
                 }
-                .setNegativeButton(R.string.act_close) { _, _ -> onDone() }
-                .setOnCancelListener { onDone() }
-                .show()
+            }
+        }
+        val list = prefixes.entries.joinToString("\n") { "  ${it.key}: ${it.value}" }
+        return """You can either ANSWER the instruction directly, OR execute an action:
+
+When the instruction asks to SEARCH / look up / find / open something on a website or the web, reply with ONLY this one-line JSON and absolutely nothing else:
+{"action":"open_url","url":"<search-results URL with the query filled in>","note":"<one short sentence describing what you opened, in the instruction's language>"}
+CRITICAL: emitting this JSON is the ONLY way the page actually opens. Do not describe the action in prose, and never claim a page was opened unless your reply IS this JSON.
+
+Known site search prefixes — when the target site matches one of these, you MUST use the exact prefix and append the URL-encoded query:
+$list
+For a site NOT in this list, use its real search URL only if you are certain; otherwise fall back to https://www.google.com/search?q=site%3A<domain>+<query>.
+Make the query practical for that site's audience (translate/simplify when appropriate).
+
+For every other kind of instruction (translate, explain, rewrite, extract, summarise, answer a question…), just do the task and output the result directly — no JSON."""
+    }
+
+    /** Parse a directive: whole/fenced reply, or JSON embedded in prose. */
+    private fun parseDirective(raw: String): Directive? {
+        fun tryParse(body: String): Directive? = runCatching {
+            val o = org.json.JSONObject(body)
+            if (o.optString("action") != "open_url") return@runCatching null
+            val url = o.optString("url")
+            val u = Uri.parse(url)
+            if (u.scheme != "https" && u.scheme != "http") return@runCatching null
+            Directive(url, o.optString("note").takeIf { it.isNotBlank() })
+        }.getOrNull()
+
+        var body = raw.trim()
+        Regex("^```(?:json)?\\s*([\\s\\S]*?)\\s*```$").find(body)?.let { body = it.groupValues[1].trim() }
+        tryParse(body)?.let { return it }
+        for (m in Regex("\\{[^{}]*\"action\"\\s*:\\s*\"open_url\"[^{}]*\\}").findAll(raw)) {
+            tryParse(m.value)?.let { return it }
+        }
+        return null
+    }
+
+    private fun instruct(activity: Activity, text: String, onDone: () -> Unit) {
+        if (!ensureKey(activity)) { onDone(); return }
+        val d = activity.resources.displayMetrics.density
+        val input = android.widget.EditText(activity).apply {
+            hint = activity.getString(R.string.instruct_hint)
+        }
+        val box = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((20 * d).toInt(), (8 * d).toInt(), (20 * d).toInt(), 0)
+            addView(input)
+        }
+        AlertDialog.Builder(activity)
+            .setTitle(R.string.instruct_title)
+            .setView(box)
+            .setPositiveButton(R.string.instruct_run) { _, _ ->
+                val instruction = input.text.toString().trim()
+                if (instruction.isEmpty()) { onDone(); return@setPositiveButton }
+                runInstruction(activity, instruction, text, onDone)
+            }
+            .setNegativeButton(R.string.act_close) { _, _ -> onDone() }
+            .setOnCancelListener { onDone() }
+            .show()
+        input.requestFocus()
+    }
+
+    private fun runInstruction(
+        activity: Activity, instruction: String, text: String, onDone: () -> Unit,
+    ) {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        val waiting = spinnerDialog(activity, activity.getString(R.string.act_recognizing))
+        scope.launch {
+            val app = activity.applicationContext
+            val prompt =
+                dispatchProtocol(app) + "\n\n---\nInstruction: " + instruction + "\n\nText:\n" + text
+            val raw = withContext(Dispatchers.IO) {
+                runCatching { aiText(app, prompt) }
+                    .getOrElse { app.getString(R.string.act_call_failed, it.message) }
+            }
+            val directive = parseDirective(raw)
+            waiting.dismiss()
+            if (directive != null) {
+                runCatching {
+                    activity.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse(directive.url))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                }
+                withContext(Dispatchers.IO) {
+                    ActionLog.append(
+                        app, ActionLog.KIND_SEARCH,
+                        title = instruction.take(120), url = directive.url,
+                        detail = directive.note ?: "",
+                    )
+                }
+                Toast.makeText(
+                    app,
+                    app.getString(R.string.instruct_opened, directive.note ?: directive.url),
+                    Toast.LENGTH_LONG,
+                ).show()
+                onDone()
+            } else {
+                withContext(Dispatchers.IO) {
+                    ActionLog.append(
+                        app, ActionLog.KIND_PROMPT,
+                        title = instruction.take(120), detail = raw,
+                    )
+                }
+                if (activity.isFinishing || activity.isDestroyed) { onDone(); return@launch }
+                answerDialog(activity, activity.getString(R.string.instruct_title), raw, onDone)
+            }
         }
     }
 
