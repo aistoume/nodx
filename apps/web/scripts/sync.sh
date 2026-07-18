@@ -29,7 +29,9 @@ rsync -av --delete \
   "$MONO_WEB/" "$TARGET/"
 
 cd "$TARGET"
-if git diff --quiet && git diff --staged --quiet; then
+# porcelain covers untracked files too — plain `git diff --quiet` misses
+# brand-new directories and silently skips the commit.
+if [ -z "$(git status --porcelain)" ]; then
   echo "✓ Nothing changed."
   exit 0
 fi

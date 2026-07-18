@@ -409,6 +409,11 @@ function App() {
  */
 function NativeBridge() {
   const [state, setState] = useState<'checking' | 'no-perm' | 'ok' | 'no-host'>('checking');
+  const [copied, setCopied] = useState(false);
+  // The one-liner carries THIS extension's runtime id — store and unpacked
+  // installs have different ids, and the host manifest only trusts listed
+  // origins (running the script registered for another id = "host not found").
+  const installCmd = `curl -fsSL https://aicon.solutions/nodx/lens-host/install.sh | bash -s -- ${chrome.runtime.id}`;
 
   const check = async () => {
     setState('checking');
@@ -463,6 +468,22 @@ function NativeBridge() {
     <section>
       <label>{t('nativeSection')}</label>
       <p className="hint">{t('nativeHelp')}</p>
+      {state !== 'ok' && (
+        <div className="native-cmd-row">
+          <code className="native-cmd">{installCmd}</code>
+          <button
+            className="target-add"
+            onClick={() => {
+              void navigator.clipboard.writeText(installCmd).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2400);
+              });
+            }}
+          >
+            {copied ? t('nativeCmdCopied') : t('nativeCopyCmd')}
+          </button>
+        </div>
+      )}
       <p className={`hint${state === 'no-host' ? ' wheel-error' : ''}`}>
         {state === 'checking'
           ? t('nativeChecking')
@@ -472,10 +493,17 @@ function NativeBridge() {
               ? t('nativeNoHost')
               : t('nativeNoPerm')}
       </p>
-      {state !== 'ok' && state !== 'checking' && (
-        <button className="target-add" onClick={() => void connect()}>
-          {t('nativeConnect')}
-        </button>
+      {state !== 'checking' && (
+        <div className="hbox">
+          {state !== 'ok' && (
+            <button className="target-add" onClick={() => void connect()}>
+              {t('nativeConnect')}
+            </button>
+          )}
+          <button className="target-add" onClick={() => void check()}>
+            {t('nativeRecheck')}
+          </button>
+        </div>
       )}
     </section>
   );
