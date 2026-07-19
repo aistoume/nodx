@@ -97,7 +97,8 @@
           <p>Four spokes, every one customizable: icon (40-emoji library or your
           own image), name, <strong>colour</strong>, action and prompt. Turn any
           spoke into a submenu. Search destinations come from a preset library —
-          Google, Amazon, Taobao, JD, YouTube, Perplexity… — or paste your own URL.</p>
+          21 sites: Google, Amazon, Temu, Taobao, JD, arXiv, GitHub, YouTube… — or
+          paste your own URL. Text and screenshots share the same wheel.</p>
         </div>
         <div class="card highlight">
           <h3>📦 Boxes are action hubs</h3>
@@ -105,6 +106,13 @@
           wheel and act on the same capture again. Its corner badge tells the story —
           💬 3 🔎 🎨 means three Q&amp;A turns, a search, and a generated image.
           One region never grows duplicate boxes.</p>
+        </div>
+        <div class="card highlight">
+          <h3>✏️ Instructions that act</h3>
+          <p>Hit the Instruct spoke and type what you want — "translate this",
+          "extract the dates", "search it on arXiv". Search-type instructions
+          <strong>open the real results page</strong>; answers stream into a panel
+          you can keep talking to, and every run lands in history.</p>
         </div>
         <div class="card">
           <h3>👁 Vision on any region</h3>
@@ -143,6 +151,15 @@
         <li><strong>Pick a spoke</strong> — explain it, search it, shop it, or generate from it.</li>
         <li><strong>Come back anytime</strong> — the box stays on the page; click it to keep going, or send it to nodx desktop.</li>
       </ol>
+    </section>
+
+    <section class="how container">
+      <h2 class="center">What's new in 1.0.4 — the instruction release</h2>
+      <div class="grid">
+        <div class="card"><h3>✏️ Your own instructions</h3><p>Type a one-off instruction for any selection or screenshot — with follow-up conversation right in the result panel.</p></div>
+        <div class="card"><h3>🔗 Intent routing</h3><p>"Search this on Temu" actually opens Temu's results — 21 sites' real search URLs built in, plus your own wheel destinations.</p></div>
+        <div class="card"><h3>🖥 Local Claude, no key</h3><p>Run on your Claude Code subscription: a one-command local gateway, or a zero-terminal native host connection.</p></div>
+      </div>
     </section>
 
     <section class="how container">
@@ -186,6 +203,15 @@
         <a href="/nodx/android-test/"><strong>sign up to test it</strong></a>
         and install straight from Play with automatic updates.
       </p>
+    </section>
+
+    <section class="how container">
+      <h2>Run it on YOUR local Claude (no API key)</h2>
+      <p>Have <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a> installed and logged in? Lens can use it directly — no key pasted anywhere, nothing leaves your machine.</p>
+      <ol class="steps">
+        <li><strong>Gateway mode</strong> (keep a terminal open): <code>npx nodx-lens-gateway</code>, then Settings → AI Provider → <em>nodx (local gateway)</em>.</li>
+        <li><strong>Native mode</strong> (zero terminal): copy the one-line installer shown in Settings → "Direct local Claude", run it once, click <em>Connect local Claude</em>. Chrome then spawns Claude on demand.</li>
+      </ol>
     </section>
 
     <section class="upsell container">
