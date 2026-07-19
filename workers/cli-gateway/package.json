@@ -16,7 +16,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aistoume/nodx.git",
+    "url": "git+https://github.com/aistoume/nodx.git",
     "directory": "workers/cli-gateway"
   },
   "homepage": "https://aicon.solutions/nodx/lens.html",
