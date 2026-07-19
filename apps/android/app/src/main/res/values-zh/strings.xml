@@ -141,7 +141,7 @@
     <string name="toast_need_gemini_key">免费模式用 Google AI key — 在上方填入（aistudio.google.com 免费申请）</string>
     <!-- ✏️ instruct action -->
     <string name="instruct_title">指令</string>
-    <string name="instruct_hint">输入你的指令，如"翻译成法语""在 arXiv 搜这个"…</string>
+    <string name="instruct_hint">你想做什么？如"翻译成中文""淘宝搜这个""总结一下"…</string>
     <string name="instruct_run">运行</string>
     <string name="instruct_opened">已打开：%1$s</string>
 </resources>

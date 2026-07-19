@@ -141,7 +141,7 @@
     <string name="toast_need_gemini_key">Free mode uses your Google AI key — add it above (free at aistudio.google.com)</string>
     <!-- ✏️ instruct action -->
     <string name="instruct_title">Instruction</string>
-    <string name="instruct_hint">Type your instruction — e.g. "translate to French", "search this on arXiv"…</string>
+    <string name="instruct_hint">What do you want? e.g. "translate this", "find it on Amazon", "summarize"…</string>
     <string name="instruct_run">Run</string>
     <string name="instruct_opened">Opened: %1$s</string>
 </resources>
