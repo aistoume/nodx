@@ -39,7 +39,7 @@ struct SettingsView: View {
                 }
 
                 Section("About") {
-                    LabeledContent("Version", value: "0.1.0")
+                    LabeledContent("Version", value: "0.2.0")
                     Link("aicon.solutions", destination: URL(string: "https://aicon.solutions/nodx/")!)
                 }
             }

@@ -5,6 +5,10 @@ enum WheelAction: Equatable {
     case prompt(String)
     case search(urlPrefix: String)
     case save
+    /// Ask for the instruction at use time (typed in a dialog). On the
+    /// screenshot flow the instruction is used VERBATIM as the vision
+    /// prompt — no intent protocol, mirroring Android's `instructOverlay`.
+    case instruct
     case generate(layout: String, stylePrompt: String)
 
     static let layoutGrid = "grid"
@@ -64,20 +68,22 @@ struct WheelItem: Identifiable {
 }
 
 enum WheelConfig {
-    /// The stock wheel — mirrors Lens 0.9 / Android `WheelConfig.defaults`.
-    /// up 🔍(Explain/Search) · right 💡 Save · down 🛒(Google shop/Amazon) · left 🎨 Generate
+    /// The stock wheel — mirrors Android v1.2.0 `WheelConfig.defaults`:
+    /// up 🔍 Search(📖 Explain / 🔎 Web search / 💡 Save) · right ✏️ Instruct
+    /// · down 🛒 Shopping(🏷/📦) · left 🎨 Generate. Every item is labeled.
     static func defaults() -> [WheelItem] {
         [
-            WheelItem(emoji: "\u{1F50D}", label: "", children: [
+            WheelItem(emoji: "\u{1F50D}", label: "Search", children: [
                 WheelItem(emoji: "\u{1F4D6}", label: "Explain", action: .prompt(WheelAction.defaultExplainPrompt)),
-                WheelItem(emoji: "\u{1F50E}", label: "Search", action: .search(urlPrefix: WheelAction.defaultSearchPrefix)),
+                WheelItem(emoji: "\u{1F50E}", label: "Web search", action: .search(urlPrefix: WheelAction.defaultSearchPrefix)),
+                WheelItem(emoji: "\u{1F4A1}", label: "Save", action: .save),
             ]),
-            WheelItem(emoji: "\u{1F4A1}", label: "", action: .save),
-            WheelItem(emoji: "\u{1F6D2}", label: "", children: [
+            WheelItem(emoji: "\u{270F}\u{FE0F}", label: "Instruct", action: .instruct),
+            WheelItem(emoji: "\u{1F6D2}", label: "Shopping", children: [
                 WheelItem(emoji: "\u{1F3F7}", label: "Google shop", action: .search(urlPrefix: "https://www.google.com/search?udm=28&q=")),
                 WheelItem(emoji: "\u{1F4E6}", label: "Amazon", action: .search(urlPrefix: "https://www.amazon.com/s?k=")),
             ]),
-            WheelItem(emoji: "\u{1F3A8}", label: "",
+            WheelItem(emoji: "\u{1F3A8}", label: "Generate",
                       action: .generate(layout: WheelAction.layoutGrid, stylePrompt: WheelAction.defaultGridStylePrompt)),
         ]
     }

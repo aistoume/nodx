@@ -63,9 +63,10 @@ struct RadialMenuView: View {
     // MARK: pieces
 
     private func spokeButtons() -> some View {
+        // Android v1.2.0: every button carries its label ("全项带名").
         ForEach(Array(items.prefix(4).enumerated()), id: \.element.id) { index, item in
             let pos = position(angleDeg: CGFloat(index) * 90, radius: Self.outerRadius * scale)
-            wheelButton(item: item, color: Self.spokeColors[index], at: pos, showLabel: false) {
+            wheelButton(item: item, color: Self.spokeColors[index], at: pos, showLabel: true) {
                 if item.isBranch {
                     withAnimation(.spring(duration: 0.2)) { level = item }
                 } else {
@@ -124,14 +125,15 @@ struct RadialMenuView: View {
     }
 
     private func wheelButton(item: WheelItem, color: Color, at pos: CGPoint, showLabel: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 2) {
-                Text(item.emoji).font(.system(size: 30 * scale))
-                if showLabel && !item.label.isEmpty {
+        let labeled = showLabel && !item.label.isEmpty
+        return Button(action: action) {
+            VStack(spacing: 1) {
+                Text(item.emoji).font(.system(size: (labeled ? 24 : 30) * scale))
+                if labeled {
                     Text(item.label)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 10, weight: .bold))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .minimumScaleFactor(0.6)
                         .foregroundStyle(.white)
                 }
             }

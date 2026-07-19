@@ -73,6 +73,11 @@ enum Actions {
             ActionLog.append(kind: .save, title: "Saved to Photos", detail: "", url: nil, thumb: crop)
             return .saved
 
+        case .instruct:
+            // Never dispatched directly — MarqueeView collects the typed
+            // instruction first and calls runInstruction below.
+            throw AIError.badResponse("instruct needs a typed instruction")
+
         case .generate(_, let stylePrompt):
             let geminiKey = Prefs.geminiKey
             guard !geminiKey.isEmpty else { throw AIError.missingKey("Google (Gemini)") }
@@ -85,6 +90,18 @@ enum Actions {
             ActionLog.append(kind: .generate, title: firstLine(subject), detail: fullPrompt, url: nil, thumb: small)
             return .generated(small)
         }
+    }
+
+    /// ✏️ Instruct (screenshot flow): the typed instruction IS the vision
+    /// prompt — no intent protocol, same dumb pipeline as kind=prompt
+    /// (mirrors Android `instructOverlay` → `explain`). Logged as a prompt
+    /// entry titled by the instruction, like Android (no new log kind).
+    static func runInstruction(_ instruction: String, crop: UIImage) async throws -> ActionOutcome {
+        let b64 = try visionBase64(crop)
+        let answer = try await vision(imageBase64: b64, prompt: instruction)
+        ActionLog.append(kind: .prompt, title: String(instruction.prefix(120)),
+                         detail: answer, url: nil, thumb: crop)
+        return .answer(answer)
     }
 
     // MARK: helpers

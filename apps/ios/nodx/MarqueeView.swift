@@ -16,8 +16,11 @@ struct MarqueeView: View {
     @State private var crop: UIImage?
     @State private var runningLabel = ""
     @State private var outcome: ActionOutcome?
+    @State private var resultTitle = "\u{1F4D6} Explain"
     @State private var errorMessage: String?
     @State private var savedFlash = false
+    @State private var showInstructInput = false
+    @State private var instructText = ""
 
     @Environment(\.openURL) private var openURL
 
@@ -73,6 +76,13 @@ struct MarqueeView: View {
             }
         }
         .statusBarHidden()
+        .alert("\u{270F}\u{FE0F} Instruction", isPresented: $showInstructInput) {
+            TextField("e.g. \u{201C}translate to French\u{201D}, \u{201C}extract the table as CSV\u{201D}\u{2026}", text: $instructText)
+            Button("Run") { runInstruction() }
+            Button("Cancel", role: .cancel) { instructText = ""; resetSelection() }
+        } message: {
+            Text("Runs on the boxed region.")
+        }
         .sheet(isPresented: answerSheetBinding) { answerSheet() }
         .alert("Action failed", isPresented: errorBinding) {
             Button("OK") { errorMessage = nil; resetSelection() }
@@ -161,15 +171,47 @@ struct MarqueeView: View {
     // MARK: actions
 
     private func pick(_ item: WheelItem) {
-        guard let action = item.action, let crop else {
+        guard let action = item.action, crop != nil else {
             resetSelection()
             return
         }
+        // ✏️ Instruct collects the instruction first; the crop stays staged.
+        if case .instruct = action {
+            withAnimation { mode = .select }
+            instructText = ""
+            showInstructInput = true
+            return
+        }
+        if case .prompt = action { resultTitle = "\u{1F4D6} Explain" }
         runningLabel = runningText(for: action, label: item.label)
         withAnimation { mode = .running }
+        guard let crop else { return }
         Task {
             do {
                 let result = try await Actions.run(action, crop: crop)
+                await MainActor.run { handle(result) }
+            } catch {
+                await MainActor.run {
+                    mode = .select
+                    errorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func runInstruction() {
+        let instruction = instructText.trimmingCharacters(in: .whitespacesAndNewlines)
+        instructText = ""
+        guard !instruction.isEmpty, let crop else {
+            resetSelection()
+            return
+        }
+        resultTitle = "\u{270F}\u{FE0F} Instruct"
+        runningLabel = "Running instruction\u{2026}"
+        withAnimation { mode = .running }
+        Task {
+            do {
+                let result = try await Actions.runInstruction(instruction, crop: crop)
                 await MainActor.run { handle(result) }
             } catch {
                 await MainActor.run {
@@ -202,6 +244,7 @@ struct MarqueeView: View {
         case .prompt: return "Asking AI\u{2026}"
         case .search: return "Identifying\u{2026}"
         case .save: return "Saving\u{2026}"
+        case .instruct: return "Running instruction\u{2026}"
         case .generate: return "Generating image\u{2026} (two AI calls)"
         }
     }
@@ -221,7 +264,7 @@ struct MarqueeView: View {
         if let outcome {
             switch outcome {
             case .answer(let text):
-                ResultCard(title: "\u{1F4D6} Explain", text: text, image: nil)
+                ResultCard(title: resultTitle, text: text, image: nil)
             case .generated(let image):
                 ResultCard(title: "\u{1F3A8} Generated (saved to Photos)", text: nil, image: image)
             default:

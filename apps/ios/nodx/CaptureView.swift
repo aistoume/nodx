@@ -166,7 +166,7 @@ struct CaptureView: View {
             "Take a screenshot anywhere (Side + Volume Up).",
             "Open nodx — your latest screenshot is one tap away.",
             "Drag to box the part you care about.",
-            "Pick a spoke: \u{1F4D6} explain · \u{1F50E} search · \u{1F6D2} shop · \u{1F4A1} save · \u{1F3A8} generate.",
+            "Pick a spoke: \u{1F50D} search · \u{270F}\u{FE0F} instruct · \u{1F6D2} shop · \u{1F3A8} generate.",
         ]
     }
 
