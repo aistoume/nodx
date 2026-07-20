@@ -1,0 +1,147 @@
+<resources>
+    <string name="app_name">nodx</string>
+    <string name="app_title">nodx · Assistente di pensiero sistemico</string>
+    <string name="channel_name">Bolla nodx</string>
+    <string name="notif_title">nodx è pronto</string>
+    <string name="notif_text">Tocca la bolla: cattura → selezione → ruota delle azioni</string>
+    <string name="notif_stop">Ferma</string>
+
+    <string name="hint_anthropic_key">Chiave API Anthropic (sk-ant-…)</string>
+    <string name="hint_gemini_key">Chiave Google AI (🎨 generazione / modalità gratuita; AQ.… o AIza…)</string>
+    <string name="label_anthropic_key">🔑 Chiave Anthropic</string>
+    <string name="label_gemini_key">🎨 Chiave Google AI</string>
+    <string name="label_openai_key">🔑 Chiave OpenAI</string>
+    <string name="label_openrouter_key">🔑 Chiave OpenRouter</string>
+    <string name="hint_openai_key">Chiave API OpenAI (sk-…)</string>
+    <string name="hint_openrouter_key">Chiave OpenRouter (sk-or-…, gratuita su openrouter.ai/keys)</string>
+    <string name="key_saved_fmt">%1$s salvata (…%2$s) — tocca per cambiare</string>
+
+    <string name="btn_start">Avvia la bolla nodx</string>
+    <string name="btn_stop">🛑 Ferma la bolla (termina la cattura dello schermo)</string>
+    <string name="toast_stopped">Fermato — sessione di cattura dello schermo terminata</string>
+    <string name="toast_not_running">La bolla non è attiva</string>
+    <string name="toast_need_key">Inserisci prima la chiave API del provider selezionato</string>
+    <string name="toast_clipboard_empty">Gli appunti sono vuoti</string>
+    <string name="btn_paste">📋 Incolla</string>
+    <string name="toast_bubble_ready">Bolla attiva — la condivisione dello schermo verrà richiesta alla prima cattura</string>
+    <string name="toast_grant_overlay">Consenti «Mostra sopra altre app» e torna indietro — continua automaticamente</string>
+
+    <string name="recent_title">🖼 Aggiunti di recente</string>
+    <string name="recent_more">Libreria ▸</string>
+    <string name="recent_empty">Niente di salvato — seleziona un’area e tocca 💡 o 🎨</string>
+    <string name="main_instructions">La bolla appare automaticamente all’apertura di questa pagina (senza finestre di dialogo). Toccala: cattura → selezione → ruota delle azioni (🔍 spiega/cerca · 💡 salva · 🛒 shopping · 🎨 genera). Il sistema chiede la condivisione dello schermo una volta per sessione, alla prima cattura.</string>
+
+    <string name="gallery_title">Libreria nodx · Pictures/nodx</string>
+    <string name="gallery_empty">Nessuna cattura salvata — seleziona un’area e tocca 💡</string>
+    <string name="gallery_private_file">Salvato nella cartella privata dell’app; visualizzatore esterno non disponibile</string>
+
+    <string name="consent_needed">Per catturare serve il permesso di condivisione dello schermo</string>
+    <string name="projection_expired">Cattura dello schermo scaduta — tocca di nuovo la bolla per riautorizzare</string>
+
+    <string name="radial_explain">Spiega</string>
+    <string name="radial_search">Cerca</string>
+
+    <string name="act_recognizing">Riconoscimento…</string>
+    <string name="act_identifying">Identificazione…</string>
+    <string name="act_call_failed">Chiamata non riuscita: %1$s</string>
+    <string name="act_no_subject">Soggetto non identificato — prova un’altra selezione</string>
+    <string name="act_searched">Ricerca: %1$s</string>
+    <string name="act_saved">💡 Salvato in Pictures/nodx (sfoglia nella libreria dell’app)</string>
+    <string name="act_save_failed">Salvataggio non riuscito</string>
+    <string name="act_browser_failed">Impossibile aprire il browser: %1$s</string>
+
+    <string name="gen_need_key">🎨 Genera richiede una chiave Google AI — aggiungila nella schermata principale di nodx (gratuita su aistudio.google.com)</string>
+    <string name="gen_writing_prompt">🎨 Sonnet sta scrivendo il prompt di generazione… (15–40 s)</string>
+    <string name="gen_rendering">🎨 Gemini sta generando… (un’immagine · griglia 2×2)</string>
+    <string name="gen_prompt_failed">Scrittura del prompt non riuscita: %1$s</string>
+    <string name="gen_failed">Generazione non riuscita: %1$s</string>
+    <string name="gen_decode_failed">Impossibile decodificare l’immagine generata</string>
+    <string name="gen_done">🎨 Generata e salvata nella libreria</string>
+    <string name="gen_saved_failed">🎨 Generata ma salvataggio non riuscito</string>
+
+    <string name="prompt_explain">Che cos’è questo? Rispondi in modo conciso (2–4 frasi), citando con esattezza numeri/testi chiave. Rispondi in italiano.</string>
+
+    <string name="btn_wheel">⚙️ Personalizza la ruota delle azioni</string>
+    <string name="bubble_mode_title">🫧 Azione al tocco della bolla</string>
+    <string name="bubble_mode_hint">Cosa fa un tocco sulla bolla fluttuante. (Tieni premuta la bolla per cambiare al volo.)</string>
+    <string name="bubble_mode_screen">📱 Cattura un’area dello schermo</string>
+    <string name="bubble_mode_text">📋 Elabora il testo degli appunti</string>
+    <string name="bubble_mode_camera">📷 Scatta una foto</string>
+    <string name="bubble_mode_screen_short">Schermo</string>
+    <string name="bubble_mode_text_short">Testo</string>
+    <string name="bubble_mode_camera_short">Fotocamera</string>
+    <string name="wheel_action_section">🎡 Ruota delle azioni (dopo la cattura)</string>
+    <string name="wheel_title">Personalizza la ruota delle azioni</string>
+    <string name="wheel_pos_up">Raggio superiore (blu)</string>
+    <string name="wheel_pos_right">Raggio destro (ambra)</string>
+    <string name="wheel_pos_down">Raggio inferiore (verde)</string>
+    <string name="wheel_pos_left">Raggio sinistro (viola)</string>
+    <string name="wheel_emoji_hint">Icona (emoji)</string>
+    <string name="wheel_label_hint">Nome (facoltativo)</string>
+    <string name="wheel_mode_action">Azione singola</string>
+    <string name="wheel_mode_children">Sottomenu</string>
+    <string name="wheel_kind_prompt">Risposta IA (prompt personalizzato)</string>
+    <string name="wheel_kind_instruct">Chiedi istruzione (digitata all’uso)</string>
+    <string name="wheel_kind_search">IA identifica → apri URL</string>
+    <string name="wheel_kind_save">Salva nella libreria</string>
+    <string name="wheel_kind_generate">Genera immagine (Gemini)</string>
+    <string name="wheel_param_prompt_hint">Prompt inviato con lo screenshot</string>
+    <string name="wheel_param_url_hint">Prefisso URL (parola chiave aggiunta in coda), es. https://www.google.com/search?q=</string>
+    <string name="wheel_preset_custom">URL personalizzato…</string>
+    <string name="icon_pick_title">Scegli un’icona</string>
+    <string name="result_title_explain">💡 nodx · risposta</string>
+    <string name="act_close">Chiudi</string>
+    <string name="text_panel_title">Elabora il testo con nodx Lens</string>
+    <string name="text_panel_hint">Incolla o modifica il testo…</string>
+    <string name="text_panel_go">Scegli l’azione ▸</string>
+    <string name="camera_unavailable">Nessuna app fotocamera trovata</string>
+    <string name="camera_decode_failed">Impossibile leggere la foto</string>
+    <string name="log_title">Registro attività</string>
+    <string name="recent_log">🕘 Registro ▸</string>
+    <string name="log_section">🕘 Registro attività</string>
+    <string name="tab_run">▶  Avvia</string>
+    <string name="tab_history">🕘  Cronologia</string>
+    <string name="tab_settings">⚙  Impostazioni</string>
+    <string name="btn_log_all">🕘  Vedi tutti i record  ▸</string>
+    <string name="log_empty">Ancora niente — le azioni della bolla finiscono qui.</string>
+    <string name="log_kind_prompt">💬 Risposta</string>
+    <string name="log_kind_search">🔍 Ricerca</string>
+    <string name="log_kind_save">💡 Salvato</string>
+    <string name="log_kind_generate">🎨 Generato</string>
+    <string name="log_reopen">↗ Riapri link</string>
+    <string name="log_delete_confirm">Eliminare questo record?</string>
+    <string name="access_label">Screenshot nodx</string>
+    <string name="access_desc">Consente alla bolla nodx di fare screenshot senza la finestra di condivisione a ogni sessione. Cattura solo quando tocchi la bolla; non legge contenuti né eventi dello schermo.</string>
+    <string name="btn_access">🔓 Consenso di cattura una tantum (accessibilità)</string>
+    <string name="btn_access_on">🔓 Cattura di lunga durata: ATTIVA ✓</string>
+    <string name="toast_access_howto">Trova «Screenshot nodx» tra le app installate e attivalo</string>
+    <string name="result_copy">📋 Copia</string>
+    <string name="result_copied">Copiato</string>
+    <string name="icon_upload">Dalla galleria…</string>
+    <string name="icon_manual">Digita emoji</string>
+    <string name="icon_manual_hint">Emoji, es. 🔍</string>
+    <string name="icon_load_failed">Impossibile caricare quell’immagine</string>
+    <string name="wheel_add_child">＋ Aggiungi sottovoce</string>
+    <string name="wheel_remove">✕ Rimuovi</string>
+    <string name="wheel_save">Salva ruota</string>
+    <string name="wheel_reset">Ripristina predefiniti</string>
+    <string name="wheel_saved">Salvato — vale dalla prossima cattura</string>
+    <string name="wheel_err_emoji">Ogni pulsante richiede un’icona emoji</string>
+    <string name="wheel_err_param">Manca un parametro prompt/URL</string>
+    <string name="wheel_err_child">Un sottomenu richiede almeno 1 sottovoce</string>
+    <string name="wheel_preview_hint">Anteprima dal vivo — riflette le modifiche; tocca un raggio con sottomenu per aprirlo, ↩ per chiuderlo.</string>
+    <string name="wheel_layout_single">Immagine singola</string>
+    <string name="wheel_layout_grid">Griglia 2×2 a quattro stili</string>
+    <string name="wheel_param_style_hint">Prompt di stile — {subject} viene sostituito dalla descrizione dell’IA</string>
+    <string name="provider_label">Provider IA:</string>
+    <string name="provider_anthropic">Anthropic (chiave a pagamento)</string>
+    <string name="provider_gemini">Gemini — livello gratuito</string>
+    <string name="provider_openai">OpenAI (GPT)</string>
+    <string name="provider_openrouter">OpenRouter — modelli gratuiti</string>
+    <string name="toast_need_gemini_key">La modalità gratuita usa la tua chiave Google AI — aggiungila sopra (gratuita su aistudio.google.com)</string>
+    <!-- ✏️ instruct action -->
+    <string name="instruct_title">Istruzione</string>
+    <string name="instruct_hint">Cosa vuoi fare? es. «spiegamelo», «aprilo su Amazon»…</string>
+    <string name="instruct_run">Esegui</string>
+    <string name="instruct_opened">Aperto: %1$s</string>
+</resources>

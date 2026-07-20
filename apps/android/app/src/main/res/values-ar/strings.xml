@@ -1,0 +1,147 @@
+<resources>
+    <string name="app_name">nodx</string>
+    <string name="app_title">nodx · مساعد التفكير المنظومي</string>
+    <string name="channel_name">فقاعة nodx</string>
+    <string name="notif_title">nodx جاهز</string>
+    <string name="notif_text">انقر الفقاعة: التقاط ← تحديد ← عجلة الإجراءات</string>
+    <string name="notif_stop">إيقاف</string>
+
+    <string name="hint_anthropic_key">مفتاح API من Anthropic (sk-ant-…)</string>
+    <string name="hint_gemini_key">مفتاح Google AI (🎨 الإنشاء / الوضع المجاني؛ AQ.… أو AIza…)</string>
+    <string name="label_anthropic_key">🔑 مفتاح Anthropic</string>
+    <string name="label_gemini_key">🎨 مفتاح Google AI</string>
+    <string name="label_openai_key">🔑 مفتاح OpenAI</string>
+    <string name="label_openrouter_key">🔑 مفتاح OpenRouter</string>
+    <string name="hint_openai_key">مفتاح API من OpenAI (sk-…)</string>
+    <string name="hint_openrouter_key">مفتاح OpenRouter (sk-or-…، مجاني على openrouter.ai/keys)</string>
+    <string name="key_saved_fmt">تم حفظ %1$s (…%2$s) — انقر للتغيير</string>
+
+    <string name="btn_start">تشغيل فقاعة nodx</string>
+    <string name="btn_stop">🛑 إيقاف الفقاعة (إنهاء التقاط الشاشة)</string>
+    <string name="toast_stopped">توقف — انتهت جلسة التقاط الشاشة</string>
+    <string name="toast_not_running">الفقاعة غير مشغّلة</string>
+    <string name="toast_need_key">أدخل أولاً مفتاح API للمزوّد المحدد</string>
+    <string name="toast_clipboard_empty">الحافظة فارغة</string>
+    <string name="btn_paste">📋 لصق</string>
+    <string name="toast_bubble_ready">الفقاعة تعمل — سيُطلب إذن مشاركة الشاشة عند أول التقاط</string>
+    <string name="toast_grant_overlay">اسمح بـ«العرض فوق التطبيقات الأخرى» ثم عد — سيستمر تلقائياً</string>
+
+    <string name="recent_title">🖼 المضاف حديثاً</string>
+    <string name="recent_more">المكتبة ▸</string>
+    <string name="recent_empty">لا شيء محفوظ بعد — حدد منطقة وانقر 💡 أو 🎨</string>
+    <string name="main_instructions">تظهر الفقاعة تلقائياً عند فتح هذه الصفحة (بدون نوافذ حوار). انقرها: التقاط ← تحديد ← عجلة الإجراءات (🔍 شرح/بحث · 💡 حفظ · 🛒 تسوّق · 🎨 إنشاء). يطلب النظام مشاركة الشاشة مرة واحدة لكل جلسة عند أول التقاط.</string>
+
+    <string name="gallery_title">مكتبة nodx · Pictures/nodx</string>
+    <string name="gallery_empty">لا لقطات محفوظة بعد — حدد منطقة وانقر 💡</string>
+    <string name="gallery_private_file">محفوظ في مجلد التطبيق الخاص؛ العارض الخارجي غير متاح</string>
+
+    <string name="consent_needed">يلزم إذن مشاركة الشاشة للالتقاط</string>
+    <string name="projection_expired">انتهت صلاحية التقاط الشاشة — انقر الفقاعة مجدداً لإعادة التفويض</string>
+
+    <string name="radial_explain">شرح</string>
+    <string name="radial_search">بحث</string>
+
+    <string name="act_recognizing">جارٍ التعرّف…</string>
+    <string name="act_identifying">جارٍ التحديد…</string>
+    <string name="act_call_failed">فشل الاستدعاء: %1$s</string>
+    <string name="act_no_subject">تعذّر تحديد الموضوع — جرّب تحديداً آخر</string>
+    <string name="act_searched">جارٍ البحث: %1$s</string>
+    <string name="act_saved">💡 حُفظ في Pictures/nodx (تصفّحه في مكتبة التطبيق)</string>
+    <string name="act_save_failed">فشل الحفظ</string>
+    <string name="act_browser_failed">تعذّر فتح المتصفح: %1$s</string>
+
+    <string name="gen_need_key">🎨 يتطلب الإنشاء مفتاح Google AI — أضفه في الشاشة الرئيسية لـ nodx (مجاني على aistudio.google.com)</string>
+    <string name="gen_writing_prompt">🎨 يكتب Sonnet موجّه الإنشاء… (15–40 ثانية)</string>
+    <string name="gen_rendering">🎨 يرسم Gemini… (صورة واحدة · شبكة 2×2)</string>
+    <string name="gen_prompt_failed">فشلت كتابة الموجّه: %1$s</string>
+    <string name="gen_failed">فشل الإنشاء: %1$s</string>
+    <string name="gen_decode_failed">تعذّر فك ترميز الصورة المنشأة</string>
+    <string name="gen_done">🎨 أُنشئت وحُفظت في المكتبة</string>
+    <string name="gen_saved_failed">🎨 أُنشئت لكن فشل الحفظ</string>
+
+    <string name="prompt_explain">ما هذا؟ أجب بإيجاز (2–4 جمل) مع اقتباس الأرقام/النصوص الأساسية بدقة. أجب بالعربية.</string>
+
+    <string name="btn_wheel">⚙️ تخصيص عجلة الإجراءات</string>
+    <string name="bubble_mode_title">🫧 إجراء نقر الفقاعة</string>
+    <string name="bubble_mode_hint">ما يفعله النقر على الفقاعة العائمة. (اضغط مطوّلاً على الفقاعة للتبديل الفوري.)</string>
+    <string name="bubble_mode_screen">📱 التقاط منطقة من الشاشة</string>
+    <string name="bubble_mode_text">📋 معالجة نص الحافظة</string>
+    <string name="bubble_mode_camera">📷 التقاط صورة</string>
+    <string name="bubble_mode_screen_short">الشاشة</string>
+    <string name="bubble_mode_text_short">نص</string>
+    <string name="bubble_mode_camera_short">الكاميرا</string>
+    <string name="wheel_action_section">🎡 عجلة الإجراءات (بعد الالتقاط)</string>
+    <string name="wheel_title">تخصيص عجلة الإجراءات</string>
+    <string name="wheel_pos_up">الذراع العلوي (أزرق)</string>
+    <string name="wheel_pos_right">الذراع الأيمن (كهرماني)</string>
+    <string name="wheel_pos_down">الذراع السفلي (أخضر)</string>
+    <string name="wheel_pos_left">الذراع الأيسر (بنفسجي)</string>
+    <string name="wheel_emoji_hint">الأيقونة (إيموجي)</string>
+    <string name="wheel_label_hint">الاسم (اختياري)</string>
+    <string name="wheel_mode_action">إجراء واحد</string>
+    <string name="wheel_mode_children">قائمة فرعية</string>
+    <string name="wheel_kind_prompt">إجابة الذكاء الاصطناعي (موجّه مخصص)</string>
+    <string name="wheel_kind_instruct">طلب تعليمة (تُكتب عند الاستخدام)</string>
+    <string name="wheel_kind_search">يتعرّف الذكاء الاصطناعي ← فتح رابط</string>
+    <string name="wheel_kind_save">حفظ في المكتبة</string>
+    <string name="wheel_kind_generate">إنشاء صورة (Gemini)</string>
+    <string name="wheel_param_prompt_hint">الموجّه المُرسل مع لقطة الشاشة</string>
+    <string name="wheel_param_url_hint">بادئة الرابط (تُلحق الكلمة المفتاحية بالنهاية)، مثل https://www.google.com/search?q=</string>
+    <string name="wheel_preset_custom">رابط مخصص…</string>
+    <string name="icon_pick_title">اختر أيقونة</string>
+    <string name="result_title_explain">💡 nodx · إجابة</string>
+    <string name="act_close">إغلاق</string>
+    <string name="text_panel_title">معالجة النص بـ nodx Lens</string>
+    <string name="text_panel_hint">الصق النص أو حرّره…</string>
+    <string name="text_panel_go">اختر الإجراء ▸</string>
+    <string name="camera_unavailable">لم يُعثر على تطبيق كاميرا</string>
+    <string name="camera_decode_failed">تعذّر قراءة الصورة</string>
+    <string name="log_title">سجل النشاط</string>
+    <string name="recent_log">🕘 السجل ▸</string>
+    <string name="log_section">🕘 سجل النشاط</string>
+    <string name="tab_run">▶  تشغيل</string>
+    <string name="tab_history">🕘  السجل</string>
+    <string name="tab_settings">⚙  الإعدادات</string>
+    <string name="btn_log_all">🕘  عرض كل السجلات  ▸</string>
+    <string name="log_empty">لا شيء بعد — إجراءات الفقاعة تظهر هنا.</string>
+    <string name="log_kind_prompt">💬 إجابة</string>
+    <string name="log_kind_search">🔍 بحث</string>
+    <string name="log_kind_save">💡 محفوظ</string>
+    <string name="log_kind_generate">🎨 مُنشأ</string>
+    <string name="log_reopen">↗ إعادة فتح الرابط</string>
+    <string name="log_delete_confirm">حذف هذا السجل؟</string>
+    <string name="access_label">لقطة شاشة nodx</string>
+    <string name="access_desc">يتيح لفقاعة nodx التقاط الشاشة دون حوار مشاركة الشاشة في كل جلسة. يلتقط فقط عند نقرك على الفقاعة؛ لا يقرأ محتوى الشاشة ولا الأحداث.</string>
+    <string name="btn_access">🔓 موافقة التقاط لمرة واحدة (إمكانية الوصول)</string>
+    <string name="btn_access_on">🔓 الالتقاط طويل الأمد: مفعّل ✓</string>
+    <string name="toast_access_howto">ابحث عن «لقطة شاشة nodx» ضمن التطبيقات المثبتة وفعّلها</string>
+    <string name="result_copy">📋 نسخ</string>
+    <string name="result_copied">تم النسخ</string>
+    <string name="icon_upload">من المعرض…</string>
+    <string name="icon_manual">اكتب إيموجي</string>
+    <string name="icon_manual_hint">إيموجي، مثل 🔍</string>
+    <string name="icon_load_failed">تعذّر تحميل تلك الصورة</string>
+    <string name="wheel_add_child">＋ إضافة عنصر فرعي</string>
+    <string name="wheel_remove">✕ إزالة</string>
+    <string name="wheel_save">حفظ العجلة</string>
+    <string name="wheel_reset">استعادة الافتراضي</string>
+    <string name="wheel_saved">تم الحفظ — يسري من الالتقاط التالي</string>
+    <string name="wheel_err_emoji">كل زر يحتاج أيقونة إيموجي</string>
+    <string name="wheel_err_param">ينقص معامل موجّه/رابط</string>
+    <string name="wheel_err_child">القائمة الفرعية تحتاج عنصراً واحداً على الأقل</string>
+    <string name="wheel_preview_hint">معاينة حيّة — تعكس تعديلاتك؛ انقر ذراعاً ذا قائمة فرعية لفتحها و↩ لإغلاقها.</string>
+    <string name="wheel_layout_single">صورة واحدة</string>
+    <string name="wheel_layout_grid">شبكة 2×2 بأربعة أنماط</string>
+    <string name="wheel_param_style_hint">موجّه النمط — يُستبدل {subject} بوصف الذكاء الاصطناعي</string>
+    <string name="provider_label">مزوّد الذكاء الاصطناعي:</string>
+    <string name="provider_anthropic">Anthropic (مفتاح مدفوع)</string>
+    <string name="provider_gemini">Gemini — المستوى المجاني</string>
+    <string name="provider_openai">OpenAI (GPT)</string>
+    <string name="provider_openrouter">OpenRouter — نماذج مجانية</string>
+    <string name="toast_need_gemini_key">الوضع المجاني يستخدم مفتاح Google AI الخاص بك — أضفه أعلاه (مجاني على aistudio.google.com)</string>
+    <!-- ✏️ instruct action -->
+    <string name="instruct_title">تعليمة</string>
+    <string name="instruct_hint">ماذا تريد؟ مثل «اشرح لي هذا»، «افتحه على أمازون»…</string>
+    <string name="instruct_run">تنفيذ</string>
+    <string name="instruct_opened">فُتح: %1$s</string>
+</resources>

@@ -1,0 +1,147 @@
+<resources>
+    <string name="app_name">nodx</string>
+    <string name="app_title">nodx · Ассистент системного мышления</string>
+    <string name="channel_name">Пузырь nodx</string>
+    <string name="notif_title">nodx готов</string>
+    <string name="notif_text">Нажмите пузырь: снимок → выделение → колесо действий</string>
+    <string name="notif_stop">Стоп</string>
+
+    <string name="hint_anthropic_key">API-ключ Anthropic (sk-ant-…)</string>
+    <string name="hint_gemini_key">Ключ Google AI (🎨 генерация / бесплатный режим; AQ.… или AIza…)</string>
+    <string name="label_anthropic_key">🔑 Ключ Anthropic</string>
+    <string name="label_gemini_key">🎨 Ключ Google AI</string>
+    <string name="label_openai_key">🔑 Ключ OpenAI</string>
+    <string name="label_openrouter_key">🔑 Ключ OpenRouter</string>
+    <string name="hint_openai_key">API-ключ OpenAI (sk-…)</string>
+    <string name="hint_openrouter_key">Ключ OpenRouter (sk-or-…, бесплатно на openrouter.ai/keys)</string>
+    <string name="key_saved_fmt">%1$s сохранён (…%2$s) — нажмите, чтобы изменить</string>
+
+    <string name="btn_start">Запустить пузырь nodx</string>
+    <string name="btn_stop">🛑 Остановить пузырь (завершить захват экрана)</string>
+    <string name="toast_stopped">Остановлено — сессия захвата экрана завершена</string>
+    <string name="toast_not_running">Пузырь не запущен</string>
+    <string name="toast_need_key">Сначала введите API-ключ выбранного провайдера</string>
+    <string name="toast_clipboard_empty">Буфер обмена пуст</string>
+    <string name="btn_paste">📋 Вставить</string>
+    <string name="toast_bubble_ready">Пузырь запущен — доступ к экрану будет запрошен при первом снимке</string>
+    <string name="toast_grant_overlay">Разрешите «Поверх других приложений» и вернитесь — продолжится автоматически</string>
+
+    <string name="recent_title">🖼 Недавно добавленные</string>
+    <string name="recent_more">Библиотека ▸</string>
+    <string name="recent_empty">Пока ничего не сохранено — выделите область и нажмите 💡 или 🎨</string>
+    <string name="main_instructions">Пузырь появляется автоматически при открытии этой страницы (без диалогов). Нажмите его: снимок → выделение → колесо действий (🔍 объяснить/поиск · 💡 сохранить · 🛒 покупки · 🎨 создать). Система запрашивает доступ к экрану один раз за сессию, при первом снимке.</string>
+
+    <string name="gallery_title">Библиотека nodx · Pictures/nodx</string>
+    <string name="gallery_empty">Снимков пока нет — выделите область и нажмите 💡</string>
+    <string name="gallery_private_file">Хранится в закрытой папке приложения; внешний просмотрщик недоступен</string>
+
+    <string name="consent_needed">Для снимка требуется разрешение на доступ к экрану</string>
+    <string name="projection_expired">Захват экрана истёк — нажмите пузырь ещё раз для повторной авторизации</string>
+
+    <string name="radial_explain">Объяснить</string>
+    <string name="radial_search">Поиск</string>
+
+    <string name="act_recognizing">Распознавание…</string>
+    <string name="act_identifying">Определение…</string>
+    <string name="act_call_failed">Ошибка вызова: %1$s</string>
+    <string name="act_no_subject">Не удалось определить объект — попробуйте другое выделение</string>
+    <string name="act_searched">Поиск: %1$s</string>
+    <string name="act_saved">💡 Сохранено в Pictures/nodx (смотрите в библиотеке приложения)</string>
+    <string name="act_save_failed">Не удалось сохранить</string>
+    <string name="act_browser_failed">Не удалось открыть браузер: %1$s</string>
+
+    <string name="gen_need_key">🎨 Для генерации нужен ключ Google AI — добавьте его на главном экране nodx (бесплатно на aistudio.google.com)</string>
+    <string name="gen_writing_prompt">🎨 Sonnet пишет промпт для генерации… (15–40 с)</string>
+    <string name="gen_rendering">🎨 Gemini рисует… (одно изображение · сетка 2×2)</string>
+    <string name="gen_prompt_failed">Не удалось написать промпт: %1$s</string>
+    <string name="gen_failed">Генерация не удалась: %1$s</string>
+    <string name="gen_decode_failed">Не удалось декодировать созданное изображение</string>
+    <string name="gen_done">🎨 Создано и сохранено в библиотеке</string>
+    <string name="gen_saved_failed">🎨 Создано, но не удалось сохранить</string>
+
+    <string name="prompt_explain">Что это? Ответь кратко (2–4 предложения), точно цитируя ключевые числа/тексты. Отвечай по-русски.</string>
+
+    <string name="btn_wheel">⚙️ Настроить колесо действий</string>
+    <string name="bubble_mode_title">🫧 Действие при нажатии пузыря</string>
+    <string name="bubble_mode_hint">Что делает нажатие на плавающий пузырь. (Долгое нажатие — быстрое переключение.)</string>
+    <string name="bubble_mode_screen">📱 Снимок области экрана</string>
+    <string name="bubble_mode_text">📋 Обработать текст из буфера</string>
+    <string name="bubble_mode_camera">📷 Сделать фото</string>
+    <string name="bubble_mode_screen_short">Экран</string>
+    <string name="bubble_mode_text_short">Текст</string>
+    <string name="bubble_mode_camera_short">Камера</string>
+    <string name="wheel_action_section">🎡 Колесо действий (после снимка)</string>
+    <string name="wheel_title">Настроить колесо действий</string>
+    <string name="wheel_pos_up">Верхняя спица (синий)</string>
+    <string name="wheel_pos_right">Правая спица (янтарный)</string>
+    <string name="wheel_pos_down">Нижняя спица (зелёный)</string>
+    <string name="wheel_pos_left">Левая спица (фиолетовый)</string>
+    <string name="wheel_emoji_hint">Иконка (эмодзи)</string>
+    <string name="wheel_label_hint">Название (необязательно)</string>
+    <string name="wheel_mode_action">Одно действие</string>
+    <string name="wheel_mode_children">Подменю</string>
+    <string name="wheel_kind_prompt">Ответ ИИ (свой промпт)</string>
+    <string name="wheel_kind_instruct">Запросить инструкцию (ввод при использовании)</string>
+    <string name="wheel_kind_search">ИИ распознаёт → открыть URL</string>
+    <string name="wheel_kind_save">Сохранить в библиотеку</string>
+    <string name="wheel_kind_generate">Создать изображение (Gemini)</string>
+    <string name="wheel_param_prompt_hint">Промпт, отправляемый со снимком</string>
+    <string name="wheel_param_url_hint">Префикс URL (запрос добавляется в конец), напр. https://www.google.com/search?q=</string>
+    <string name="wheel_preset_custom">Свой URL…</string>
+    <string name="icon_pick_title">Выберите иконку</string>
+    <string name="result_title_explain">💡 nodx · ответ</string>
+    <string name="act_close">Закрыть</string>
+    <string name="text_panel_title">Обработка текста с nodx Lens</string>
+    <string name="text_panel_hint">Вставьте или отредактируйте текст…</string>
+    <string name="text_panel_go">Выбрать действие ▸</string>
+    <string name="camera_unavailable">Приложение камеры не найдено</string>
+    <string name="camera_decode_failed">Не удалось прочитать фото</string>
+    <string name="log_title">Журнал действий</string>
+    <string name="recent_log">🕘 Журнал ▸</string>
+    <string name="log_section">🕘 Журнал действий</string>
+    <string name="tab_run">▶  Запуск</string>
+    <string name="tab_history">🕘  История</string>
+    <string name="tab_settings">⚙  Настройки</string>
+    <string name="btn_log_all">🕘  Все записи  ▸</string>
+    <string name="log_empty">Пока пусто — действия пузыря появятся здесь.</string>
+    <string name="log_kind_prompt">💬 Ответ</string>
+    <string name="log_kind_search">🔍 Поиск</string>
+    <string name="log_kind_save">💡 Сохранено</string>
+    <string name="log_kind_generate">🎨 Создано</string>
+    <string name="log_reopen">↗ Открыть ссылку снова</string>
+    <string name="log_delete_confirm">Удалить эту запись?</string>
+    <string name="access_label">Снимок nodx</string>
+    <string name="access_desc">Позволяет пузырю nodx делать снимки без диалога доступа к экрану в каждой сессии. Снимает только при нажатии на пузырь; не читает содержимое экрана и события.</string>
+    <string name="btn_access">🔓 Разовое согласие на снимки (спец. возможности)</string>
+    <string name="btn_access_on">🔓 Долгий захват: ВКЛ ✓</string>
+    <string name="toast_access_howto">Найдите «Снимок nodx» среди установленных приложений и включите</string>
+    <string name="result_copy">📋 Копировать</string>
+    <string name="result_copied">Скопировано</string>
+    <string name="icon_upload">Из галереи…</string>
+    <string name="icon_manual">Ввести эмодзи</string>
+    <string name="icon_manual_hint">Эмодзи, напр. 🔍</string>
+    <string name="icon_load_failed">Не удалось загрузить это изображение</string>
+    <string name="wheel_add_child">＋ Добавить подпункт</string>
+    <string name="wheel_remove">✕ Удалить</string>
+    <string name="wheel_save">Сохранить колесо</string>
+    <string name="wheel_reset">Восстановить по умолчанию</string>
+    <string name="wheel_saved">Сохранено — действует со следующего снимка</string>
+    <string name="wheel_err_emoji">Каждой кнопке нужна иконка-эмодзи</string>
+    <string name="wheel_err_param">Не хватает параметра промпта/URL</string>
+    <string name="wheel_err_child">Подменю нужен минимум 1 подпункт</string>
+    <string name="wheel_preview_hint">Живой предпросмотр — отражает правки; нажмите спицу с подменю, чтобы раскрыть, ↩ — свернуть.</string>
+    <string name="wheel_layout_single">Одно изображение</string>
+    <string name="wheel_layout_grid">Сетка 2×2 из четырёх стилей</string>
+    <string name="wheel_param_style_hint">Промпт стиля — {subject} заменяется описанием от ИИ</string>
+    <string name="provider_label">Провайдер ИИ:</string>
+    <string name="provider_anthropic">Anthropic (платный ключ)</string>
+    <string name="provider_gemini">Gemini — бесплатный уровень</string>
+    <string name="provider_openai">OpenAI (GPT)</string>
+    <string name="provider_openrouter">OpenRouter — бесплатные модели</string>
+    <string name="toast_need_gemini_key">Бесплатный режим использует ваш ключ Google AI — добавьте его выше (бесплатно на aistudio.google.com)</string>
+    <!-- ✏️ instruct action -->
+    <string name="instruct_title">Инструкция</string>
+    <string name="instruct_hint">Что нужно сделать? напр. «объясни мне это», «открой на Amazon»…</string>
+    <string name="instruct_run">Выполнить</string>
+    <string name="instruct_opened">Открыто: %1$s</string>
+</resources>
