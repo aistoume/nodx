@@ -150,6 +150,9 @@ function ensureInstructEntry(cfg: WheelConfigV1): boolean {
 }
 
 export async function getWheelConfig(): Promise<WheelConfigV1> {
+  // Orphaned content scripts (extension reloaded, tab not refreshed) lose
+  // chrome.storage entirely — return defaults instead of TypeError-ing.
+  if (!chrome?.storage?.local) return defaultWheel();
   const stored = await chrome.storage.local.get('wheelConfig');
   const cfg = stored.wheelConfig as WheelConfigV1 | undefined;
   if (!cfg || cfg.version !== 1 || !Array.isArray(cfg.spokes) || cfg.spokes.length !== 4) {

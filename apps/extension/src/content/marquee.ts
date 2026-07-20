@@ -49,6 +49,18 @@ import { getSettings, providerNeedsApiKey } from '../shared/settings.js';
 import { callAI } from '../shared/providers.js';
 import { buildVisionDispatchProtocol, parseDirective } from '../shared/dispatch.js';
 
+/** Orphaned-script guard: after an extension reload the old script's
+ *  chrome APIs are dead — bail with a clear "refresh" toast instead of
+ *  TypeError-ing mid-flow. */
+function extAlive(): boolean {
+  try {
+    return !!chrome?.runtime?.id && !!chrome?.storage?.local;
+  } catch {
+    return false;
+  }
+}
+const RELOADED_TOAST = '🔁 nodx Lens 已更新 · 请刷新本页继续使用 / extension updated — refresh this page';
+
 const OVERLAY_ID = '__nodx_marquee_overlay__';
 const TOAST_ID = '__nodx_marquee_toast__';
 
@@ -180,6 +192,10 @@ async function handleCrop(
   rect: MarqueeRect,
 ): Promise<void> {
   try {
+    if (!extAlive()) {
+      showToast(RELOADED_TOAST);
+      return;
+    }
     const cropped = await cropDataUrl(dataUrl, rect, dpr);
 
     // Anchor the radial menu at the centre of the just-selected rect —
@@ -1112,6 +1128,10 @@ async function reactivateBox(
   h: Highlight,
   center: { x: number; y: number },
 ): Promise<void> {
+  if (!extAlive()) {
+    showToast(RELOADED_TOAST);
+    return;
+  }
   const { spokes } = await getWheelConfig();
   const action = await showWheelMenu(center.x, center.y, spokes);
   if (action === 'cancel') return;
@@ -1143,6 +1163,10 @@ async function explainHighlight(
   prompt: string = DEFAULT_EXPLAIN_PROMPT,
   opts: { dispatch?: boolean } = {},
 ): Promise<void> {
+  if (!extAlive()) {
+    showToast(RELOADED_TOAST);
+    return;
+  }
   const cropped = {
     dataUrl: highlight.thumbnailDataUrl,
     width: highlight.imageWidth,

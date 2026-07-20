@@ -51,6 +51,16 @@ import { mdToHtml } from '../shared/markdown.js';
  * on chrome://extensions which looks alarming. Filter it here.
  */
 window.addEventListener('unhandledrejection', (event) => {
+  // Orphaned scripts also surface as chrome.* being undefined mid-call.
+  if (
+    String((event.reason as Error)?.message ?? event.reason ?? '').includes(
+      "reading 'local'",
+    )
+  ) {
+    event.preventDefault();
+    console.warn('[nodx Lens] stale content script (extension reloaded) — refresh this tab.');
+    return;
+  }
   const msg = String(
     (event.reason as { message?: string })?.message ?? event.reason ?? '',
   );
@@ -366,6 +376,10 @@ function showTrigger(rect: DOMRect, selectedText: string, range: Range) {
     const mx = r.left + r.width / 2;
     const my = r.top + r.height / 2;
     hideTrigger();
+    if (!isExtensionValid()) {
+      handleInvalidation();
+      return;
+    }
     // ONE wheel for everything: the same user-customized config that drives
     // screenshot boxes (marquee.ts) drives text selections — each action
     // kind just gets its text-native meaning in routeTextWheelAction.
