@@ -1,5 +1,6 @@
 mod ai_gateway;
 mod migrations;
+mod os_actions;
 mod system_capture;
 
 use ai_gateway::Provider;
@@ -109,6 +110,45 @@ fn parse_capture_url(raw: &str) -> Option<CapturePayload> {
 // crosses the IPC boundary except when the user explicitly types it in
 // Settings.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ── OS actions (docs/desktop-os-actions.md M-A) ─────────────────────────────
+// Read side (running apps / shortcuts inventory) feeds the instruct
+// grounding table; write side (open_app / run_shortcut) only ever runs
+// AFTER the frontend's confirmation card — the commands themselves stay
+// dumb executors.
+
+#[tauri::command]
+fn os_running_apps() -> Vec<os_actions::RunningApp> {
+    os_actions::list_running_apps()
+}
+
+#[tauri::command]
+fn os_list_shortcuts() -> Vec<String> {
+    os_actions::list_shortcuts()
+}
+
+#[tauri::command]
+async fn os_open_app(target: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || os_actions::open_app(&target))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn os_open_url(url: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || os_actions::open_url(&url))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn os_run_shortcut(name: String, input: Option<String>) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        os_actions::run_shortcut(&name, input.as_deref())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
 
 #[tauri::command]
 fn ai_key_set(provider: String, key: String) -> Result<(), String> {
@@ -305,6 +345,11 @@ pub fn run() {
             capture_open_permission_settings,
             capture_is_hotkey_active,
             read_media_file,
+            os_running_apps,
+            os_list_shortcuts,
+            os_open_app,
+            os_open_url,
+            os_run_shortcut,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -418,7 +463,11 @@ pub fn run() {
 /// Build a minimal tray-icon menu so nodx can live in the menu bar.
 /// Three actions: open main window, settings, quit.
 #[cfg(desktop)]
-fn build_tray(app: &AppHandle) -> Result<(), tauri::Error> {
+/// Tray menu incl. the live "运行中" submenu (docs/desktop-os-actions.md
+/// M-A). Rebuilt via the ↻ item — clicking an app row activates it.
+fn build_tray_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
+    use tauri::menu::Submenu;
+
     let show = MenuItem::with_id(app, "tray-show", "打开 nodx · Open nodx", true, None::<&str>)?;
     let settings =
         MenuItem::with_id(app, "tray-settings", "⚙ 设置 · Settings", true, None::<&str>)?;
@@ -427,14 +476,41 @@ fn build_tray(app: &AppHandle) -> Result<(), tauri::Error> {
         app,
         "tray-capture-hint",
         "⌥+E 全局划词解释 (Highlight + ⌥+E anywhere)",
-        false,
+        true,
         None::<&str>,
     )?;
     let quit = MenuItem::with_id(app, "tray-quit", "退出 · Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(
+
+    // 运行中 submenu: one row per foreground GUI app, activate on click.
+    let apps = os_actions::list_running_apps();
+    let mut app_items: Vec<MenuItem<tauri::Wry>> = Vec::new();
+    for a in apps.iter().take(20) {
+        let id = format!("os-app:{}", a.bundle_id.clone().unwrap_or_else(|| a.name.clone()));
+        let label = if a.frontmost { format!("● {}", a.name) } else { a.name.clone() };
+        app_items.push(MenuItem::with_id(app, id, label, true, None::<&str>)?);
+    }
+    let refresh = MenuItem::with_id(app, "tray-apps-refresh", "↻ 刷新 · Refresh", true, None::<&str>)?;
+    let mut sub_refs: Vec<&dyn tauri::menu::IsMenuItem<tauri::Wry>> = Vec::new();
+    for item in &app_items {
+        sub_refs.push(item);
+    }
+    sub_refs.push(&refresh);
+    let running = Submenu::with_id_and_items(
         app,
-        &[&show, &settings, &separator, &about_capture, &separator, &quit],
+        "tray-running",
+        format!("🖥 运行中 · Running ({})", apps.len()),
+        true,
+        &sub_refs,
     )?;
+
+    Menu::with_items(
+        app,
+        &[&show, &settings, &separator, &running, &separator, &about_capture, &separator, &quit],
+    )
+}
+
+fn build_tray(app: &AppHandle) -> Result<(), tauri::Error> {
+    let menu = build_tray_menu(app)?;
 
     let _ = TrayIconBuilder::with_id("main-tray")
         .icon(app.default_window_icon().unwrap().clone())
@@ -457,6 +533,19 @@ fn build_tray(app: &AppHandle) -> Result<(), tauri::Error> {
             }
             "tray-quit" => {
                 app.exit(0);
+            }
+            "tray-apps-refresh" => {
+                if let Some(tray) = app.tray_by_id("main-tray") {
+                    if let Ok(menu) = build_tray_menu(app) {
+                        let _ = tray.set_menu(Some(menu));
+                    }
+                }
+            }
+            id if id.starts_with("os-app:") => {
+                let target = id.trim_start_matches("os-app:").to_string();
+                std::thread::spawn(move || {
+                    let _ = os_actions::open_app(&target);
+                });
             }
             _ => {}
         })

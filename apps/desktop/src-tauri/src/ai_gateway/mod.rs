@@ -281,6 +281,7 @@ fn build_app(state: GatewayState) -> Router {
         .route("/v1/capture-text", post(capture_text))
         .route("/media/:filename", get(serve_media))
         .route("/v1/generate-image", post(generate_image))
+        .route("/v1/apps", get(list_apps))
         .layer(
             // Body size limit tuned for image captures — screenshots up to
             // ~10 MB after base64 encoding go through comfortably (a raw
@@ -356,6 +357,19 @@ fn check_auth(headers: &HeaderMap, state: &GatewayState) -> Result<(), (StatusCo
     } else {
         Err(error_response(StatusCode::UNAUTHORIZED, "unauthorized"))
     }
+}
+
+/// Running GUI apps + the user's Shortcuts inventory — the OS grounding
+/// table for the instruct protocol (docs/desktop-os-actions.md). Token-
+/// protected like every non-media endpoint; future host plugins consume
+/// this via their paired token (M-B).
+async fn list_apps(State(st): State<GatewayState>, headers: HeaderMap) -> impl IntoResponse {
+    if let Err(e) = check_auth(&headers, &st) {
+        return e.into_response();
+    }
+    let apps = crate::os_actions::list_running_apps();
+    let shortcuts = crate::os_actions::list_shortcuts();
+    Json(serde_json::json!({ "apps": apps, "shortcuts": shortcuts })).into_response()
 }
 
 async fn complete(

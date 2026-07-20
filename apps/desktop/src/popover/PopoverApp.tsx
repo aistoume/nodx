@@ -17,10 +17,40 @@ import { useEffect, useRef, useState } from 'react';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { explainSelection } from '../ai/explain.js';
+import {
+  executeDirective,
+  fetchOsGrounding,
+  runOsInstruction,
+  type OsDirective,
+  type OsGrounding,
+} from '../ai/os-dispatch.js';
 import { createAttention } from '../db/attentions.js';
 import { useT } from '../i18n/index.js';
 
 type Phase = 'idle' | 'loading' | 'done' | 'error' | 'no-permission';
+
+/** 30-day per-action-kind "don't ask again" allowlist (localStorage). */
+const ALLOW_KEY = 'nodx:os-exec-allow:v1';
+const ALLOW_TTL_MS = 30 * 24 * 3600 * 1000;
+
+function isKindAllowed(kind: OsDirective['action']): boolean {
+  try {
+    const map = JSON.parse(localStorage.getItem(ALLOW_KEY) ?? '{}') as Record<string, number>;
+    return typeof map[kind] === 'number' && Date.now() - map[kind]! < ALLOW_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+
+function allowKind(kind: OsDirective['action']): void {
+  try {
+    const map = JSON.parse(localStorage.getItem(ALLOW_KEY) ?? '{}') as Record<string, number>;
+    map[kind] = Date.now();
+    localStorage.setItem(ALLOW_KEY, JSON.stringify(map));
+  } catch {
+    /* non-fatal */
+  }
+}
 
 interface CapturedSnippet {
   text: string;
@@ -36,6 +66,14 @@ export function PopoverApp() {
   const [savedId, setSavedId] = useState<string | null>(null);
   const inFlight = useRef<AbortController | null>(null);
 
+  // ── ✏️ instruct state (docs/desktop-os-actions.md M-A) ────────────────
+  const [instructText, setInstructText] = useState('');
+  const [instructBusy, setInstructBusy] = useState(false);
+  const [pendingDirective, setPendingDirective] = useState<OsDirective | null>(null);
+  const [execStatus, setExecStatus] = useState<string | null>(null);
+  const [instructAnswer, setInstructAnswer] = useState<string | null>(null);
+  const grounding = useRef<OsGrounding>({ apps: [], shortcuts: [] });
+
   // ── Wire the Rust → frontend events ──────────────────────────────────
   useEffect(() => {
     const unlisteners: UnlistenFn[] = [];
@@ -48,7 +86,16 @@ export function PopoverApp() {
       setExplanation('');
       setError(null);
       setSavedId(null);
+      setInstructText('');
+      setPendingDirective(null);
+      setExecStatus(null);
+      setInstructAnswer(null);
       void runExplain(text);
+      // Refresh the OS grounding table in the background so an instruct
+      // typed a moment later sees the current running apps + Shortcuts.
+      void fetchOsGrounding().then((g) => {
+        grounding.current = g;
+      });
     }).then((fn) => unlisteners.push(fn));
 
     listen('system-capture-permission-required', () => {
@@ -147,6 +194,57 @@ export function PopoverApp() {
     }
   }
 
+  async function runInstruct() {
+    const instruction = instructText.trim();
+    if (!instruction || !snippet || instructBusy) return;
+    setInstructBusy(true);
+    setExecStatus(null);
+    setInstructAnswer(null);
+    setPendingDirective(null);
+    try {
+      const r = await runOsInstruction(instruction, snippet, grounding.current);
+      if (r.directive) {
+        if (isKindAllowed(r.directive.action)) {
+          await doExecute(r.directive);
+        } else {
+          setPendingDirective(r.directive);
+        }
+      } else {
+        setInstructAnswer(r.answer ?? '');
+      }
+    } catch (err) {
+      setExecStatus(
+        t('popover.executedFail', { err: err instanceof Error ? err.message : String(err) }),
+      );
+    } finally {
+      setInstructBusy(false);
+    }
+  }
+
+  async function doExecute(d: OsDirective, alsoAllow = false) {
+    setPendingDirective(null);
+    if (alsoAllow) allowKind(d.action);
+    try {
+      const note = await executeDirective(d);
+      setExecStatus(t('popover.executedOk', { note }));
+    } catch (err) {
+      setExecStatus(
+        t('popover.executedFail', { err: err instanceof Error ? err.message : String(err) }),
+      );
+    }
+  }
+
+  const directiveLabel = (d: OsDirective): [string, string] => {
+    switch (d.action) {
+      case 'open_url':
+        return [t('popover.actOpenUrl'), d.url];
+      case 'open_app':
+        return [t('popover.actOpenApp'), d.app];
+      case 'run_shortcut':
+        return [t('popover.actRunShortcut'), d.name];
+    }
+  };
+
   // Cancel + close convenience for the loading state
   const cancelAndClose = () => {
     inFlight.current?.abort();
@@ -242,7 +340,104 @@ export function PopoverApp() {
             {explanation}
           </div>
         )}
+
+        {/* ✏️ instruct outcomes */}
+        {instructAnswer !== null && (
+          <div className="mt-3 pt-2 border-t border-border">
+            <div className="text-[11px] text-accent font-semibold mb-1">
+              {t('popover.instructAnswer')}
+            </div>
+            <div className="text-[13px] text-ink leading-relaxed whitespace-pre-wrap">
+              {instructAnswer}
+            </div>
+          </div>
+        )}
+        {execStatus && (
+          <div className="mt-3 pt-2 border-t border-border text-[12px] text-ink">
+            {execStatus}
+          </div>
+        )}
+
+        {/* ⚡ execution confirmation card */}
+        {pendingDirective && (
+          <div className="mt-3 rounded-lg border-2 border-amber-400/70 bg-amber-50/60 p-2.5">
+            <div className="text-[11px] font-bold text-amber-700 mb-1.5">
+              {t('popover.confirmTitle')}
+            </div>
+            {(() => {
+              const [kind, target] = directiveLabel(pendingDirective);
+              return (
+                <div className="text-[12px] text-ink mb-1">
+                  <span className="font-semibold">{kind}</span>
+                  <span className="mx-1 text-ink-muted">→</span>
+                  <span className="break-all">{target}</span>
+                </div>
+              );
+            })()}
+            {pendingDirective.action === 'run_shortcut' && pendingDirective.input && (
+              <div className="text-[11px] text-ink-muted mb-1 line-clamp-2">
+                {t('popover.actInput')}: {pendingDirective.input}
+              </div>
+            )}
+            {pendingDirective.note && (
+              <div className="text-[11px] text-ink-muted italic mb-2">{pendingDirective.note}</div>
+            )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void doExecute(pendingDirective)}
+                className="text-[11px] px-2.5 py-1 rounded-md bg-amber-500 text-white hover:opacity-90 font-semibold"
+              >
+                {t('popover.confirmExec')}
+              </button>
+              <button
+                type="button"
+                onClick={() => void doExecute(pendingDirective, true)}
+                className="text-[10px] px-2 py-1 rounded-md border border-amber-300 text-amber-700 hover:bg-amber-100"
+                title={t('popover.confirmSkipKind')}
+              >
+                {t('popover.confirmSkipKind')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingDirective(null)}
+                className="ml-auto text-[11px] px-2 py-1 rounded-md text-ink-muted hover:text-ink"
+              >
+                {t('popover.confirmCancel')}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* ✏️ instruct input — always available once there's a snippet */}
+      {snippet && phase !== 'no-permission' && (
+        <div className="px-3 py-2 border-t border-border flex items-center gap-2 shrink-0">
+          <input
+            type="text"
+            value={instructText}
+            onChange={(e) => setInstructText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void runInstruct();
+            }}
+            placeholder={t('popover.instructPlaceholder')}
+            disabled={instructBusy}
+            className="flex-1 text-[12px] px-2 py-1.5 rounded-md border border-border bg-surface focus:border-accent outline-none placeholder:text-ink-muted/70"
+          />
+          <button
+            type="button"
+            onClick={() => void runInstruct()}
+            disabled={instructBusy || !instructText.trim()}
+            className="text-[11px] px-2.5 py-1.5 rounded-md bg-accent text-white font-medium disabled:opacity-40"
+          >
+            {instructBusy ? (
+              <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              t('popover.instructRun')
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Footer actions */}
       {(phase === 'done' || phase === 'error') && snippet && (
