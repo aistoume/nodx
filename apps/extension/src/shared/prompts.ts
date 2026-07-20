@@ -7,8 +7,16 @@
 
 import type { Locale } from './i18n.js';
 
+/** Non-zh/en locales ride the English template + an answer-language line. */
+const RESPOND_IN: Partial<Record<Locale, string>> = {
+  fr: 'Respond in French.',
+  ja: 'Respond in Japanese.',
+  es: 'Respond in Spanish.',
+};
+
 export function buildExplainPrompt(text: string, locale: Locale): string {
-  if (locale === 'en') {
+  if (locale !== 'zh') {
+    const langLine = RESPOND_IN[locale] ? `\n8. ${RESPOND_IN[locale]}` : '';
     return `You are nodx Lens, an inline web explanation helper. The user selected a phrase on a webpage and wants a short, clear, context-aware explanation.
 
 Selected text:
@@ -23,7 +31,7 @@ Requirements:
 4. If it's a concept: explain it with one concrete example.
 5. If it's a person or organization: brief identity + why they matter.
 6. Do NOT ask back, do NOT give long history.
-7. Output ONLY the explanation text. No "Here is the explanation:" prefix.
+7. Output ONLY the explanation text. No "Here is the explanation:" prefix.${langLine}
 
 Begin now:`;
   }
@@ -48,7 +56,8 @@ ${text}
 }
 
 export function buildDeepenPrompt(text: string, locale: Locale): string {
-  if (locale === 'en') {
+  if (locale !== 'zh') {
+    const langLine = RESPOND_IN[locale] ? `\n6. ${RESPOND_IN[locale]}` : '';
     return `You are nodx Lens. The user already saw a short explanation of the text below and now wants a deeper take.
 
 Original text:
@@ -65,7 +74,7 @@ Requirements:
    - Common misconception(s) or counterexample(s)
    - Comparison with adjacent concept(s)
 3. Use clear sub-headings or numbered points so it's scannable.
-4. Avoid jargon; an educated non-specialist should follow it.
+4. Avoid jargon; an educated non-specialist should follow it.${langLine}
 5. Begin the body immediately:`;
   }
 

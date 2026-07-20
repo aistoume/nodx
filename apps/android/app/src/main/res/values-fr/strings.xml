@@ -1,0 +1,147 @@
+<resources>
+    <string name="app_name">nodx</string>
+    <string name="app_title">nodx · Assistant de pensée systémique</string>
+    <string name="channel_name">Bulle nodx</string>
+    <string name="notif_title">nodx est prêt</string>
+    <string name="notif_text">Touchez la bulle : capture → sélection → roue d\'actions</string>
+    <string name="notif_stop">Arrêter</string>
+
+    <string name="hint_anthropic_key">Clé API Anthropic (sk-ant-…)</string>
+    <string name="hint_gemini_key">Clé Google AI (🎨 génération / mode gratuit ; AQ.… ou AIza…)</string>
+    <string name="label_anthropic_key">🔑 Clé Anthropic</string>
+    <string name="label_gemini_key">🎨 Clé Google AI</string>
+    <string name="label_openai_key">🔑 Clé OpenAI</string>
+    <string name="label_openrouter_key">🔑 Clé OpenRouter</string>
+    <string name="hint_openai_key">Clé API OpenAI (sk-…)</string>
+    <string name="hint_openrouter_key">Clé OpenRouter (sk-or-…, gratuite sur openrouter.ai/keys)</string>
+    <string name="key_saved_fmt">%1$s enregistrée (…%2$s) — touchez pour modifier</string>
+
+    <string name="btn_start">Lancer la bulle nodx</string>
+    <string name="btn_stop">🛑 Arrêter la bulle (fin de la capture d\'écran)</string>
+    <string name="toast_stopped">Arrêté — session de capture d\'écran terminée</string>
+    <string name="toast_not_running">La bulle n\'est pas active</string>
+    <string name="toast_need_key">Saisissez d\'abord la clé API du fournisseur sélectionné</string>
+    <string name="toast_clipboard_empty">Le presse-papiers est vide</string>
+    <string name="btn_paste">📋 Coller</string>
+    <string name="toast_bubble_ready">Bulle active — le partage d\'écran sera demandé à la première capture</string>
+    <string name="toast_grant_overlay">Autorisez « Superposition aux autres apps », puis revenez — la suite est automatique</string>
+
+    <string name="recent_title">🖼 Ajouts récents</string>
+    <string name="recent_more">Bibliothèque ▸</string>
+    <string name="recent_empty">Rien d\'enregistré — sélectionnez une zone puis touchez 💡 ou 🎨</string>
+    <string name="main_instructions">La bulle apparaît automatiquement à l\'ouverture de cette page (sans dialogues). Touchez-la : capture → sélection → roue d\'actions (🔍 expliquer/chercher · 💡 enregistrer · 🛒 shopping · 🎨 générer). Le système demande le partage d\'écran une fois par session, à la première capture.</string>
+
+    <string name="gallery_title">Bibliothèque nodx · Pictures/nodx</string>
+    <string name="gallery_empty">Aucune capture enregistrée — sélectionnez une zone puis touchez 💡</string>
+    <string name="gallery_private_file">Stocké dans le dossier privé de l\'app ; visionneuse externe indisponible</string>
+
+    <string name="consent_needed">Le partage d\'écran est requis pour capturer</string>
+    <string name="projection_expired">Capture d\'écran expirée — touchez à nouveau la bulle pour ré-autoriser</string>
+
+    <string name="radial_explain">Expliquer</string>
+    <string name="radial_search">Chercher</string>
+
+    <string name="act_recognizing">Reconnaissance…</string>
+    <string name="act_identifying">Identification…</string>
+    <string name="act_call_failed">Échec de l\'appel : %1$s</string>
+    <string name="act_no_subject">Sujet non identifié — essayez une autre sélection</string>
+    <string name="act_searched">Recherche : %1$s</string>
+    <string name="act_saved">💡 Enregistré dans Pictures/nodx (voir la bibliothèque de l\'app)</string>
+    <string name="act_save_failed">Échec de l\'enregistrement</string>
+    <string name="act_browser_failed">Impossible d\'ouvrir le navigateur : %1$s</string>
+
+    <string name="gen_need_key">🎨 La génération nécessite une clé Google AI — ajoutez-la sur l\'écran principal de nodx (gratuite sur aistudio.google.com)</string>
+    <string name="gen_writing_prompt">🎨 Sonnet écrit le prompt de génération… (15–40 s)</string>
+    <string name="gen_rendering">🎨 Gemini génère… (une image · grille 2×2)</string>
+    <string name="gen_prompt_failed">Échec d\'écriture du prompt : %1$s</string>
+    <string name="gen_failed">Échec de la génération : %1$s</string>
+    <string name="gen_decode_failed">Impossible de décoder l\'image générée</string>
+    <string name="gen_done">🎨 Générée et enregistrée dans la bibliothèque</string>
+    <string name="gen_saved_failed">🎨 Générée mais l\'enregistrement a échoué</string>
+
+    <string name="prompt_explain">Qu\'est-ce que c\'est ? Réponds de façon concise (2–4 phrases) en citant exactement les chiffres/textes clés. Réponds en français.</string>
+
+    <string name="btn_wheel">⚙️ Personnaliser la roue d\'actions</string>
+    <string name="bubble_mode_title">🫧 Action au toucher de la bulle</string>
+    <string name="bubble_mode_hint">Ce que fait un appui sur la bulle flottante. (Appui long sur la bulle pour changer à la volée.)</string>
+    <string name="bubble_mode_screen">📱 Capturer une zone d\'écran</string>
+    <string name="bubble_mode_text">📋 Traiter le texte du presse-papiers</string>
+    <string name="bubble_mode_camera">📷 Prendre une photo</string>
+    <string name="bubble_mode_screen_short">Écran</string>
+    <string name="bubble_mode_text_short">Texte</string>
+    <string name="bubble_mode_camera_short">Photo</string>
+    <string name="wheel_action_section">🎡 Roue d\'actions (après capture)</string>
+    <string name="wheel_title">Personnaliser la roue d\'actions</string>
+    <string name="wheel_pos_up">Rayon haut (bleu)</string>
+    <string name="wheel_pos_right">Rayon droit (ambre)</string>
+    <string name="wheel_pos_down">Rayon bas (vert)</string>
+    <string name="wheel_pos_left">Rayon gauche (violet)</string>
+    <string name="wheel_emoji_hint">Icône (emoji)</string>
+    <string name="wheel_label_hint">Nom (facultatif)</string>
+    <string name="wheel_mode_action">Action simple</string>
+    <string name="wheel_mode_children">Sous-menu</string>
+    <string name="wheel_kind_prompt">Réponse IA (prompt personnalisé)</string>
+    <string name="wheel_kind_instruct">Demander l\'instruction (saisie à l\'usage)</string>
+    <string name="wheel_kind_search">IA identifie → ouvrir l\'URL</string>
+    <string name="wheel_kind_save">Enregistrer dans la bibliothèque</string>
+    <string name="wheel_kind_generate">Générer une image (Gemini)</string>
+    <string name="wheel_param_prompt_hint">Prompt envoyé avec la capture</string>
+    <string name="wheel_param_url_hint">Préfixe d\'URL (mot-clé ajouté à la fin), p. ex. https://www.google.com/search?q=</string>
+    <string name="wheel_preset_custom">URL personnalisée…</string>
+    <string name="icon_pick_title">Choisir une icône</string>
+    <string name="result_title_explain">💡 nodx · réponse</string>
+    <string name="act_close">Fermer</string>
+    <string name="text_panel_title">Traiter le texte avec nodx Lens</string>
+    <string name="text_panel_hint">Collez ou modifiez le texte…</string>
+    <string name="text_panel_go">Choisir l\'action ▸</string>
+    <string name="camera_unavailable">Aucune app appareil photo trouvée</string>
+    <string name="camera_decode_failed">Impossible de lire la photo</string>
+    <string name="log_title">Journal d\'activité</string>
+    <string name="recent_log">🕘 Journal ▸</string>
+    <string name="log_section">🕘 Journal d\'activité</string>
+    <string name="tab_run">▶  Lancer</string>
+    <string name="tab_history">🕘  Historique</string>
+    <string name="tab_settings">⚙  Réglages</string>
+    <string name="btn_log_all">🕘  Tous les enregistrements  ▸</string>
+    <string name="log_empty">Rien pour l\'instant — les actions de la bulle arrivent ici.</string>
+    <string name="log_kind_prompt">💬 Réponse</string>
+    <string name="log_kind_search">🔍 Recherche</string>
+    <string name="log_kind_save">💡 Enregistré</string>
+    <string name="log_kind_generate">🎨 Généré</string>
+    <string name="log_reopen">↗ Rouvrir le lien</string>
+    <string name="log_delete_confirm">Supprimer cet enregistrement ?</string>
+    <string name="access_label">Capture nodx</string>
+    <string name="access_desc">Permet à la bulle nodx de capturer l\'écran sans le dialogue de partage à chaque session. Ne capture que lorsque vous touchez la bulle ; ne lit ni contenu ni événements de l\'écran.</string>
+    <string name="btn_access">🔓 Consentement de capture unique (accessibilité)</string>
+    <string name="btn_access_on">🔓 Capture longue durée : ACTIVÉE ✓</string>
+    <string name="toast_access_howto">Trouvez « Capture nodx » dans les apps installées et activez-la</string>
+    <string name="result_copy">📋 Copier</string>
+    <string name="result_copied">Copié</string>
+    <string name="icon_upload">Depuis la galerie…</string>
+    <string name="icon_manual">Saisir un emoji</string>
+    <string name="icon_manual_hint">Emoji, p. ex. 🔍</string>
+    <string name="icon_load_failed">Impossible de charger cette image</string>
+    <string name="wheel_add_child">＋ Ajouter un sous-élément</string>
+    <string name="wheel_remove">✕ Supprimer</string>
+    <string name="wheel_save">Enregistrer la roue</string>
+    <string name="wheel_reset">Restaurer les valeurs par défaut</string>
+    <string name="wheel_saved">Enregistré — effectif à la prochaine capture</string>
+    <string name="wheel_err_emoji">Chaque bouton doit avoir une icône emoji</string>
+    <string name="wheel_err_param">Un paramètre prompt/URL est manquant</string>
+    <string name="wheel_err_child">Un sous-menu doit avoir au moins 1 sous-élément</string>
+    <string name="wheel_preview_hint">Aperçu en direct — reflète vos modifications ; touchez un rayon à sous-menu pour le déployer, ↩ pour replier.</string>
+    <string name="wheel_layout_single">Image unique</string>
+    <string name="wheel_layout_grid">Grille 2×2 quatre styles</string>
+    <string name="wheel_param_style_hint">Prompt de style — {subject} est remplacé par la description de l\'IA</string>
+    <string name="provider_label">Fournisseur d\'IA :</string>
+    <string name="provider_anthropic">Anthropic (clé payante)</string>
+    <string name="provider_gemini">Gemini — offre gratuite</string>
+    <string name="provider_openai">OpenAI (GPT)</string>
+    <string name="provider_openrouter">OpenRouter — modèles gratuits</string>
+    <string name="toast_need_gemini_key">Le mode gratuit utilise votre clé Google AI — ajoutez-la ci-dessus (gratuite sur aistudio.google.com)</string>
+    <!-- ✏️ instruct action -->
+    <string name="instruct_title">Instruction</string>
+    <string name="instruct_hint">Que voulez-vous ? p. ex. « explique-moi ça », « ouvre-le sur Amazon »…</string>
+    <string name="instruct_run">Exécuter</string>
+    <string name="instruct_opened">Ouvert : %1$s</string>
+</resources>

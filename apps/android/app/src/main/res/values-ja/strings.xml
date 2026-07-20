@@ -1,0 +1,147 @@
+<resources>
+    <string name="app_name">nodx</string>
+    <string name="app_title">nodx · システム思考アシスタント</string>
+    <string name="channel_name">nodx バブル</string>
+    <string name="notif_title">nodx 準備完了</string>
+    <string name="notif_text">バブルをタップ：キャプチャ → 範囲選択 → アクションホイール</string>
+    <string name="notif_stop">停止</string>
+
+    <string name="hint_anthropic_key">Anthropic API キー（sk-ant-…）</string>
+    <string name="hint_gemini_key">Google AI キー（🎨 生成 / 無料モード；AQ.… または AIza…）</string>
+    <string name="label_anthropic_key">🔑 Anthropic キー</string>
+    <string name="label_gemini_key">🎨 Google AI キー</string>
+    <string name="label_openai_key">🔑 OpenAI キー</string>
+    <string name="label_openrouter_key">🔑 OpenRouter キー</string>
+    <string name="hint_openai_key">OpenAI API キー（sk-…）</string>
+    <string name="hint_openrouter_key">OpenRouter キー（sk-or-…、openrouter.ai/keys で無料）</string>
+    <string name="key_saved_fmt">%1$s 保存済み（…%2$s）— タップで変更</string>
+
+    <string name="btn_start">nodx バブルを起動</string>
+    <string name="btn_stop">🛑 バブルを停止（画面キャプチャ終了）</string>
+    <string name="toast_stopped">停止しました — 画面キャプチャのセッションを終了</string>
+    <string name="toast_not_running">バブルは起動していません</string>
+    <string name="toast_need_key">先に選択中のプロバイダーの API キーを入力してください</string>
+    <string name="toast_clipboard_empty">クリップボードが空です</string>
+    <string name="btn_paste">📋 貼り付け</string>
+    <string name="toast_bubble_ready">バブル起動中 — 初回キャプチャ時に画面共有の許可を求めます</string>
+    <string name="toast_grant_overlay">「他のアプリの上に表示」を許可して戻ってください — 自動で続行します</string>
+
+    <string name="recent_title">🖼 最近の追加</string>
+    <string name="recent_more">ライブラリ ▸</string>
+    <string name="recent_empty">まだ何も保存されていません — 範囲を選択して 💡 か 🎨 をタップ</string>
+    <string name="main_instructions">このページを開くとバブルが自動的に表示されます（ダイアログなし）。タップ：キャプチャ → 範囲選択 → アクションホイール（🔍 解説/検索 · 💡 保存 · 🛒 ショッピング · 🎨 生成）。画面共有の確認はセッションごとに 1 回、初回キャプチャ時のみです。</string>
+
+    <string name="gallery_title">nodx ライブラリ · Pictures/nodx</string>
+    <string name="gallery_empty">保存されたキャプチャはまだありません — 範囲を選択して 💡 をタップ</string>
+    <string name="gallery_private_file">アプリ専用フォルダに保存 — 外部ビューアは使用できません</string>
+
+    <string name="consent_needed">キャプチャには画面共有の許可が必要です</string>
+    <string name="projection_expired">画面キャプチャの有効期限が切れました — バブルを再タップして再許可してください</string>
+
+    <string name="radial_explain">解説</string>
+    <string name="radial_search">検索</string>
+
+    <string name="act_recognizing">認識中…</string>
+    <string name="act_identifying">識別中…</string>
+    <string name="act_call_failed">呼び出し失敗：%1$s</string>
+    <string name="act_no_subject">被写体を識別できませんでした — 別の範囲でお試しください</string>
+    <string name="act_searched">検索中：%1$s</string>
+    <string name="act_saved">💡 Pictures/nodx に保存しました（アプリ内ライブラリで閲覧）</string>
+    <string name="act_save_failed">保存に失敗しました</string>
+    <string name="act_browser_failed">ブラウザを開けませんでした：%1$s</string>
+
+    <string name="gen_need_key">🎨 生成には Google AI キーが必要です — nodx メイン画面で追加してください（aistudio.google.com で無料）</string>
+    <string name="gen_writing_prompt">🎨 Sonnet が生成プロンプトを作成中…（15〜40 秒）</string>
+    <string name="gen_rendering">🎨 Gemini が描画中…（1 枚 · 2×2 グリッド）</string>
+    <string name="gen_prompt_failed">プロンプト作成に失敗：%1$s</string>
+    <string name="gen_failed">生成に失敗：%1$s</string>
+    <string name="gen_decode_failed">生成画像をデコードできませんでした</string>
+    <string name="gen_done">🎨 生成してライブラリに保存しました</string>
+    <string name="gen_saved_failed">🎨 生成しましたが保存に失敗しました</string>
+
+    <string name="prompt_explain">これは何ですか？重要な数字やテキストを正確に引用しながら、簡潔に（2〜4 文で）答えてください。日本語で答えてください。</string>
+
+    <string name="btn_wheel">⚙️ アクションホイールをカスタマイズ</string>
+    <string name="bubble_mode_title">🫧 バブルタップ時の動作</string>
+    <string name="bubble_mode_hint">フローティングバブルをタップしたときの動作。（バブルを長押しでその場で切り替え）</string>
+    <string name="bubble_mode_screen">📱 画面の範囲をキャプチャ</string>
+    <string name="bubble_mode_text">📋 クリップボードのテキストを処理</string>
+    <string name="bubble_mode_camera">📷 写真を撮る</string>
+    <string name="bubble_mode_screen_short">画面</string>
+    <string name="bubble_mode_text_short">テキスト</string>
+    <string name="bubble_mode_camera_short">カメラ</string>
+    <string name="wheel_action_section">🎡 アクションホイール（キャプチャ後）</string>
+    <string name="wheel_title">アクションホイールをカスタマイズ</string>
+    <string name="wheel_pos_up">上スポーク（青）</string>
+    <string name="wheel_pos_right">右スポーク（アンバー）</string>
+    <string name="wheel_pos_down">下スポーク（緑）</string>
+    <string name="wheel_pos_left">左スポーク（紫）</string>
+    <string name="wheel_emoji_hint">アイコン（絵文字）</string>
+    <string name="wheel_label_hint">名前（省略可）</string>
+    <string name="wheel_mode_action">単一アクション</string>
+    <string name="wheel_mode_children">サブメニュー</string>
+    <string name="wheel_kind_prompt">AI 回答（カスタムプロンプト）</string>
+    <string name="wheel_kind_instruct">指示を入力（使用時に入力）</string>
+    <string name="wheel_kind_search">AI が認識 → URL を開く</string>
+    <string name="wheel_kind_save">ライブラリに保存</string>
+    <string name="wheel_kind_generate">画像を生成（Gemini）</string>
+    <string name="wheel_param_prompt_hint">スクリーンショットと一緒に送るプロンプト</string>
+    <string name="wheel_param_url_hint">URL プレフィックス（末尾にキーワードを連結）例：https://www.google.com/search?q=</string>
+    <string name="wheel_preset_custom">カスタム URL…</string>
+    <string name="icon_pick_title">アイコンを選択</string>
+    <string name="result_title_explain">💡 nodx · 回答</string>
+    <string name="act_close">閉じる</string>
+    <string name="text_panel_title">nodx Lens でテキストを処理</string>
+    <string name="text_panel_hint">テキストを貼り付けまたは編集…</string>
+    <string name="text_panel_go">アクションを選択 ▸</string>
+    <string name="camera_unavailable">カメラアプリが見つかりません</string>
+    <string name="camera_decode_failed">写真を読み込めませんでした</string>
+    <string name="log_title">アクティビティログ</string>
+    <string name="recent_log">🕘 ログ ▸</string>
+    <string name="log_section">🕘 アクティビティログ</string>
+    <string name="tab_run">▶  実行</string>
+    <string name="tab_history">🕘  履歴</string>
+    <string name="tab_settings">⚙  設定</string>
+    <string name="btn_log_all">🕘  すべての記録を見る  ▸</string>
+    <string name="log_empty">まだ何もありません — バブルからのアクションがここに記録されます。</string>
+    <string name="log_kind_prompt">💬 回答</string>
+    <string name="log_kind_search">🔍 検索</string>
+    <string name="log_kind_save">💡 保存</string>
+    <string name="log_kind_generate">🎨 生成</string>
+    <string name="log_reopen">↗ リンクを再度開く</string>
+    <string name="log_delete_confirm">この記録を削除しますか？</string>
+    <string name="access_label">nodx スクリーンショット</string>
+    <string name="access_desc">nodx バブルがセッションごとの画面共有ダイアログなしでスクリーンショットを撮れるようにします。バブルをタップしたときのみキャプチャし、画面の内容やイベントは読み取りません。</string>
+    <string name="btn_access">🔓 キャプチャの一括同意（ユーザー補助）</string>
+    <string name="btn_access_on">🔓 長期キャプチャ：オン ✓</string>
+    <string name="toast_access_howto">インストール済みアプリから「nodx スクリーンショット」を探してオンにしてください</string>
+    <string name="result_copy">📋 コピー</string>
+    <string name="result_copied">コピーしました</string>
+    <string name="icon_upload">ギャラリーから…</string>
+    <string name="icon_manual">絵文字を入力</string>
+    <string name="icon_manual_hint">絵文字、例：🔍</string>
+    <string name="icon_load_failed">その画像を読み込めませんでした</string>
+    <string name="wheel_add_child">＋ サブ項目を追加</string>
+    <string name="wheel_remove">✕ 削除</string>
+    <string name="wheel_save">ホイールを保存</string>
+    <string name="wheel_reset">デフォルトに戻す</string>
+    <string name="wheel_saved">保存しました — 次のキャプチャから有効</string>
+    <string name="wheel_err_emoji">各ボタンには絵文字アイコンが必要です</string>
+    <string name="wheel_err_param">プロンプト / URL パラメータが不足しています</string>
+    <string name="wheel_err_child">サブメニューには最低 1 項目が必要です</string>
+    <string name="wheel_preview_hint">ライブプレビュー — 編集を即時反映。サブメニュー付きスポークをタップで展開、↩ で収納。</string>
+    <string name="wheel_layout_single">1 枚の画像</string>
+    <string name="wheel_layout_grid">2×2 の 4 スタイルグリッド</string>
+    <string name="wheel_param_style_hint">スタイルプロンプト — {subject} は AI による被写体の説明に置き換わります</string>
+    <string name="provider_label">AI プロバイダー：</string>
+    <string name="provider_anthropic">Anthropic（有料キー）</string>
+    <string name="provider_gemini">Gemini — 無料枠</string>
+    <string name="provider_openai">OpenAI（GPT）</string>
+    <string name="provider_openrouter">OpenRouter — 無料モデル</string>
+    <string name="toast_need_gemini_key">無料モードは Google AI キーを使用します — 上で追加してください（aistudio.google.com で無料）</string>
+    <!-- ✏️ instruct action -->
+    <string name="instruct_title">指示</string>
+    <string name="instruct_hint">何をしますか？例：「わかりやすく説明して」「Amazon で開いて」…</string>
+    <string name="instruct_run">実行</string>
+    <string name="instruct_opened">開きました：%1$s</string>
+</resources>

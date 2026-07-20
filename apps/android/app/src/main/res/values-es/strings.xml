@@ -1,0 +1,147 @@
+<resources>
+    <string name="app_name">nodx</string>
+    <string name="app_title">nodx · Asistente de pensamiento sistémico</string>
+    <string name="channel_name">Burbuja nodx</string>
+    <string name="notif_title">nodx está listo</string>
+    <string name="notif_text">Toca la burbuja: captura → selección → rueda de acciones</string>
+    <string name="notif_stop">Detener</string>
+
+    <string name="hint_anthropic_key">Clave API de Anthropic (sk-ant-…)</string>
+    <string name="hint_gemini_key">Clave de Google AI (🎨 generación / modo gratis; AQ.… o AIza…)</string>
+    <string name="label_anthropic_key">🔑 Clave Anthropic</string>
+    <string name="label_gemini_key">🎨 Clave Google AI</string>
+    <string name="label_openai_key">🔑 Clave OpenAI</string>
+    <string name="label_openrouter_key">🔑 Clave OpenRouter</string>
+    <string name="hint_openai_key">Clave API de OpenAI (sk-…)</string>
+    <string name="hint_openrouter_key">Clave OpenRouter (sk-or-…, gratis en openrouter.ai/keys)</string>
+    <string name="key_saved_fmt">%1$s guardada (…%2$s) — toca para cambiar</string>
+
+    <string name="btn_start">Iniciar la burbuja nodx</string>
+    <string name="btn_stop">🛑 Detener la burbuja (fin de la captura de pantalla)</string>
+    <string name="toast_stopped">Detenido — sesión de captura de pantalla finalizada</string>
+    <string name="toast_not_running">La burbuja no está activa</string>
+    <string name="toast_need_key">Introduce primero la clave API del proveedor seleccionado</string>
+    <string name="toast_clipboard_empty">El portapapeles está vacío</string>
+    <string name="btn_paste">📋 Pegar</string>
+    <string name="toast_bubble_ready">Burbuja activa — se pedirá compartir pantalla en la primera captura</string>
+    <string name="toast_grant_overlay">Permite «Mostrar sobre otras apps» y vuelve — continúa automáticamente</string>
+
+    <string name="recent_title">🖼 Añadido recientemente</string>
+    <string name="recent_more">Biblioteca ▸</string>
+    <string name="recent_empty">Nada guardado aún — selecciona un área y toca 💡 o 🎨</string>
+    <string name="main_instructions">La burbuja aparece automáticamente al abrir esta página (sin diálogos). Tócala: captura → selección → rueda de acciones (🔍 explicar/buscar · 💡 guardar · 🛒 compras · 🎨 generar). El sistema pide compartir pantalla una vez por sesión, en la primera captura.</string>
+
+    <string name="gallery_title">Biblioteca nodx · Pictures/nodx</string>
+    <string name="gallery_empty">Aún no hay capturas guardadas — selecciona un área y toca 💡</string>
+    <string name="gallery_private_file">Guardado en la carpeta privada de la app; visor externo no disponible</string>
+
+    <string name="consent_needed">Se requiere permiso de compartir pantalla para capturar</string>
+    <string name="projection_expired">La captura de pantalla caducó — toca la burbuja de nuevo para reautorizar</string>
+
+    <string name="radial_explain">Explicar</string>
+    <string name="radial_search">Buscar</string>
+
+    <string name="act_recognizing">Reconociendo…</string>
+    <string name="act_identifying">Identificando…</string>
+    <string name="act_call_failed">Fallo en la llamada: %1$s</string>
+    <string name="act_no_subject">No se pudo identificar el sujeto — prueba otra selección</string>
+    <string name="act_searched">Buscando: %1$s</string>
+    <string name="act_saved">💡 Guardado en Pictures/nodx (míralo en la biblioteca de la app)</string>
+    <string name="act_save_failed">Error al guardar</string>
+    <string name="act_browser_failed">No se pudo abrir el navegador: %1$s</string>
+
+    <string name="gen_need_key">🎨 Generar necesita una clave de Google AI — añádela en la pantalla principal de nodx (gratis en aistudio.google.com)</string>
+    <string name="gen_writing_prompt">🎨 Sonnet está escribiendo el prompt de generación… (15–40 s)</string>
+    <string name="gen_rendering">🎨 Gemini está generando… (una imagen · cuadrícula 2×2)</string>
+    <string name="gen_prompt_failed">Fallo al escribir el prompt: %1$s</string>
+    <string name="gen_failed">Fallo en la generación: %1$s</string>
+    <string name="gen_decode_failed">No se pudo decodificar la imagen generada</string>
+    <string name="gen_done">🎨 Generada y guardada en la biblioteca</string>
+    <string name="gen_saved_failed">🎨 Generada pero falló el guardado</string>
+
+    <string name="prompt_explain">¿Qué es esto? Responde de forma concisa (2–4 frases), citando con exactitud los números/textos clave. Responde en español.</string>
+
+    <string name="btn_wheel">⚙️ Personalizar la rueda de acciones</string>
+    <string name="bubble_mode_title">🫧 Acción al tocar la burbuja</string>
+    <string name="bubble_mode_hint">Qué hace un toque en la burbuja flotante. (Mantén pulsada la burbuja para cambiarlo al vuelo.)</string>
+    <string name="bubble_mode_screen">📱 Capturar una zona de pantalla</string>
+    <string name="bubble_mode_text">📋 Procesar texto del portapapeles</string>
+    <string name="bubble_mode_camera">📷 Hacer una foto</string>
+    <string name="bubble_mode_screen_short">Pantalla</string>
+    <string name="bubble_mode_text_short">Texto</string>
+    <string name="bubble_mode_camera_short">Cámara</string>
+    <string name="wheel_action_section">🎡 Rueda de acciones (tras la captura)</string>
+    <string name="wheel_title">Personalizar la rueda de acciones</string>
+    <string name="wheel_pos_up">Radio superior (azul)</string>
+    <string name="wheel_pos_right">Radio derecho (ámbar)</string>
+    <string name="wheel_pos_down">Radio inferior (verde)</string>
+    <string name="wheel_pos_left">Radio izquierdo (morado)</string>
+    <string name="wheel_emoji_hint">Icono (emoji)</string>
+    <string name="wheel_label_hint">Nombre (opcional)</string>
+    <string name="wheel_mode_action">Acción única</string>
+    <string name="wheel_mode_children">Submenú</string>
+    <string name="wheel_kind_prompt">Respuesta IA (prompt personalizado)</string>
+    <string name="wheel_kind_instruct">Pedir instrucción (se escribe al usar)</string>
+    <string name="wheel_kind_search">IA identifica → abrir URL</string>
+    <string name="wheel_kind_save">Guardar en la biblioteca</string>
+    <string name="wheel_kind_generate">Generar imagen (Gemini)</string>
+    <string name="wheel_param_prompt_hint">Prompt enviado con la captura</string>
+    <string name="wheel_param_url_hint">Prefijo de URL (la palabra clave se añade al final), p. ej. https://www.google.com/search?q=</string>
+    <string name="wheel_preset_custom">URL personalizada…</string>
+    <string name="icon_pick_title">Elegir un icono</string>
+    <string name="result_title_explain">💡 nodx · respuesta</string>
+    <string name="act_close">Cerrar</string>
+    <string name="text_panel_title">Procesar texto con nodx Lens</string>
+    <string name="text_panel_hint">Pega o edita el texto…</string>
+    <string name="text_panel_go">Elegir acción ▸</string>
+    <string name="camera_unavailable">No se encontró app de cámara</string>
+    <string name="camera_decode_failed">No se pudo leer la foto</string>
+    <string name="log_title">Registro de actividad</string>
+    <string name="recent_log">🕘 Registro ▸</string>
+    <string name="log_section">🕘 Registro de actividad</string>
+    <string name="tab_run">▶  Ejecutar</string>
+    <string name="tab_history">🕘  Historial</string>
+    <string name="tab_settings">⚙  Ajustes</string>
+    <string name="btn_log_all">🕘  Ver todos los registros  ▸</string>
+    <string name="log_empty">Nada todavía — las acciones de la burbuja aparecen aquí.</string>
+    <string name="log_kind_prompt">💬 Respuesta</string>
+    <string name="log_kind_search">🔍 Búsqueda</string>
+    <string name="log_kind_save">💡 Guardado</string>
+    <string name="log_kind_generate">🎨 Generado</string>
+    <string name="log_reopen">↗ Reabrir enlace</string>
+    <string name="log_delete_confirm">¿Eliminar este registro?</string>
+    <string name="access_label">Captura nodx</string>
+    <string name="access_desc">Permite que la burbuja nodx haga capturas sin el diálogo de compartir pantalla en cada sesión. Solo captura cuando tocas la burbuja; no lee contenido ni eventos de la pantalla.</string>
+    <string name="btn_access">🔓 Consentimiento de captura único (accesibilidad)</string>
+    <string name="btn_access_on">🔓 Captura de larga duración: ACTIVADA ✓</string>
+    <string name="toast_access_howto">Busca «Captura nodx» en las apps instaladas y actívala</string>
+    <string name="result_copy">📋 Copiar</string>
+    <string name="result_copied">Copiado</string>
+    <string name="icon_upload">Desde la galería…</string>
+    <string name="icon_manual">Escribir emoji</string>
+    <string name="icon_manual_hint">Emoji, p. ej. 🔍</string>
+    <string name="icon_load_failed">No se pudo cargar esa imagen</string>
+    <string name="wheel_add_child">＋ Añadir subelemento</string>
+    <string name="wheel_remove">✕ Eliminar</string>
+    <string name="wheel_save">Guardar rueda</string>
+    <string name="wheel_reset">Restaurar valores predeterminados</string>
+    <string name="wheel_saved">Guardado — surte efecto en la próxima captura</string>
+    <string name="wheel_err_emoji">Cada botón necesita un icono emoji</string>
+    <string name="wheel_err_param">Falta un parámetro de prompt/URL</string>
+    <string name="wheel_err_child">Un submenú necesita al menos 1 subelemento</string>
+    <string name="wheel_preview_hint">Vista previa en vivo — refleja tus cambios; toca un radio con submenú para desplegarlo, ↩ para plegar.</string>
+    <string name="wheel_layout_single">Imagen única</string>
+    <string name="wheel_layout_grid">Cuadrícula 2×2 de cuatro estilos</string>
+    <string name="wheel_param_style_hint">Prompt de estilo — {subject} se sustituye por la descripción de la IA</string>
+    <string name="provider_label">Proveedor de IA:</string>
+    <string name="provider_anthropic">Anthropic (clave de pago)</string>
+    <string name="provider_gemini">Gemini — nivel gratuito</string>
+    <string name="provider_openai">OpenAI (GPT)</string>
+    <string name="provider_openrouter">OpenRouter — modelos gratis</string>
+    <string name="toast_need_gemini_key">El modo gratis usa tu clave de Google AI — añádela arriba (gratis en aistudio.google.com)</string>
+    <!-- ✏️ instruct action -->
+    <string name="instruct_title">Instrucción</string>
+    <string name="instruct_hint">¿Qué quieres hacer? p. ej. «explícamelo», «ábrelo en Amazon»…</string>
+    <string name="instruct_run">Ejecutar</string>
+    <string name="instruct_opened">Abierto: %1$s</string>
+</resources>
