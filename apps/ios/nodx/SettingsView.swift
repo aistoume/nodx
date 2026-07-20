@@ -39,7 +39,7 @@ struct SettingsView: View {
                 }
 
                 Section("About") {
-                    LabeledContent("Version", value: "0.2.0")
+                    LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")
                     Link("aicon.solutions", destination: URL(string: "https://aicon.solutions/nodx/")!)
                 }
             }
