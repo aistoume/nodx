@@ -125,6 +125,30 @@ export function defaultWheel(): WheelConfigV1 {
   };
 }
 
+/**
+ * Config migration: wheels saved before the instruct release have no ✏️
+ * entry anywhere, so upgraded users literally can't find the new action.
+ * Inject one into a submenu with a free slot (schema max 3 children) —
+ * their own customization stays untouched. Returns true when it changed.
+ */
+function ensureInstructEntry(cfg: WheelConfigV1): boolean {
+  const hasInstruct = cfg.spokes.some(
+    (s) =>
+      s.action?.kind === 'instruct' ||
+      s.children.some((c) => c.action?.kind === 'instruct'),
+  );
+  if (hasInstruct) return false;
+  const slot = cfg.spokes.find((s) => s.children.length > 0 && s.children.length < 3);
+  if (!slot) return false; // every submenu full — user can add it in Settings
+  slot.children.push({
+    emoji: '✏️',
+    label: 'Instruct',
+    action: { kind: 'instruct' },
+    children: [],
+  });
+  return true;
+}
+
 export async function getWheelConfig(): Promise<WheelConfigV1> {
   const stored = await chrome.storage.local.get('wheelConfig');
   const cfg = stored.wheelConfig as WheelConfigV1 | undefined;
@@ -132,7 +156,7 @@ export async function getWheelConfig(): Promise<WheelConfigV1> {
     return defaultWheel();
   }
   // Normalize actions saved by older versions (e.g. bare {kind:'generate'}).
-  return {
+  const normalized: WheelConfigV1 = {
     ...cfg,
     spokes: cfg.spokes.map((s) => ({
       ...s,
@@ -145,6 +169,15 @@ export async function getWheelConfig(): Promise<WheelConfigV1> {
       })),
     })),
   };
+  if (ensureInstructEntry(normalized)) {
+    // Persist so the injected entry is stable (and editable) from now on.
+    try {
+      await setWheelConfig(normalized);
+    } catch {
+      /* read-only contexts still get the in-memory migration */
+    }
+  }
+  return normalized;
 }
 
 export async function setWheelConfig(cfg: WheelConfigV1): Promise<void> {

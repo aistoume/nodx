@@ -189,11 +189,35 @@ object WheelConfig {
     fun load(c: Context): List<WheelItem> {
         val raw = c.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY, null)
             ?: return defaults(c)
-        return runCatching {
+        val parsed = runCatching {
             val spokes = JSONObject(raw).getJSONArray("spokes")
             require(spokes.length() == 4)
             (0 until 4).map { WheelItem.fromJson(spokes.getJSONObject(it)) }
-        }.getOrElse { defaults(c) }
+        }.getOrElse { return defaults(c) }
+        return migrateInstruct(c, parsed)
+    }
+
+    /**
+     * Config migration (mirrors the extension): wheels saved before the
+     * instruct release have no ✏️ anywhere — inject one into a submenu
+     * with a free slot so upgraded users can actually find the action.
+     */
+    private fun migrateInstruct(c: Context, spokes: List<WheelItem>): List<WheelItem> {
+        val hasInstruct = spokes.any { s ->
+            s.action is WheelAction.Instruct || s.children.any { it.action is WheelAction.Instruct }
+        }
+        if (hasInstruct) return spokes
+        val idx = spokes.indexOfFirst { it.children.isNotEmpty() && it.children.size < 3 }
+        if (idx < 0) return spokes // every submenu full — user adds it in settings
+        val migrated = spokes.mapIndexed { i, s ->
+            if (i != idx) s else WheelItem(
+                s.emoji, s.label, s.action,
+                s.children + WheelItem("✏️", "Instruct", WheelAction.Instruct),
+                s.color,
+            )
+        }
+        save(c, migrated) // persist so the entry is stable + editable
+        return migrated
     }
 
     fun save(c: Context, spokes: List<WheelItem>) {
