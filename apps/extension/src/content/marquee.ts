@@ -297,8 +297,14 @@ async function routeWheelAction(
 ): Promise<void> {
   switch (action.kind) {
     case 'prompt':
-      if (onBox) await explainHighlight(onBox, action.prompt);
-      else await runExplain(cropped, rect, action.prompt);
+      if (onBox) {
+        try {
+          void chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL', highlightId: onBox.id });
+        } catch { /* non-fatal */ }
+        await explainHighlight(onBox, action.prompt);
+      } else {
+        await runExplain(cropped, rect, action.prompt);
+      }
       break;
     case 'instruct': {
       // Same pipeline as 'prompt', but the prompt is typed at use time.
@@ -307,8 +313,14 @@ async function routeWheelAction(
         rect.y + rect.h + 8,
       );
       if (!instruction) break;
-      if (onBox) await explainHighlight(onBox, instruction);
-      else await runExplain(cropped, rect, instruction);
+      if (onBox) {
+        try {
+          void chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL', highlightId: onBox.id });
+        } catch { /* non-fatal */ }
+        await explainHighlight(onBox, instruction);
+      } else {
+        await runExplain(cropped, rect, instruction);
+      }
       break;
     }
     case 'search':
@@ -1052,6 +1064,7 @@ async function runExplain(
   cropped: { dataUrl: string; width: number; height: number },
   rect: MarqueeRect,
   prompt: string,
+  opts: { openPanel?: boolean } = {},
 ): Promise<void> {
   // 1) Create the highlight + paint the yellow box (same as save).
   const highlight: Highlight = {
@@ -1074,6 +1087,16 @@ async function runExplain(
   };
   await addHighlight(highlight);
   drawHighlight(highlight);
+  // Answers used to live ONLY in the side panel — with it closed, an
+  // explain/instruct run looked like nothing happened (just a yellow box).
+  // Open the panel focused on this card so the answer streams in view.
+  if (opts.openPanel !== false) {
+    try {
+      void chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL', highlightId: highlight.id });
+    } catch {
+      /* context invalidated — the answer still lands in the card */
+    }
+  }
   await explainHighlight(highlight, prompt);
 }
 
