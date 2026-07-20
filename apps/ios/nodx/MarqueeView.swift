@@ -77,7 +77,7 @@ struct MarqueeView: View {
         }
         .statusBarHidden()
         .alert("\u{270F}\u{FE0F} Instruction", isPresented: $showInstructInput) {
-            TextField("e.g. \u{201C}translate to French\u{201D}, \u{201C}extract the table as CSV\u{201D}\u{2026}", text: $instructText)
+            TextField("e.g. \u{201C}explain it to me\u{201D}, \u{201C}open it on Amazon\u{201D}\u{2026}", text: $instructText)
             Button("Run") { runInstruction() }
             Button("Cancel", role: .cancel) { instructText = ""; resetSelection() }
         } message: {

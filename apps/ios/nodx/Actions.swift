@@ -92,16 +92,22 @@ enum Actions {
         }
     }
 
-    /// ✏️ Instruct (screenshot flow): the typed instruction IS the vision
-    /// prompt — no intent protocol, same dumb pipeline as kind=prompt
-    /// (mirrors Android `instructOverlay` → `explain`). Logged as a prompt
-    /// entry titled by the instruction, like Android (no new log kind).
+    /// ✏️ Instruct (screenshot flow): vision + the intent-dispatch protocol
+    /// (mirrors Android `instructVision`). A search-type instruction
+    /// ("find it on Amazon") identifies the subject and OPENS the real
+    /// results page; anything else shows the answer card.
     static func runInstruction(_ instruction: String, crop: UIImage) async throws -> ActionOutcome {
         let b64 = try visionBase64(crop)
-        let answer = try await vision(imageBase64: b64, prompt: instruction)
+        let prompt = Dispatch.visionProtocol() + "\n\n---\nInstruction: " + instruction
+        let raw = try await vision(imageBase64: b64, prompt: prompt)
+        if let directive = Dispatch.parseDirective(raw) {
+            ActionLog.append(kind: .search, title: String(instruction.prefix(120)),
+                             detail: directive.note ?? "", url: directive.url.absoluteString, thumb: crop)
+            return .openURL(directive.url, query: instruction)
+        }
         ActionLog.append(kind: .prompt, title: String(instruction.prefix(120)),
-                         detail: answer, url: nil, thumb: crop)
-        return .answer(answer)
+                         detail: raw, url: nil, thumb: crop)
+        return .answer(raw)
     }
 
     // MARK: helpers

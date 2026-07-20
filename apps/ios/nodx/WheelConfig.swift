@@ -5,9 +5,9 @@ enum WheelAction: Equatable {
     case prompt(String)
     case search(urlPrefix: String)
     case save
-    /// Ask for the instruction at use time (typed in a dialog). On the
-    /// screenshot flow the instruction is used VERBATIM as the vision
-    /// prompt — no intent protocol, mirroring Android's `instructOverlay`.
+    /// Ask for the instruction at use time (typed in a dialog), then run it
+    /// through the intent-dispatch protocol (`Dispatch.swift`): search-type
+    /// instructions open the real results page, everything else answers.
     case instruct
     case generate(layout: String, stylePrompt: String)
 
