@@ -5,10 +5,10 @@
 
 ---
 
-## v1.0.4 更新说明（What's new — 贴到 Description 开头,替换 v1.0.0 段）
+## v1.1.0 更新说明（What's new — 贴到 Description 开头,替换 v1.0.0 段）
 
 ```
-What's new in 1.0.4 — The instruction release
+What's new in 1.1.0 — The instruction release
 • ✏️ Type your own instruction: select text (or screenshot a region), hit the new Instruct spoke, and tell the AI exactly what to do — "translate to French", "extract the dates", "rewrite formally".
 • Instructions that ACT: say "search this on arXiv / Temu / GitHub" and the extension opens the real search-results page for you (21 sites' URL patterns built in, plus your own wheel destinations).
 • Follow-up conversations right in the result panel — clarify, refine, or fire another instruction without reselecting.
