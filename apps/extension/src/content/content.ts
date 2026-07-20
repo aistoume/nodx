@@ -101,6 +101,10 @@ interface Annotation {
   text: string;
   explanation: string;
   range: Range;
+  /** Side-panel action record this conversation appends to (✏️ instruct runs). */
+  recordId?: string;
+  /** Full conversation so a reopened panel restores every turn, not just turn 1. */
+  turns?: Array<{ q: string; a: string }>;
 }
 
 const annotations = new Map<string, Annotation>();
@@ -770,9 +774,22 @@ function openPanelForAnnotation(ann: Annotation) {
   footer.style.display = 'flex';
   activeAnnotationId = ann.id;
   wirePanelClicks(panel, ann.text, ann.range);
-  // A reopened annotation can be conversed with too — seed its memory from
-  // the stored explanation.
-  panelChats.set(panel, { turns: [{ q: 'Explain this text.', a: ann.explanation }] });
+  // Restore the FULL conversation (not just turn 1) and keep the live turns
+  // array shared, so follow-ups after reopening still persist. Same for the
+  // side-panel record link — without it, reopened panels silently stopped
+  // appending to their history card.
+  if (!ann.turns) ann.turns = [{ q: 'Explain this text.', a: ann.explanation }];
+  for (const turn of ann.turns.slice(1)) {
+    const qEl = document.createElement('div');
+    qEl.className = 'chat-q';
+    qEl.textContent = turn.q;
+    const aEl = document.createElement('div');
+    aEl.className = 'chat-a';
+    aEl.innerHTML = mdToHtml(turn.a);
+    body.append(qEl, aEl);
+  }
+  if (ann.recordId) panel.dataset.recordId = ann.recordId;
+  panelChats.set(panel, { turns: ann.turns });
   revealFollowup(panel);
 }
 
@@ -828,7 +845,12 @@ function followUp(panel: HTMLDivElement, selectedText: string, question: string)
   aEl.className = 'chat-a loading';
   aEl.textContent = t('connecting');
   body.append(qEl, aEl);
-  aEl.scrollIntoView({ block: 'nearest' });
+  // The .panel is the scroll container (max-height + overflow-y). Snap to
+  // the bottom so the new turn is unmissable — scrollIntoView('nearest')
+  // can no-op or scroll the page instead when the panel is deep-scrolled.
+  panel.scrollTop = panel.scrollHeight;
+  // Keep following the stream only while the user stays near the bottom.
+  const nearBottom = () => panel.scrollHeight - panel.scrollTop - panel.clientHeight < 120;
 
   abortActivePort();
   if (!isExtensionValid()) {
@@ -867,14 +889,17 @@ function followUp(panel: HTMLDivElement, selectedText: string, question: string)
         aEl.classList.remove('loading');
         aEl.textContent = '';
       }
+      const follow = nearBottom();
       received += msg.text;
       aEl.textContent = received;
+      if (follow) panel.scrollTop = panel.scrollHeight;
     } else if (msg.type === 'DONE') {
       settled = true;
       aEl.classList.remove('loading');
+      const follow = nearBottom();
       if (typeof msg.full === 'string' && msg.full) received = msg.full;
       aEl.innerHTML = mdToHtml(received);
-      aEl.scrollIntoView({ block: 'nearest' });
+      if (follow) panel.scrollTop = panel.scrollHeight;
       st.turns.push({ q: question, a: received });
       // Follow-ups extend the SAME side-panel record as the initial run;
       // a directive that opened a page also makes the card reopenable.
@@ -1036,6 +1061,7 @@ function startStream(
 
   let received = '';
   let firstChunk = true;
+  let settled = false;
 
   port.onMessage.addListener((msg: { type: string; text?: string; full?: string; actionUrl?: string; error?: string }) => {
     if (msg.type === 'CHUNK' && typeof msg.text === 'string') {
@@ -1051,6 +1077,7 @@ function startStream(
       caret.textContent = ' ';
       body.appendChild(caret);
     } else if (msg.type === 'DONE') {
+      settled = true;
       body.classList.remove('loading');
       body.querySelector('.cursor')?.remove();
       // The SW's final `full` is authoritative — a ✏️ directive run (e.g.
@@ -1072,8 +1099,9 @@ function startStream(
       revealFollowup(panel);
       // ✏️ instruct runs land in the side-panel record stream too — one
       // card per conversation; follow-ups append to it (see followUp).
+      let recId: string | undefined;
       if (mode === 'custom' && customPrompt) {
-        const recId = recordTextAction(
+        recId = recordTextAction(
           {
             kind: 'instruct',
             label: '指令',
@@ -1089,12 +1117,20 @@ function startStream(
         // Create persistent annotation under the original selection
         const id = createAnnotation(selectedText, received, range);
         activeAnnotationId = id;
+        // Reopening this annotation must restore the WHOLE conversation +
+        // its side-panel record link — share the live turns array.
+        const ann = annotations.get(id);
+        if (ann) {
+          ann.turns = chat.turns;
+          if (recId) ann.recordId = recId;
+        }
       } else if (activeAnnotationId) {
         // Update the existing annotation's stored explanation to the deepened version
         const ann = annotations.get(activeAnnotationId);
         if (ann) ann.explanation = received;
       }
     } else if (msg.type === 'ERROR') {
+      settled = true;
       body.classList.remove('loading');
       body.classList.add('error');
       body.textContent = t('errorPrefix', { msg: msg.error ?? 'unknown' });
@@ -1103,7 +1139,10 @@ function startStream(
   });
 
   port.onDisconnect.addListener(() => {
-    if (firstChunk) {
+    // `settled` guards the race where ERROR (or DONE) lands and the SW then
+    // disconnects — without it the real error text got overwritten by the
+    // generic 「连接中断」 a beat later.
+    if (firstChunk && !settled) {
       body.classList.remove('loading');
       body.classList.add('error');
       body.textContent = t('connectionBroken');

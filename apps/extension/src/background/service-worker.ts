@@ -120,6 +120,15 @@ async function handle(
       }
     }
 
+    // DONE goes out FIRST — recordExplanation's storage write used to sit
+    // between the last chunk and DONE, and a click-away in that window
+    // silently dropped the whole turn (no DONE → no record append).
+    try {
+      port.postMessage({ type: 'DONE', full: display, ...(actionUrl ? { actionUrl } : {}) });
+    } catch {
+      /* disconnected */
+    }
+
     await recordExplanation({
       selectedText: msg.text,
       explanation: display,
@@ -127,12 +136,6 @@ async function handle(
       sourceTitle: msg.title,
       mode: msg.mode,
     });
-
-    try {
-      port.postMessage({ type: 'DONE', full: display, ...(actionUrl ? { actionUrl } : {}) });
-    } catch {
-      /* disconnected */
-    }
     // Open the directive's tab only AFTER the panel has its DONE — creating
     // the tab first deactivates the page mid-delivery, which occasionally
     // drops the port message and strands the panel on 「连接中断」.
