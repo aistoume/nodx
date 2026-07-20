@@ -1,0 +1,147 @@
+<resources>
+    <string name="app_name">nodx</string>
+    <string name="app_title">nodx · Assistent für Systemdenken</string>
+    <string name="channel_name">nodx-Blase</string>
+    <string name="notif_title">nodx ist bereit</string>
+    <string name="notif_text">Blase antippen: Aufnahme → Auswahl → Aktionsrad</string>
+    <string name="notif_stop">Stopp</string>
+
+    <string name="hint_anthropic_key">Anthropic-API-Schlüssel (sk-ant-…)</string>
+    <string name="hint_gemini_key">Google-AI-Schlüssel (🎨 Generieren / Gratismodus; AQ.… oder AIza…)</string>
+    <string name="label_anthropic_key">🔑 Anthropic-Schlüssel</string>
+    <string name="label_gemini_key">🎨 Google-AI-Schlüssel</string>
+    <string name="label_openai_key">🔑 OpenAI-Schlüssel</string>
+    <string name="label_openrouter_key">🔑 OpenRouter-Schlüssel</string>
+    <string name="hint_openai_key">OpenAI-API-Schlüssel (sk-…)</string>
+    <string name="hint_openrouter_key">OpenRouter-Schlüssel (sk-or-…, gratis auf openrouter.ai/keys)</string>
+    <string name="key_saved_fmt">%1$s gespeichert (…%2$s) — zum Ändern antippen</string>
+
+    <string name="btn_start">nodx-Blase starten</string>
+    <string name="btn_stop">🛑 Blase stoppen (Bildschirmaufnahme beenden)</string>
+    <string name="toast_stopped">Gestoppt — Bildschirmaufnahme-Sitzung beendet</string>
+    <string name="toast_not_running">Die Blase läuft nicht</string>
+    <string name="toast_need_key">Bitte zuerst den API-Schlüssel des gewählten Anbieters eingeben</string>
+    <string name="toast_clipboard_empty">Zwischenablage ist leer</string>
+    <string name="btn_paste">📋 Einfügen</string>
+    <string name="toast_bubble_ready">Blase aktiv — Bildschirmfreigabe wird bei der ersten Aufnahme angefragt</string>
+    <string name="toast_grant_overlay">Bitte „Über anderen Apps anzeigen" erlauben und zurückkehren — es geht automatisch weiter</string>
+
+    <string name="recent_title">🖼 Zuletzt hinzugefügt</string>
+    <string name="recent_more">Bibliothek ▸</string>
+    <string name="recent_empty">Noch nichts gespeichert — Bereich auswählen und 💡 oder 🎨 antippen</string>
+    <string name="main_instructions">Die Blase erscheint automatisch beim Öffnen dieser Seite (ohne Dialoge). Antippen: Aufnahme → Auswahl → Aktionsrad (🔍 Erklären/Suchen · 💡 Speichern · 🛒 Shopping · 🎨 Generieren). Das System fragt die Bildschirmfreigabe einmal pro Sitzung an, bei der ersten Aufnahme.</string>
+
+    <string name="gallery_title">nodx-Bibliothek · Pictures/nodx</string>
+    <string name="gallery_empty">Noch keine Aufnahmen gespeichert — Bereich auswählen und 💡 antippen</string>
+    <string name="gallery_private_file">Im App-privaten Ordner gespeichert; externer Viewer nicht verfügbar</string>
+
+    <string name="consent_needed">Zum Aufnehmen ist die Bildschirmfreigabe erforderlich</string>
+    <string name="projection_expired">Bildschirmaufnahme abgelaufen — Blase erneut antippen zum Neu-Autorisieren</string>
+
+    <string name="radial_explain">Erklären</string>
+    <string name="radial_search">Suchen</string>
+
+    <string name="act_recognizing">Erkennen…</string>
+    <string name="act_identifying">Identifizieren…</string>
+    <string name="act_call_failed">Aufruf fehlgeschlagen: %1$s</string>
+    <string name="act_no_subject">Motiv nicht erkennbar — andere Auswahl versuchen</string>
+    <string name="act_searched">Suche: %1$s</string>
+    <string name="act_saved">💡 In Pictures/nodx gespeichert (in der App-Bibliothek ansehen)</string>
+    <string name="act_save_failed">Speichern fehlgeschlagen</string>
+    <string name="act_browser_failed">Browser konnte nicht geöffnet werden: %1$s</string>
+
+    <string name="gen_need_key">🎨 Generieren braucht einen Google-AI-Schlüssel — auf dem nodx-Hauptbildschirm hinzufügen (gratis auf aistudio.google.com)</string>
+    <string name="gen_writing_prompt">🎨 Sonnet schreibt den Generierungs-Prompt… (15–40 s)</string>
+    <string name="gen_rendering">🎨 Gemini rendert… (ein Bild · 2×2-Raster)</string>
+    <string name="gen_prompt_failed">Prompt-Erstellung fehlgeschlagen: %1$s</string>
+    <string name="gen_failed">Generierung fehlgeschlagen: %1$s</string>
+    <string name="gen_decode_failed">Generiertes Bild konnte nicht dekodiert werden</string>
+    <string name="gen_done">🎨 Generiert und in der Bibliothek gespeichert</string>
+    <string name="gen_saved_failed">🎨 Generiert, aber Speichern fehlgeschlagen</string>
+
+    <string name="prompt_explain">Was ist das? Antworte knapp (2–4 Sätze) und zitiere wichtige Zahlen/Texte exakt. Antworte auf Deutsch.</string>
+
+    <string name="btn_wheel">⚙️ Aktionsrad anpassen</string>
+    <string name="bubble_mode_title">🫧 Aktion beim Antippen der Blase</string>
+    <string name="bubble_mode_hint">Was ein Tippen auf die schwebende Blase auslöst. (Blase lange drücken zum schnellen Umschalten.)</string>
+    <string name="bubble_mode_screen">📱 Bildschirmbereich aufnehmen</string>
+    <string name="bubble_mode_text">📋 Text aus der Zwischenablage verarbeiten</string>
+    <string name="bubble_mode_camera">📷 Foto aufnehmen</string>
+    <string name="bubble_mode_screen_short">Bildschirm</string>
+    <string name="bubble_mode_text_short">Text</string>
+    <string name="bubble_mode_camera_short">Kamera</string>
+    <string name="wheel_action_section">🎡 Aktionsrad (nach der Aufnahme)</string>
+    <string name="wheel_title">Aktionsrad anpassen</string>
+    <string name="wheel_pos_up">Obere Speiche (blau)</string>
+    <string name="wheel_pos_right">Rechte Speiche (bernstein)</string>
+    <string name="wheel_pos_down">Untere Speiche (grün)</string>
+    <string name="wheel_pos_left">Linke Speiche (violett)</string>
+    <string name="wheel_emoji_hint">Symbol (Emoji)</string>
+    <string name="wheel_label_hint">Name (optional)</string>
+    <string name="wheel_mode_action">Einzelaktion</string>
+    <string name="wheel_mode_children">Untermenü</string>
+    <string name="wheel_kind_prompt">KI-Antwort (eigener Prompt)</string>
+    <string name="wheel_kind_instruct">Anweisung abfragen (Eingabe bei Nutzung)</string>
+    <string name="wheel_kind_search">KI erkennt → URL öffnen</string>
+    <string name="wheel_kind_save">In Bibliothek speichern</string>
+    <string name="wheel_kind_generate">Bild generieren (Gemini)</string>
+    <string name="wheel_param_prompt_hint">Prompt, der mit dem Screenshot gesendet wird</string>
+    <string name="wheel_param_url_hint">URL-Präfix (Suchwort wird angehängt), z. B. https://www.google.com/search?q=</string>
+    <string name="wheel_preset_custom">Eigene URL…</string>
+    <string name="icon_pick_title">Symbol wählen</string>
+    <string name="result_title_explain">💡 nodx · Antwort</string>
+    <string name="act_close">Schließen</string>
+    <string name="text_panel_title">Text mit nodx Lens verarbeiten</string>
+    <string name="text_panel_hint">Text einfügen oder bearbeiten…</string>
+    <string name="text_panel_go">Aktion wählen ▸</string>
+    <string name="camera_unavailable">Keine Kamera-App gefunden</string>
+    <string name="camera_decode_failed">Foto konnte nicht gelesen werden</string>
+    <string name="log_title">Aktivitätsprotokoll</string>
+    <string name="recent_log">🕘 Protokoll ▸</string>
+    <string name="log_section">🕘 Aktivitätsprotokoll</string>
+    <string name="tab_run">▶  Start</string>
+    <string name="tab_history">🕘  Verlauf</string>
+    <string name="tab_settings">⚙  Einstellungen</string>
+    <string name="btn_log_all">🕘  Alle Einträge ansehen  ▸</string>
+    <string name="log_empty">Noch nichts — Aktionen der Blase landen hier.</string>
+    <string name="log_kind_prompt">💬 Antwort</string>
+    <string name="log_kind_search">🔍 Suche</string>
+    <string name="log_kind_save">💡 Gespeichert</string>
+    <string name="log_kind_generate">🎨 Generiert</string>
+    <string name="log_reopen">↗ Link erneut öffnen</string>
+    <string name="log_delete_confirm">Diesen Eintrag löschen?</string>
+    <string name="access_label">nodx-Screenshot</string>
+    <string name="access_desc">Erlaubt der nodx-Blase Screenshots ohne den Freigabedialog pro Sitzung. Nimmt nur auf, wenn du die Blase antippst; liest weder Bildschirminhalte noch Ereignisse.</string>
+    <string name="btn_access">🔓 Einmalige Aufnahme-Zustimmung (Bedienungshilfe)</string>
+    <string name="btn_access_on">🔓 Dauerhafte Aufnahme: AN ✓</string>
+    <string name="toast_access_howto">„nodx-Screenshot" unter Installierte Apps finden und einschalten</string>
+    <string name="result_copy">📋 Kopieren</string>
+    <string name="result_copied">Kopiert</string>
+    <string name="icon_upload">Aus der Galerie…</string>
+    <string name="icon_manual">Emoji eingeben</string>
+    <string name="icon_manual_hint">Emoji, z. B. 🔍</string>
+    <string name="icon_load_failed">Bild konnte nicht geladen werden</string>
+    <string name="wheel_add_child">＋ Untereintrag hinzufügen</string>
+    <string name="wheel_remove">✕ Entfernen</string>
+    <string name="wheel_save">Rad speichern</string>
+    <string name="wheel_reset">Standard wiederherstellen</string>
+    <string name="wheel_saved">Gespeichert — gilt ab der nächsten Aufnahme</string>
+    <string name="wheel_err_emoji">Jeder Button braucht ein Emoji-Symbol</string>
+    <string name="wheel_err_param">Ein Prompt-/URL-Parameter fehlt</string>
+    <string name="wheel_err_child">Ein Untermenü braucht mindestens 1 Eintrag</string>
+    <string name="wheel_preview_hint">Live-Vorschau — spiegelt deine Änderungen; Speiche mit Untermenü antippen zum Ausklappen, ↩ zum Einklappen.</string>
+    <string name="wheel_layout_single">Einzelbild</string>
+    <string name="wheel_layout_grid">2×2-Raster mit vier Stilen</string>
+    <string name="wheel_param_style_hint">Stil-Prompt — {subject} wird durch die KI-Beschreibung ersetzt</string>
+    <string name="provider_label">KI-Anbieter:</string>
+    <string name="provider_anthropic">Anthropic (bezahlter Schlüssel)</string>
+    <string name="provider_gemini">Gemini — Gratisstufe</string>
+    <string name="provider_openai">OpenAI (GPT)</string>
+    <string name="provider_openrouter">OpenRouter — kostenlose Modelle</string>
+    <string name="toast_need_gemini_key">Der Gratismodus nutzt deinen Google-AI-Schlüssel — oben hinzufügen (gratis auf aistudio.google.com)</string>
+    <!-- ✏️ instruct action -->
+    <string name="instruct_title">Anweisung</string>
+    <string name="instruct_hint">Was möchtest du? z. B. „erklär mir das", „öffne es auf Amazon"…</string>
+    <string name="instruct_run">Ausführen</string>
+    <string name="instruct_opened">Geöffnet: %1$s</string>
+</resources>

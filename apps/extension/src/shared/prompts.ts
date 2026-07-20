@@ -12,6 +12,9 @@ const RESPOND_IN: Partial<Record<Locale, string>> = {
   fr: 'Respond in French.',
   ja: 'Respond in Japanese.',
   es: 'Respond in Spanish.',
+  de: 'Respond in German.',
+  ko: 'Respond in Korean.',
+  pt: 'Respond in Portuguese.',
 };
 
 export function buildExplainPrompt(text: string, locale: Locale): string {

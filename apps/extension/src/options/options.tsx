@@ -113,7 +113,7 @@ function App() {
       <section>
         <label>{t('language')}</label>
         <div className="radios">
-          {(['auto', 'en', 'zh', 'fr', 'ja', 'es'] as Language[]).map((lang) => (
+          {(['auto', 'en', 'zh', 'fr', 'ja', 'es', 'de', 'ko', 'pt'] as Language[]).map((lang) => (
             <label key={lang}>
               <input
                 type="radio"
@@ -126,7 +126,7 @@ function App() {
                 ? t('languageAuto')
                 : // Language names read best in their own language, whatever
                   // the current UI locale is.
-                  { en: 'English', zh: '中文', fr: 'Français', ja: '日本語', es: 'Español' }[lang]}
+                  { en: 'English', zh: '中文', fr: 'Français', ja: '日本語', es: 'Español', de: 'Deutsch', ko: '한국어', pt: 'Português' }[lang]}
             </label>
           ))}
         </div>

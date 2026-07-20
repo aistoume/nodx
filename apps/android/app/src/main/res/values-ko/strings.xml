@@ -1,0 +1,147 @@
+<resources>
+    <string name="app_name">nodx</string>
+    <string name="app_title">nodx · 시스템 사고 어시스턴트</string>
+    <string name="channel_name">nodx 버블</string>
+    <string name="notif_title">nodx 준비 완료</string>
+    <string name="notif_text">버블 탭: 캡처 → 영역 선택 → 액션 휠</string>
+    <string name="notif_stop">중지</string>
+
+    <string name="hint_anthropic_key">Anthropic API 키 (sk-ant-…)</string>
+    <string name="hint_gemini_key">Google AI 키 (🎨 생성 / 무료 모드; AQ.… 또는 AIza…)</string>
+    <string name="label_anthropic_key">🔑 Anthropic 키</string>
+    <string name="label_gemini_key">🎨 Google AI 키</string>
+    <string name="label_openai_key">🔑 OpenAI 키</string>
+    <string name="label_openrouter_key">🔑 OpenRouter 키</string>
+    <string name="hint_openai_key">OpenAI API 키 (sk-…)</string>
+    <string name="hint_openrouter_key">OpenRouter 키 (sk-or-…, openrouter.ai/keys에서 무료)</string>
+    <string name="key_saved_fmt">%1$s 저장됨 (…%2$s) — 탭하여 변경</string>
+
+    <string name="btn_start">nodx 버블 시작</string>
+    <string name="btn_stop">🛑 버블 중지 (화면 캡처 종료)</string>
+    <string name="toast_stopped">중지됨 — 화면 캡처 세션 종료</string>
+    <string name="toast_not_running">버블이 실행 중이 아닙니다</string>
+    <string name="toast_need_key">먼저 선택한 공급자의 API 키를 입력해 주세요</string>
+    <string name="toast_clipboard_empty">클립보드가 비어 있습니다</string>
+    <string name="btn_paste">📋 붙여넣기</string>
+    <string name="toast_bubble_ready">버블 실행 중 — 첫 캡처 시 화면 공유 권한을 요청합니다</string>
+    <string name="toast_grant_overlay">「다른 앱 위에 표시」를 허용하고 돌아오세요 — 자동으로 이어집니다</string>
+
+    <string name="recent_title">🖼 최근 추가</string>
+    <string name="recent_more">라이브러리 ▸</string>
+    <string name="recent_empty">아직 저장된 것이 없습니다 — 영역을 선택하고 💡 또는 🎨를 탭하세요</string>
+    <string name="main_instructions">이 페이지를 열면 버블이 자동으로 나타납니다(대화 상자 없음). 탭: 캡처 → 영역 선택 → 액션 휠(🔍 설명/검색 · 💡 저장 · 🛒 쇼핑 · 🎨 생성). 화면 공유 요청은 세션당 1회, 첫 캡처 때만 표시됩니다.</string>
+
+    <string name="gallery_title">nodx 라이브러리 · Pictures/nodx</string>
+    <string name="gallery_empty">저장된 캡처가 없습니다 — 영역을 선택하고 💡를 탭하세요</string>
+    <string name="gallery_private_file">앱 전용 폴더에 저장됨; 외부 뷰어 사용 불가</string>
+
+    <string name="consent_needed">캡처하려면 화면 공유 권한이 필요합니다</string>
+    <string name="projection_expired">화면 캡처가 만료되었습니다 — 버블을 다시 탭해 재승인하세요</string>
+
+    <string name="radial_explain">설명</string>
+    <string name="radial_search">검색</string>
+
+    <string name="act_recognizing">인식 중…</string>
+    <string name="act_identifying">식별 중…</string>
+    <string name="act_call_failed">호출 실패: %1$s</string>
+    <string name="act_no_subject">대상을 식별하지 못했습니다 — 다른 영역을 시도해 보세요</string>
+    <string name="act_searched">검색 중: %1$s</string>
+    <string name="act_saved">💡 Pictures/nodx에 저장됨(앱 내 라이브러리에서 보기)</string>
+    <string name="act_save_failed">저장 실패</string>
+    <string name="act_browser_failed">브라우저를 열 수 없습니다: %1$s</string>
+
+    <string name="gen_need_key">🎨 생성에는 Google AI 키가 필요합니다 — nodx 메인 화면에서 추가하세요(aistudio.google.com에서 무료)</string>
+    <string name="gen_writing_prompt">🎨 Sonnet이 생성 프롬프트를 작성 중… (15–40초)</string>
+    <string name="gen_rendering">🎨 Gemini가 렌더링 중… (이미지 1장 · 2×2 그리드)</string>
+    <string name="gen_prompt_failed">프롬프트 작성 실패: %1$s</string>
+    <string name="gen_failed">생성 실패: %1$s</string>
+    <string name="gen_decode_failed">생성된 이미지를 디코딩할 수 없습니다</string>
+    <string name="gen_done">🎨 생성 후 라이브러리에 저장됨</string>
+    <string name="gen_saved_failed">🎨 생성했지만 저장에 실패했습니다</string>
+
+    <string name="prompt_explain">이것은 무엇인가요? 핵심 숫자/텍스트를 정확히 인용하며 간결하게(2–4문장) 답해 주세요. 한국어로 답해 주세요.</string>
+
+    <string name="btn_wheel">⚙️ 액션 휠 사용자 지정</string>
+    <string name="bubble_mode_title">🫧 버블 탭 동작</string>
+    <string name="bubble_mode_hint">플로팅 버블을 탭했을 때의 동작. (버블을 길게 눌러 즉시 전환)</string>
+    <string name="bubble_mode_screen">📱 화면 영역 캡처</string>
+    <string name="bubble_mode_text">📋 클립보드 텍스트 처리</string>
+    <string name="bubble_mode_camera">📷 사진 촬영</string>
+    <string name="bubble_mode_screen_short">화면</string>
+    <string name="bubble_mode_text_short">텍스트</string>
+    <string name="bubble_mode_camera_short">카메라</string>
+    <string name="wheel_action_section">🎡 액션 휠 (캡처 후)</string>
+    <string name="wheel_title">액션 휠 사용자 지정</string>
+    <string name="wheel_pos_up">위 스포크 (파랑)</string>
+    <string name="wheel_pos_right">오른쪽 스포크 (호박색)</string>
+    <string name="wheel_pos_down">아래 스포크 (초록)</string>
+    <string name="wheel_pos_left">왼쪽 스포크 (보라)</string>
+    <string name="wheel_emoji_hint">아이콘 (이모지)</string>
+    <string name="wheel_label_hint">이름 (선택)</string>
+    <string name="wheel_mode_action">단일 액션</string>
+    <string name="wheel_mode_children">하위 메뉴</string>
+    <string name="wheel_kind_prompt">AI 답변 (사용자 지정 프롬프트)</string>
+    <string name="wheel_kind_instruct">지시 입력 (사용 시 입력)</string>
+    <string name="wheel_kind_search">AI 인식 → URL 열기</string>
+    <string name="wheel_kind_save">라이브러리에 저장</string>
+    <string name="wheel_kind_generate">이미지 생성 (Gemini)</string>
+    <string name="wheel_param_prompt_hint">스크린샷과 함께 보낼 프롬프트</string>
+    <string name="wheel_param_url_hint">URL 접두사(끝에 검색어 연결), 예: https://www.google.com/search?q=</string>
+    <string name="wheel_preset_custom">사용자 지정 URL…</string>
+    <string name="icon_pick_title">아이콘 선택</string>
+    <string name="result_title_explain">💡 nodx · 답변</string>
+    <string name="act_close">닫기</string>
+    <string name="text_panel_title">nodx Lens로 텍스트 처리</string>
+    <string name="text_panel_hint">텍스트를 붙여넣거나 편집…</string>
+    <string name="text_panel_go">액션 선택 ▸</string>
+    <string name="camera_unavailable">카메라 앱을 찾을 수 없습니다</string>
+    <string name="camera_decode_failed">사진을 읽을 수 없습니다</string>
+    <string name="log_title">활동 기록</string>
+    <string name="recent_log">🕘 기록 ▸</string>
+    <string name="log_section">🕘 활동 기록</string>
+    <string name="tab_run">▶  실행</string>
+    <string name="tab_history">🕘  히스토리</string>
+    <string name="tab_settings">⚙  설정</string>
+    <string name="btn_log_all">🕘  모든 기록 보기  ▸</string>
+    <string name="log_empty">아직 없습니다 — 버블에서 실행한 액션이 여기에 기록됩니다.</string>
+    <string name="log_kind_prompt">💬 답변</string>
+    <string name="log_kind_search">🔍 검색</string>
+    <string name="log_kind_save">💡 저장됨</string>
+    <string name="log_kind_generate">🎨 생성됨</string>
+    <string name="log_reopen">↗ 링크 다시 열기</string>
+    <string name="log_delete_confirm">이 기록을 삭제할까요?</string>
+    <string name="access_label">nodx 스크린샷</string>
+    <string name="access_desc">nodx 버블이 세션마다 뜨는 화면 공유 대화 상자 없이 스크린샷을 찍을 수 있게 합니다. 버블을 탭할 때만 캡처하며 화면 내용이나 이벤트를 읽지 않습니다.</string>
+    <string name="btn_access">🔓 캡처 일괄 동의 (접근성)</string>
+    <string name="btn_access_on">🔓 장기 캡처: 켜짐 ✓</string>
+    <string name="toast_access_howto">설치된 앱에서 「nodx 스크린샷」을 찾아 켜 주세요</string>
+    <string name="result_copy">📋 복사</string>
+    <string name="result_copied">복사됨</string>
+    <string name="icon_upload">갤러리에서…</string>
+    <string name="icon_manual">이모지 입력</string>
+    <string name="icon_manual_hint">이모지, 예: 🔍</string>
+    <string name="icon_load_failed">해당 이미지를 불러올 수 없습니다</string>
+    <string name="wheel_add_child">＋ 하위 항목 추가</string>
+    <string name="wheel_remove">✕ 삭제</string>
+    <string name="wheel_save">휠 저장</string>
+    <string name="wheel_reset">기본값 복원</string>
+    <string name="wheel_saved">저장됨 — 다음 캡처부터 적용</string>
+    <string name="wheel_err_emoji">모든 버튼에는 이모지 아이콘이 필요합니다</string>
+    <string name="wheel_err_param">프롬프트/URL 매개변수가 없습니다</string>
+    <string name="wheel_err_child">하위 메뉴에는 최소 1개 항목이 필요합니다</string>
+    <string name="wheel_preview_hint">실시간 미리보기 — 편집을 즉시 반영합니다. 하위 메뉴 스포크를 탭해 펼치고 ↩로 접습니다.</string>
+    <string name="wheel_layout_single">단일 이미지</string>
+    <string name="wheel_layout_grid">2×2 네 가지 스타일 그리드</string>
+    <string name="wheel_param_style_hint">스타일 프롬프트 — {subject}는 AI의 대상 설명으로 대체됩니다</string>
+    <string name="provider_label">AI 공급자:</string>
+    <string name="provider_anthropic">Anthropic (유료 키)</string>
+    <string name="provider_gemini">Gemini — 무료 등급</string>
+    <string name="provider_openai">OpenAI (GPT)</string>
+    <string name="provider_openrouter">OpenRouter — 무료 모델</string>
+    <string name="toast_need_gemini_key">무료 모드는 Google AI 키를 사용합니다 — 위에서 추가하세요(aistudio.google.com에서 무료)</string>
+    <!-- ✏️ instruct action -->
+    <string name="instruct_title">지시</string>
+    <string name="instruct_hint">무엇을 할까요? 예: "쉽게 설명해 줘", "Amazon에서 열어 줘"…</string>
+    <string name="instruct_run">실행</string>
+    <string name="instruct_opened">열림: %1$s</string>
+</resources>
