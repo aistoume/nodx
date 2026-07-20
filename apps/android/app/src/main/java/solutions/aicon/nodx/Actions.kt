@@ -140,7 +140,7 @@ object Actions {
                     setOnClickListener {
                         val instruction = input.text.toString().trim()
                         close()
-                        if (instruction.isNotEmpty()) explain(context, crop, instruction)
+                        if (instruction.isNotEmpty()) instructVision(context, crop, instruction)
                     }
                 })
             })
@@ -174,6 +174,51 @@ object Actions {
         win = scrim
         wm.addView(scrim, lp)
         input.requestFocus()
+    }
+
+    /**
+     * ✏️ instruct on a screenshot: vision + the intent protocol. A
+     * search-type instruction ("find it on Amazon") identifies the subject
+     * and OPENS the real results page; anything else shows the answer card.
+     */
+    private fun instructVision(context: Context, crop: Bitmap, instruction: String) {
+        if (!ensureKey(context)) return
+        val b64 = toBase64ForVision(crop)
+        toast(context, context.getString(R.string.act_recognizing))
+        CoroutineScope(Dispatchers.IO).launch {
+            val prompt = TextActions.visionDispatchProtocol(context) +
+                "\n\n---\nInstruction: " + instruction
+            val raw = runCatching { vision(context, b64, prompt) }
+                .getOrElse { context.getString(R.string.act_call_failed, it.message) }
+            val directive = TextActions.parseDirective(raw)
+            if (directive != null) {
+                runCatching {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse(directive.url))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                }
+                ActionLog.append(
+                    context, ActionLog.KIND_SEARCH,
+                    title = instruction.take(120), url = directive.url,
+                    detail = directive.note ?: "", image = crop,
+                )
+                mainToast(context, context.getString(R.string.instruct_opened, directive.note ?: directive.url))
+            } else {
+                ActionLog.append(
+                    context, ActionLog.KIND_PROMPT,
+                    title = instruction.take(120), detail = raw, image = crop,
+                )
+                withContext(Dispatchers.Main) {
+                    val wm = context.getSystemService(Context.WINDOW_SERVICE)
+                        as android.view.WindowManager
+                    ResultCard.show(
+                        context, wm,
+                        context.getString(R.string.instruct_title), raw,
+                    )
+                }
+            }
+        }
     }
 
     /** kind=prompt：vision call with the (user-customizable) prompt →

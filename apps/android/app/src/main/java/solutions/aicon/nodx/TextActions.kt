@@ -150,7 +150,7 @@ object TextActions {
     // ── instruct: 用时现输指令 → 意图路由(搜索类真开页)或普通回答 ──────
 
     /** A parsed open_url directive from the dispatch protocol. */
-    private class Directive(val url: String, val note: String?)
+    internal class Directive(val url: String, val note: String?)
 
     /**
      * The dispatch protocol (port of the extension's buildDispatchProtocol):
@@ -158,7 +158,7 @@ object TextActions {
      * the verified preset prefixes + the user's own wheel search prefixes;
      * anything else is answered directly.
      */
-    private fun dispatchProtocol(context: Context): String {
+    internal fun dispatchProtocol(context: Context): String {
         val prefixes = LinkedHashMap<String, String>()
         SearchPresets.ITEMS.forEach { (label, url) -> prefixes[label] = url }
         WheelConfig.load(context).forEach { spoke ->
@@ -184,8 +184,18 @@ Make the query practical for that site's audience (translate/simplify when appro
 For every other kind of instruction (translate, explain, rewrite, extract, summarise, answer a question…), just do the task and output the result directly — no JSON."""
     }
 
+    /**
+     * Vision flavour of the protocol — the instruction applies to a
+     * screenshot crop: identify the subject first, then build the query.
+     */
+    internal fun visionDispatchProtocol(context: Context): String =
+        dispatchProtocol(context).replaceFirst(
+            "When the instruction asks to SEARCH / look up / find / open something on a website or the web, reply with ONLY this one-line JSON and absolutely nothing else:",
+            "You are looking at a screenshot region the user framed. When the instruction asks to SEARCH / find / buy / open something related to what is shown, first IDENTIFY the main subject in the image, turn it into a concise search query (brand + product + key attribute; 3-8 words), then reply with ONLY this one-line JSON and absolutely nothing else:",
+        )
+
     /** Parse a directive: whole/fenced reply, or JSON embedded in prose. */
-    private fun parseDirective(raw: String): Directive? {
+    internal fun parseDirective(raw: String): Directive? {
         fun tryParse(body: String): Directive? = runCatching {
             val o = org.json.JSONObject(body)
             if (o.optString("action") != "open_url") return@runCatching null

@@ -47,6 +47,7 @@ import {
 } from '../shared/radial-actions.js';
 import { getSettings, providerNeedsApiKey } from '../shared/settings.js';
 import { callAI } from '../shared/providers.js';
+import { buildVisionDispatchProtocol, parseDirective } from '../shared/dispatch.js';
 
 const OVERLAY_ID = '__nodx_marquee_overlay__';
 const TOAST_ID = '__nodx_marquee_toast__';
@@ -317,9 +318,9 @@ async function routeWheelAction(
         try {
           void chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL', highlightId: onBox.id });
         } catch { /* non-fatal */ }
-        await explainHighlight(onBox, instruction);
+        await explainHighlight(onBox, instruction, { dispatch: true });
       } else {
-        await runExplain(cropped, rect, instruction);
+        await runExplain(cropped, rect, instruction, { dispatch: true });
       }
       break;
     }
@@ -1064,7 +1065,7 @@ async function runExplain(
   cropped: { dataUrl: string; width: number; height: number },
   rect: MarqueeRect,
   prompt: string,
-  opts: { openPanel?: boolean } = {},
+  opts: { openPanel?: boolean; dispatch?: boolean } = {},
 ): Promise<void> {
   // 1) Create the highlight + paint the yellow box (same as save).
   const highlight: Highlight = {
@@ -1097,7 +1098,7 @@ async function runExplain(
       /* context invalidated — the answer still lands in the card */
     }
   }
-  await explainHighlight(highlight, prompt);
+  await explainHighlight(highlight, prompt, { dispatch: opts.dispatch });
 }
 
 /**
@@ -1140,6 +1141,7 @@ async function reactivateBox(
 async function explainHighlight(
   highlight: Highlight,
   prompt: string = DEFAULT_EXPLAIN_PROMPT,
+  opts: { dispatch?: boolean } = {},
 ): Promise<void> {
   const cropped = {
     dataUrl: highlight.thumbnailDataUrl,
@@ -1154,8 +1156,14 @@ async function explainHighlight(
   });
 
   // Seed the (user-customizable) question in streaming state, then kick
-  // off Sonnet.
+  // off Sonnet. Dispatch mode (✏️ instruct): the QA shows the user's raw
+  // instruction, but the MODEL receives the vision intent protocol — a
+  // "find it on Amazon" then identifies the subject and emits an
+  // executable open_url directive instead of chatting about its limits.
   const question = prompt;
+  const modelPrompt = opts.dispatch
+    ? `${await buildVisionDispatchProtocol()}\n\n---\nInstruction: ${prompt}`
+    : prompt;
   const seed = await appendQA(highlight.url, highlight.id, question);
   if (!seed) return;
 
@@ -1173,7 +1181,7 @@ async function explainHighlight(
       settings.provider,
       settings.apiKey,
       settings.model.explain,
-      question,
+      modelPrompt,
       (chunk) => {
         full += chunk;
         // Throttle: chrome.storage.local writes are batched by Chrome
@@ -1187,8 +1195,25 @@ async function explainHighlight(
       undefined,
       { base64: b64, mime },
     );
+    let finalAnswer = full;
+    if (opts.dispatch) {
+      const d = parseDirective(full);
+      if (d) {
+        // Real action: open the tab, show the outcome note, and stamp the
+        // record with the URL so the card is reopenable.
+        void chrome.runtime.sendMessage({ type: 'OPEN_TAB', url: d.url });
+        const note = `🔗 ${d.note ?? '已打开搜索结果'}\n${d.url}`;
+        finalAnswer = d.prose ? `${d.prose}\n\n${note}` : note;
+        void appendHighlightAction(highlight.url, highlight.id, {
+          kind: 'search',
+          label: '指令',
+          query: prompt,
+          url: d.url,
+        });
+      }
+    }
     await updateQA(highlight.url, highlight.id, seed.qaId, {
-      answer: full,
+      answer: finalAnswer,
       streaming: false,
     });
   } catch (err) {

@@ -17,8 +17,7 @@
  */
 
 import { getSettings, providerNeedsApiKey, type CustomTarget } from '../shared/settings.js';
-import { SEARCH_PRESETS } from '../shared/search-presets.js';
-import { getWheelConfig } from '../shared/wheel.js';
+import { buildTextDispatchProtocol, parseDirective } from '../shared/dispatch.js';
 import { buildExplainPrompt, buildDeepenPrompt } from '../shared/prompts.js';
 import { callAI, generateGeminiImage } from '../shared/providers.js';
 import { recordExplanation } from '../shared/history.js';
@@ -32,60 +31,6 @@ interface StartMessage {
   customPrompt?: string;
   url: string;
   title: string;
-}
-
-/**
- * Intent-dispatch protocol for ✏️ custom instructions ("skill matching").
- *
- * Without this, "search arXiv for this" gets a chat answer like "I can't
- * access arXiv, but here's how you could…" — useless. Instead the model is
- * offered ONE executable action: emit an open_url directive and we open the
- * tab for real. Text-only tasks (translate/explain/rewrite/answer) are
- * explicitly told to answer directly, so nothing changes for them.
- *
- * More actions (save, send-to-target, generate) can join this JSON protocol
- * later — keep the contract in sync with `runCustomDirective`.
- */
-function dispatchProtocolHeader(): string {
-  return `You can either ANSWER the instruction directly, OR execute an action:
-
-When the instruction asks to SEARCH / look up / find / open something on a website or the web (e.g. "search this on arXiv", "在谷歌学术找找相关论文", "打开 temu 找这东西"), reply with ONLY this one-line JSON and absolutely nothing else:
-{"action":"open_url","url":"<search-results URL with the query filled in>","note":"<one short sentence describing what you opened, in the instruction's language>"}
-CRITICAL: emitting this JSON is the ONLY way the page actually opens. Do not describe the action in prose, do not add any text before or after the JSON, and never claim a page was opened unless your reply IS this JSON.`;
-}
-
-/**
- * Compose the dispatch protocol with GROUNDED search-URL prefixes: the
- * verified preset library plus any search prefixes from the user's own
- * wheel config. Models hallucinate site URL patterns (e.g. inventing
- * temu.com/search?q= — a dead page); a matched site MUST use the exact
- * prefix below, guessing is only allowed for unlisted sites it is sure of.
- */
-async function buildDispatchProtocol(): Promise<string> {
-  const prefixes = new Map<string, string>();
-  for (const p of SEARCH_PRESETS) prefixes.set(p.label, p.url);
-  try {
-    const { spokes } = await getWheelConfig();
-    for (const s of spokes) {
-      const items = [s, ...s.children];
-      for (const it of items) {
-        if (it.action?.kind === 'search' && it.action.urlPrefix.trim() && it.label) {
-          prefixes.set(it.label, it.action.urlPrefix);
-        }
-      }
-    }
-  } catch {
-    /* presets alone are fine */
-  }
-  const list = [...prefixes.entries()].map(([label, url]) => `  ${label}: ${url}`).join('\n');
-  return `${dispatchProtocolHeader()}
-
-Known site search prefixes — when the target site matches one of these, you MUST use the exact prefix and append the URL-encoded query (never invent a different pattern for these sites):
-${list}
-For a site NOT in this list, use its real search URL only if you are certain of the pattern; otherwise fall back to https://www.google.com/search?q=site%3A<domain>+<query>.
-Make the query practical for that site's audience — translate or simplify it when appropriate (e.g. Chinese keywords for Taobao/JD, concise product words for shopping sites instead of academic phrases).
-
-For every other kind of instruction (translate, explain, rewrite, extract, summarise, answer a question…), just do the task and output the result directly — no JSON, no mention of this protocol.`;
 }
 
 chrome.runtime.onConnect.addListener((port) => {
@@ -118,7 +63,7 @@ async function handle(
       msg.mode === 'custom'
         ? // The user's instruction + the dispatch protocol: the model either
           // answers, or emits an executable open_url directive (see above).
-          `${await buildDispatchProtocol()}\n\n---\nInstruction: ${(msg.customPrompt ?? '').trim()}\n\nText:\n${msg.text}`
+          `${await buildTextDispatchProtocol()}\n\n---\nInstruction: ${(msg.customPrompt ?? '').trim()}\n\nText:\n${msg.text}`
         : msg.mode === 'short'
           ? buildExplainPrompt(msg.text, locale)
           : buildDeepenPrompt(msg.text, locale);
@@ -218,74 +163,15 @@ async function handle(
   }
 }
 
-/** Validate one candidate directive JSON. http(s) URLs only — never open
- *  javascript:/data:/chrome: URLs a model made up. */
-function parseDirectiveJson(body: string): { url: URL; note?: string } | null {
-  let obj: { action?: string; url?: string; note?: string };
-  try {
-    obj = JSON.parse(body) as { action?: string; url?: string; note?: string };
-  } catch {
-    return null;
-  }
-  if (obj.action !== 'open_url' || typeof obj.url !== 'string') return null;
-  let parsed: URL;
-  try {
-    parsed = new URL(obj.url);
-  } catch {
-    return null;
-  }
-  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
-  return {
-    url: parsed,
-    note: typeof obj.note === 'string' && obj.note.trim() ? obj.note.trim() : undefined,
-  };
-}
-
-function execDirective(d: {
-  url: URL;
-  note?: string;
-}): { display: string; url: string } {
-  // Formatting only — the caller opens the tab AFTER the panel has its
-  // DONE message (see handle()). Link text is the host, not the full URL.
-  return {
-    display: `🔗 ${d.note ?? '已打开搜索结果'}\n\n[${d.url.host} ↗](${d.url.href})`,
-    url: d.url.href,
-  };
-}
-
 /**
- * Parse + execute a custom-instruction directive (see buildDispatchProtocol).
- * Handles BOTH shapes the model produces:
- *   1. the whole reply is the JSON (optionally code-fenced) — the intended
- *      protocol shape;
- *   2. the JSON embedded in prose ("这个指令要求我… {json}") — models slip
- *      despite the protocol, and a narrated-but-unexecuted action reads as
- *      a lie ("已经为您打开了"). The embedded directive still runs, and the
- *      surrounding prose is kept with the JSON blob swapped for the 🔗 note.
- * Returns null when no valid directive is present anywhere.
+ * Execute a parsed directive for the TEXT path: format the display note.
+ * (Tab opening happens after DONE is delivered — see handle().)
  */
 function runCustomDirective(raw: string): { display: string; url?: string } | null {
-  let body = raw.trim();
-  const fenced = body.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
-  if (fenced) body = fenced[1].trim();
-  const whole = parseDirectiveJson(body);
-  if (whole) return execDirective(whole);
-
-  // Embedded scan — the directive JSON is flat, so brace-free matching works.
-  for (const m of raw.matchAll(/\{[^{}]*"action"\s*:\s*"open_url"[^{}]*\}/g)) {
-    const parsed = parseDirectiveJson(m[0]);
-    if (!parsed) continue;
-    const out = execDirective(parsed);
-    const prose = raw
-      .replace(m[0], '')
-      .replace(/```(?:json)?\s*```/g, '')
-      .trim();
-    return {
-      display: prose ? `${prose}\n\n${out.display}` : out.display,
-      url: out.url,
-    };
-  }
-  return null;
+  const d = parseDirective(raw);
+  if (!d) return null;
+  const note = `🔗 ${d.note ?? '已打开搜索结果'}\n\n[${d.host} ↗](${d.url})`;
+  return { display: d.prose ? `${d.prose}\n\n${note}` : note, url: d.url };
 }
 
 // Open options on first install
