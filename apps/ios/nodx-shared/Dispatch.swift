@@ -77,6 +77,25 @@ enum Dispatch {
         """
     }
 
+    /// Text flavour: the instruction applies to a selected text snippet
+    /// (Share Extension path) — port of Android `dispatchProtocol`.
+    static func textProtocol() -> String {
+        """
+        You can either ANSWER the instruction directly, OR execute an action:
+
+        When the instruction asks to SEARCH / look up / find / open something on a website or the web, reply with ONLY this one-line JSON and absolutely nothing else:
+        {"action":"open_url","url":"<search-results URL with the query filled in>","note":"<one short sentence describing what you opened, in the instruction's language>"}
+        CRITICAL: emitting this JSON is the ONLY way the page actually opens. Do not describe the action in prose, and never claim a page was opened unless your reply IS this JSON.
+
+        Known site search prefixes — when the target site matches one of these, you MUST use the exact prefix and append the URL-encoded query:
+        \(sitePrefixList())
+        For a site NOT in this list, use its real search URL only if you are certain; otherwise fall back to https://www.google.com/search?q=site%3A<domain>+<query>.
+        Make the query practical for that site's audience (translate/simplify when appropriate).
+
+        For every other kind of instruction (translate, explain, rewrite, extract, summarise, answer a question\u{2026}), just do the task and output the result directly \u{2014} no JSON.
+        """
+    }
+
     /// Parse a directive: whole reply, code-fenced reply, or JSON embedded in
     /// prose (models slip despite the protocol — a narrated-but-unexecuted
     /// action reads as a lie, so the embedded form still runs).

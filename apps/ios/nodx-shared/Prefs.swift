@@ -33,7 +33,21 @@ enum Provider: String, CaseIterable, Identifiable {
 }
 
 enum Prefs {
-    private static let d = UserDefaults.standard
+    /// App Group so the Share Extension reads the same provider + keys.
+    static let appGroup = "group.solutions.aicon.nodx"
+
+    private static let d: UserDefaults = {
+        guard let group = UserDefaults(suiteName: appGroup) else { return .standard }
+        // One-time migration: settings saved before the app-group move live
+        // in .standard — copy them over so nobody re-enters their keys.
+        let std = UserDefaults.standard
+        if group.string(forKey: "ai_provider") == nil {
+            for key in ["ai_provider"] + Provider.allCases.map(\.keyPref) {
+                if let v = std.string(forKey: key) { group.set(v, forKey: key) }
+            }
+        }
+        return group
+    }()
 
     static var provider: Provider {
         get { Provider(rawValue: d.string(forKey: "ai_provider") ?? "") ?? .anthropic }

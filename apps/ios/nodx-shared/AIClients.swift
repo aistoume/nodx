@@ -46,6 +46,24 @@ enum AnthropicClient {
     static let fastModel = "claude-haiku-4-5"
     static let qualityModel = "claude-sonnet-5"
 
+    static func text(apiKey: String, prompt: String, model: String) async throws -> String {
+        let body: [String: Any] = [
+            "model": model,
+            "max_tokens": 800,
+            "messages": [["role": "user", "content": prompt]],
+        ]
+        let data = try await postJSON(
+            URL(string: "https://api.anthropic.com/v1/messages")!,
+            headers: ["x-api-key": apiKey, "anthropic-version": "2023-06-01"],
+            body: body, timeout: 60)
+        guard let content = try json(data)["content"] as? [[String: Any]] else {
+            throw AIError.badResponse("Anthropic: no content in response")
+        }
+        let out = content.compactMap { $0["text"] as? String }.joined()
+        guard !out.isEmpty else { throw AIError.badResponse("Anthropic: empty answer") }
+        return out
+    }
+
     static func vision(apiKey: String, imageBase64: String, prompt: String, model: String) async throws -> String {
         let body: [String: Any] = [
             "model": model,
@@ -77,6 +95,25 @@ enum OpenAIClient {
     static let openAIFast = "gpt-5.6-luna"
     static let openAIQuality = "gpt-5.6-sol"
     static let openRouterModel = "openrouter/free"
+
+    static func text(endpoint: String, apiKey: String, prompt: String, model: String) async throws -> String {
+        let isOpenAI = endpoint.contains("api.openai.com")
+        var body: [String: Any] = [
+            "model": model,
+            "messages": [["role": "user", "content": prompt]],
+        ]
+        if isOpenAI { body["max_completion_tokens"] = 4096 } else { body["max_tokens"] = 800 }
+        let data = try await postJSON(
+            URL(string: endpoint)!,
+            headers: ["authorization": "Bearer \(apiKey)"],
+            body: body, timeout: 90)
+        guard let choices = try json(data)["choices"] as? [[String: Any]],
+              let message = choices.first?["message"] as? [String: Any],
+              let out = message["content"] as? String, !out.isEmpty else {
+            throw AIError.badResponse("OpenAI: empty answer")
+        }
+        return out
+    }
 
     static func vision(endpoint: String, apiKey: String, imageBase64: String, prompt: String, model: String) async throws -> String {
         let isOpenAI = endpoint.contains("api.openai.com")
@@ -125,6 +162,16 @@ enum GeminiClient {
                     ["text": prompt],
                 ],
             ]],
+        ]
+        let data = try await postJSON(endpoint(visionModel, key: apiKey), headers: [:], body: body, timeout: 120)
+        let out = textParts(try json(data)).joined()
+        guard !out.isEmpty else { throw AIError.badResponse("Gemini: empty answer") }
+        return out
+    }
+
+    static func text(apiKey: String, prompt: String) async throws -> String {
+        let body: [String: Any] = [
+            "contents": [["role": "user", "parts": [["text": prompt]]]],
         ]
         let data = try await postJSON(endpoint(visionModel, key: apiKey), headers: [:], body: body, timeout: 120)
         let out = textParts(try json(data)).joined()
