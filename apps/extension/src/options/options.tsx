@@ -112,24 +112,22 @@ function App() {
 
       <section>
         <label>{t('language')}</label>
-        <div className="radios">
+        <select
+          value={settings.language}
+          onChange={(e) =>
+            void save({ language: (e.target as HTMLSelectElement).value as Language })
+          }
+        >
           {(['auto', 'en', 'zh', 'fr', 'ja', 'es', 'de', 'ko', 'pt', 'it', 'ru', 'ar'] as Language[]).map((lang) => (
-            <label key={lang}>
-              <input
-                type="radio"
-                name="language"
-                value={lang}
-                checked={settings.language === lang}
-                onChange={() => void save({ language: lang })}
-              />{' '}
+            <option key={lang} value={lang}>
               {lang === 'auto'
                 ? t('languageAuto')
                 : // Language names read best in their own language, whatever
                   // the current UI locale is.
                   { en: 'English', zh: '中文', fr: 'Français', ja: '日本語', es: 'Español', de: 'Deutsch', ko: '한국어', pt: 'Português', it: 'Italiano', ru: 'Русский', ar: 'العربية' }[lang]}
-            </label>
+            </option>
           ))}
-        </div>
+        </select>
       </section>
 
       <section>
