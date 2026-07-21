@@ -19,8 +19,8 @@ android {
         applicationId = "solutions.aicon.nodx"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "1.2.1"
+        versionCode = 8
+        versionName = "1.3.0"
     }
     signingConfigs {
         if (keystoreProps.isNotEmpty()) {
