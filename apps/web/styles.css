@@ -132,7 +132,7 @@ h2 {
 }
 
 /* How (steps) */
-.how { background: var(--surface); border-radius: 18px; margin: 0 24px; max-width: calc(1120px - 48px); }
+.how { background: var(--surface); border-radius: 18px; margin: 0 auto; width: min(calc(1120px - 48px), calc(100% - 48px)); }
 .steps {
   max-width: 720px; margin: 0 auto; padding-left: 28px;
 }
