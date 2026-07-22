@@ -13,14 +13,14 @@ val keystoreProps = Properties().apply {
 
 android {
     namespace = "solutions.aicon.nodx"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "solutions.aicon.nodx"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 8
-        versionName = "1.3.0"
+        targetSdk = 36
+        versionCode = 9
+        versionName = "1.3.1"
     }
     signingConfigs {
         if (keystoreProps.isNotEmpty()) {
