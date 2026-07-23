@@ -146,4 +146,5 @@
     <string name="instruct_opened">열림: %1$s</string>
     <string name="voice_no_speech">잘 못 들었어요 — 다시 말해 주세요</string>
     <string name="voice_unavailable">이 기기에서는 음성 인식을 사용할 수 없습니다</string>
+    <string name="wheel_kind_voice">음성 지시 (말하면 실행)</string>
 </resources>

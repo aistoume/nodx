@@ -26,7 +26,7 @@ import androidx.appcompat.app.AppCompatActivity
 class WheelSettingsActivity : AppCompatActivity() {
 
     /** Action kinds in spinner order. */
-    private enum class Kind { PROMPT, INSTRUCT, SEARCH, SAVE, GENERATE }
+    private enum class Kind { PROMPT, INSTRUCT, SEARCH, SAVE, GENERATE, VOICE }
 
     private val kindLabels by lazy {
         listOf(
@@ -35,6 +35,7 @@ class WheelSettingsActivity : AppCompatActivity() {
             getString(R.string.wheel_kind_search),
             getString(R.string.wheel_kind_save),
             getString(R.string.wheel_kind_generate),
+            getString(R.string.wheel_kind_voice),
         )
     }
 
@@ -174,6 +175,7 @@ class WheelSettingsActivity : AppCompatActivity() {
         private fun defaultParamFor(k: Kind): String = when (k) {
             Kind.PROMPT -> WheelAction.DEFAULT_EXPLAIN_PROMPT
             Kind.INSTRUCT -> ""
+            Kind.VOICE -> ""
             Kind.SEARCH -> WheelAction.DEFAULT_SEARCH_PREFIX
             Kind.GENERATE -> defaultStyleForLayout()
             Kind.SAVE -> ""
@@ -218,6 +220,7 @@ class WheelSettingsActivity : AppCompatActivity() {
                     is WheelAction.Search -> Kind.SEARCH.ordinal
                     WheelAction.Save -> Kind.SAVE.ordinal
                     WheelAction.Instruct -> Kind.INSTRUCT.ordinal
+                    WheelAction.Voice -> Kind.VOICE.ordinal
                     is WheelAction.Generate -> Kind.GENERATE.ordinal
                     else -> Kind.PROMPT.ordinal
                 }
@@ -336,6 +339,7 @@ class WheelSettingsActivity : AppCompatActivity() {
                 Kind.SEARCH -> { if (p.isEmpty()) { toast(getString(R.string.wheel_err_param)); return null }; WheelAction.Search(p) }
                 Kind.SAVE -> WheelAction.Save
                 Kind.INSTRUCT -> WheelAction.Instruct
+                Kind.VOICE -> WheelAction.Voice
                 Kind.GENERATE ->
                     WheelAction.Generate(layoutValue(), p.ifEmpty { defaultStyleForLayout() })
             }
@@ -353,6 +357,7 @@ class WheelSettingsActivity : AppCompatActivity() {
                 Kind.SEARCH -> WheelAction.Search(p)
                 Kind.SAVE -> WheelAction.Save
                 Kind.INSTRUCT -> WheelAction.Instruct
+                Kind.VOICE -> WheelAction.Voice
                 Kind.GENERATE ->
                     WheelAction.Generate(layoutValue(), p.ifEmpty { defaultStyleForLayout() })
             }

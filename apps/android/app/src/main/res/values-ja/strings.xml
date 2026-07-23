@@ -146,4 +146,5 @@
     <string name="instruct_opened">開きました：%1$s</string>
     <string name="voice_no_speech">聞き取れませんでした — もう一度どうぞ</string>
     <string name="voice_unavailable">この端末では音声認識を利用できません</string>
+    <string name="wheel_kind_voice">音声指示(話すだけで実行)</string>
 </resources>

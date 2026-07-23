@@ -1,11 +1,11 @@
 package solutions.aicon.nodx
 
-import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 
 /**
  * 🎤 Voice → instruct. Translucent trampoline that fires the SYSTEM speech
@@ -20,7 +20,7 @@ import android.widget.Toast
  *    for an Intent — parked in [pendingCrop]; the result shows as the
  *    usual ResultCard overlay, independent of this activity.
  */
-class VoiceInputActivity : Activity() {
+class VoiceInputActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_MODE = "mode" // "text" | "vision"
         const val EXTRA_TEXT = "text"
@@ -54,9 +54,8 @@ class VoiceInputActivity : Activity() {
             ?.firstOrNull()
             ?.trim()
         if (resultCode != RESULT_OK || spoken.isNullOrEmpty()) {
-            if (resultCode != RESULT_CANCELED) {
-                Toast.makeText(this, R.string.voice_no_speech, Toast.LENGTH_SHORT).show()
-            }
+            // CANCELED included: a silent vanish reads as a bug — always explain.
+            Toast.makeText(this, R.string.voice_no_speech, Toast.LENGTH_SHORT).show()
             pendingCrop = null
             finish()
             return

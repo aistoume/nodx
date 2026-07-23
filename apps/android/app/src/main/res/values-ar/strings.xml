@@ -146,4 +146,5 @@
     <string name="instruct_opened">فُتح: %1$s</string>
     <string name="voice_no_speech">لم أسمع جيداً — حاول مرة أخرى</string>
     <string name="voice_unavailable">التعرف على الكلام غير متاح على هذا الجهاز</string>
+    <string name="wheel_kind_voice">تعليمة صوتية (تحدّث عند الاستخدام)</string>
 </resources>

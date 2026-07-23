@@ -146,4 +146,5 @@
     <string name="instruct_opened">Aberto: %1$s</string>
     <string name="voice_no_speech">Não entendi — tente de novo</string>
     <string name="voice_unavailable">O reconhecimento de voz não está disponível neste dispositivo</string>
+    <string name="wheel_kind_voice">Instrução por voz (fale ao usar)</string>
 </resources>

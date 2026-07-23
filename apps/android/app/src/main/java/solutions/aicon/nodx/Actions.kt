@@ -93,6 +93,14 @@ object Actions {
         when (action) {
             is WheelAction.Prompt -> explain(context, crop, action.prompt)
             WheelAction.Instruct -> instructOverlay(context, crop)
+            WheelAction.Voice -> {
+                VoiceInputActivity.pendingCrop = crop
+                context.startActivity(
+                    Intent(context, VoiceInputActivity::class.java)
+                        .putExtra(VoiceInputActivity.EXTRA_MODE, "vision")
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }
             is WheelAction.Search -> aiSearchOpen(context, crop, action.urlPrefix, R.string.act_searched)
             WheelAction.Save -> save(context, crop)
             is WheelAction.Generate -> generate(context, crop, action)

@@ -146,4 +146,5 @@
     <string name="instruct_opened">已打开：%1$s</string>
     <string name="voice_no_speech">没听清,再说一次</string>
     <string name="voice_unavailable">此设备不支持语音识别</string>
+    <string name="wheel_kind_voice">语音指令(说话即执行)</string>
 </resources>

@@ -76,6 +76,14 @@ object TextActions {
                 text, onDone,
             )
             WheelAction.Instruct -> instruct(activity, text, onDone)
+            WheelAction.Voice -> {
+                activity.startActivity(
+                    Intent(activity, VoiceInputActivity::class.java)
+                        .putExtra(VoiceInputActivity.EXTRA_MODE, "text")
+                        .putExtra(VoiceInputActivity.EXTRA_TEXT, text)
+                )
+                onDone()
+            }
             is WheelAction.Search -> {
                 // Image-search prefix (udm=2) makes no sense for a text
                 // query — swap the stock one for plain Google web search.

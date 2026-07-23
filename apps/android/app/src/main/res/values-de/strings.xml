@@ -146,4 +146,5 @@
     <string name="instruct_opened">Geöffnet: %1$s</string>
     <string name="voice_no_speech">Nicht verstanden — bitte erneut versuchen</string>
     <string name="voice_unavailable">Spracherkennung ist auf diesem Gerät nicht verfügbar</string>
+    <string name="wheel_kind_voice">Sprachanweisung (beim Nutzen sprechen)</string>
 </resources>

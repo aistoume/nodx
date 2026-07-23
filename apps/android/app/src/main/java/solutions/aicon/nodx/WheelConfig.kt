@@ -26,6 +26,10 @@ sealed class WheelAction {
     /** ✏️ ask for the instruction at use time (extension's 'instruct'). */
     object Instruct : WheelAction()
 
+    /** 🎤 speak the instruction — straight to the system speech dialog,
+     *  transcript auto-runs through the instruct pipeline. */
+    object Voice : WheelAction()
+
     /**
      * layout: "single" | "grid"; stylePrompt is a template where {subject}
      * is replaced by the AI's description of the crop.
@@ -37,6 +41,7 @@ sealed class WheelAction {
         is Search -> JSONObject().put("kind", "search").put("urlPrefix", urlPrefix)
         Save -> JSONObject().put("kind", "save")
         Instruct -> JSONObject().put("kind", "instruct")
+        Voice -> JSONObject().put("kind", "voice")
         is Generate -> JSONObject().put("kind", "generate")
             .put("layout", layout).put("stylePrompt", stylePrompt)
     }
@@ -76,6 +81,7 @@ Subject: {subject}"""
             "search" -> Search(o.optString("urlPrefix"))
             "save" -> Save
             "instruct" -> Instruct
+            "voice" -> Voice
             "generate" -> {
                 // Older configs stored a bare {kind:"generate"} — fill gaps.
                 val layout = if (o.optString("layout") == LAYOUT_SINGLE) LAYOUT_SINGLE else LAYOUT_GRID
@@ -181,9 +187,11 @@ object WheelConfig {
         WheelItem("🛒", "Shopping", null, listOf(
             WheelItem("🏷", "Google shop", WheelAction.Search("https://www.google.com/search?udm=28&q=")),
             WheelItem("📦", "Amazon", WheelAction.Search("https://www.amazon.com/s?k=")),
+            WheelItem("🎨", "Generate",
+                WheelAction.Generate(WheelAction.LAYOUT_GRID, WheelAction.DEFAULT_GRID_STYLE_PROMPT)),
         )),
-        WheelItem("🎨", "Generate",
-            WheelAction.Generate(WheelAction.LAYOUT_GRID, WheelAction.DEFAULT_GRID_STYLE_PROMPT)),
+        // Left spoke = 🎤 voice instruction (Generate lives in 🛒's submenu).
+        WheelItem("🎤", "Voice", WheelAction.Voice),
     )
 
     fun load(c: Context): List<WheelItem> {
@@ -194,7 +202,7 @@ object WheelConfig {
             require(spokes.length() == 4)
             (0 until 4).map { WheelItem.fromJson(spokes.getJSONObject(it)) }
         }.getOrElse { return defaults(c) }
-        return migrateInstruct(c, parsed)
+        return migrateVoice(c, migrateInstruct(c, parsed))
     }
 
     /**
@@ -217,6 +225,41 @@ object WheelConfig {
             )
         }
         save(c, migrated) // persist so the entry is stable + editable
+        return migrated
+    }
+
+    /**
+     * Voice migration: configs saved before the 🎤 release. If the LEFT
+     * spoke is still the untouched default Generate, swap it for 🎤 Voice
+     * and move Generate into a submenu free slot (matching the new
+     * defaults). Otherwise inject 🎤 into any free submenu slot.
+     */
+    private fun migrateVoice(c: Context, spokes: List<WheelItem>): List<WheelItem> {
+        val hasVoice = spokes.any { s ->
+            s.action is WheelAction.Voice || s.children.any { it.action is WheelAction.Voice }
+        }
+        if (hasVoice) return spokes
+        val voice = WheelItem("🎤", "Voice", WheelAction.Voice)
+        val left = spokes[3]
+        val migrated: List<WheelItem>
+        if (left.action is WheelAction.Generate && left.label == "Generate") {
+            val gen = WheelItem("🎨", "Generate", left.action)
+            val slot = spokes.indexOfFirst { it.children.isNotEmpty() && it.children.size < 3 }
+            migrated = spokes.mapIndexed { i, s ->
+                when {
+                    i == 3 -> voice
+                    i == slot -> WheelItem(s.emoji, s.label, s.action, s.children + gen, s.color)
+                    else -> s
+                }
+            }
+        } else {
+            val slot = spokes.indexOfFirst { it.children.isNotEmpty() && it.children.size < 3 }
+            if (slot < 0) return spokes // everything full — user adds it in settings
+            migrated = spokes.mapIndexed { i, s ->
+                if (i != slot) s else WheelItem(s.emoji, s.label, s.action, s.children + voice, s.color)
+            }
+        }
+        save(c, migrated)
         return migrated
     }
 

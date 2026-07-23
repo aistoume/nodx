@@ -146,4 +146,5 @@
     <string name="instruct_opened">Открыто: %1$s</string>
     <string name="voice_no_speech">Не расслышал — попробуйте ещё раз</string>
     <string name="voice_unavailable">Распознавание речи недоступно на этом устройстве</string>
+    <string name="wheel_kind_voice">Голосовая инструкция (скажите при использовании)</string>
 </resources>
