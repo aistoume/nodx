@@ -23,6 +23,7 @@ import { completeText, MODELS } from '@nodx/ai';
 import { getGatewayConfig, AiNotConfiguredError } from '../ai/gateway';
 
 const BUBBLE = { w: 84, h: 84 };
+const WHEEL = { w: 220, h: 220 };
 const CARD = { w: 380, h: 460 };
 const POS_KEY = 'nodx-pet-pos';
 
@@ -34,8 +35,11 @@ async function resize(w: number, h: number) {
   await getCurrentWindow().setSize(new LogicalSize(w, h));
 }
 
+type View = 'bubble' | 'wheel' | 'card';
+
 export function PetApp() {
-  const [expanded, setExpanded] = useState(false);
+  const [view, setView] = useState<View>('bubble');
+  const expanded = view === 'card';
   const [shot, setShot] = useState<Shot>(null);
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
@@ -91,7 +95,25 @@ export function PetApp() {
       draggedRef.current = false; // was a drag, not a click
       return;
     }
-    void expand();
+    // Click = "act on whatever I have selected". Grab the selection from
+    // the frontmost app (the pet is a non-activating panel, so our ⌘C
+    // lands there). Got text → morph into the action wheel; nothing
+    // selected → just open the card.
+    void (async () => {
+      try {
+        const sel = await invoke<string | null>('pet_grab_selection');
+        if (sel && sel.trim()) {
+          setClipText(sel.trim());
+          setAnswer(null);
+          setShot(null);
+          await showWheel();
+          return;
+        }
+      } catch {
+        /* Accessibility not granted etc. — fall through to the card */
+      }
+      await expand();
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -121,12 +143,19 @@ export function PetApp() {
 
   const expand = useCallback(async () => {
     await resize(CARD.w, CARD.h);
-    setExpanded(true);
+    setView('card');
   }, []);
 
   const collapse = useCallback(async () => {
-    setExpanded(false);
+    setView('bubble');
+    setClipText(null);
+    setShot(null);
     await resize(BUBBLE.w, BUBBLE.h);
+  }, []);
+
+  const showWheel = useCallback(async () => {
+    await resize(WHEEL.w, WHEEL.h);
+    setView('wheel');
   }, []);
 
   const hidePet = useCallback(() => {
@@ -186,13 +215,36 @@ export function PetApp() {
     }
   }, [question, busy, shot, clipText]);
 
+  // ── Wheel actions (on the grabbed selection) ───────────────────────
+  const wheelExplain = useCallback(async () => {
+    setQuestion('解释一下这段文字');
+    await expand();
+    // ask() reads `question` + `clipText`; give React a tick to flush.
+    setTimeout(() => void ask(), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ask]);
+
+  const wheelSearch = useCallback(async () => {
+    const q = clipText ?? '';
+    await collapse();
+    void invoke('os_open_url', {
+      url: `https://www.google.com/search?q=${encodeURIComponent(q)}`,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clipText]);
+
+  const wheelAsk = useCallback(async () => {
+    await expand(); // keep clipText, let the user type a question
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Bubble ─────────────────────────────────────────────────────────
-  if (!expanded) {
+  if (view === 'bubble') {
     return (
       <div className="pet-bubble-wrap">
         <button
           className="pet-bubble"
-          title="nodx — 点击展开 · 拖动移动 · 右键隐藏"
+          title="nodx — 选中文字后点我 · 拖动移动 · 右键隐藏"
           onPointerDown={onBubbleDown}
           onPointerMove={onBubbleMove}
           onClick={onBubbleClick}
@@ -204,6 +256,29 @@ export function PetApp() {
           <span className="pet-bar b1" />
           <span className="pet-bar b2" />
           <span className="pet-bar b3" />
+        </button>
+      </div>
+    );
+  }
+
+  // ── Wheel ──────────────────────────────────────────────────────────
+  if (view === 'wheel') {
+    return (
+      <div className="pet-wheel-wrap">
+        <button className="pet-spoke up" title="解释这段文字" onClick={() => void wheelExplain()}>
+          📖<em>解释</em>
+        </button>
+        <button className="pet-spoke right" title="网页搜索" onClick={() => void wheelSearch()}>
+          🔎<em>搜索</em>
+        </button>
+        <button className="pet-spoke down" title="就这段文字追问" onClick={() => void wheelAsk()}>
+          💬<em>追问</em>
+        </button>
+        <button className="pet-spoke left" title="框选屏幕改为提问" onClick={() => void expand()}>
+          🖼<em>更多</em>
+        </button>
+        <button className="pet-wheel-center" title="取消" onClick={() => void collapse()}>
+          ✕
         </button>
       </div>
     );

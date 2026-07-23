@@ -73,3 +73,8 @@ tauri-plugin-global-shortcut = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = "0.24"
+# Non-activating floating panel for the desktop pet: clicking it must NOT
+# steal focus from the app that holds the user's text selection, so we can
+# synthesise ⌘C against that app. Standard Tauri approach for spotlight-
+# style overlays.
+tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2" }

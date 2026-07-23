@@ -102,6 +102,33 @@ pub fn open_accessibility_pane() {
 #[cfg(not(target_os = "macos"))]
 pub fn open_accessibility_pane() {}
 
+/// Copy-and-read the current selection in the frontmost app (the same
+/// clipboard dance ⌥+E uses), restoring the user's clipboard afterwards.
+/// Returns the trimmed selection, or None if nothing was selected.
+///
+/// Used by the desktop pet: because the pet is a non-activating panel,
+/// clicking it does NOT change the active app, so the synthesised ⌘C still
+/// lands in whatever app holds the selection. macOS only.
+#[cfg(target_os = "macos")]
+pub fn grab_selection(app: &AppHandle) -> Option<String> {
+    if !has_accessibility() {
+        return None;
+    }
+    let original = app.clipboard().read_text().unwrap_or_default();
+    simulate_cmd_c();
+    thread::sleep(Duration::from_millis(120));
+    let selection = app.clipboard().read_text().unwrap_or_default();
+    if !original.is_empty() && original != selection {
+        let _ = app.clipboard().write_text(original);
+    }
+    let s = selection.trim().to_string();
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
+}
+
 /// The hot-path called when the user fires the global shortcut.
 ///
 /// Runs on whatever thread the global-shortcut plugin invokes us on, so we

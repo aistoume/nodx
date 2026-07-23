@@ -329,6 +329,10 @@ pub fn run() {
             .build(),
     );
 
+    // Non-activating panel support for the desktop pet (macOS only).
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(tauri_nspanel::init());
+
     builder
         .plugin(
             tauri_plugin_sql::Builder::default()
@@ -353,6 +357,9 @@ pub fn run() {
             os_run_shortcut,
             pet::pet_capture_region,
             pet::pet_read_clipboard,
+            pet::pet_grab_selection,
+            pet::pet_has_accessibility,
+            pet::pet_open_accessibility,
             pet::pet_show_main,
             pet::pet_hide,
             pet::pet_only_get,
@@ -452,6 +459,30 @@ pub fn run() {
                 // workspace webview at launch — only the pet + tray show.
                 if !pet::is_pet_only(app.handle()) {
                     pet::ensure_main_window(app.handle());
+                }
+
+                // Turn the pet into a non-activating floating panel so clicking
+                // it never steals focus from the app that holds the user's text
+                // selection — that's what lets "select → click pet" synthesise
+                // ⌘C against the *other* app. macOS only.
+                #[cfg(target_os = "macos")]
+                {
+                    use tauri_nspanel::WebviewWindowExt as _;
+                    if let Some(pet) = app.get_webview_window("pet") {
+                        match pet.to_panel() {
+                            Ok(panel) => {
+                                // NSWindowStyleMaskNonactivatingPanel = 1 << 7
+                                panel.set_style_mask(1 << 7);
+                                // Float above ordinary windows.
+                                panel.set_level(3);
+                                // Only grab the keyboard when a text field
+                                // actually needs it (typing a question) — plain
+                                // clicks stay non-activating.
+                                panel.set_becomes_key_only_if_needed(true);
+                            }
+                            Err(e) => log::warn!("pet to_panel failed: {e}"),
+                        }
+                    }
                 }
 
                 // ── 0.3: Popover close → hide (not destroy) ─────────────

@@ -58,6 +58,44 @@ pub fn pet_read_clipboard(app: AppHandle) -> String {
     app.clipboard().read_text().unwrap_or_default().trim().to_string()
 }
 
+/// Grab the current text selection from the frontmost app (synthesise ⌘C).
+/// Works because the pet is a non-activating panel — clicking it doesn't
+/// steal the foreground app's focus. Returns None if nothing is selected
+/// or Accessibility isn't granted (frontend then falls back to clipboard).
+#[tauri::command]
+pub fn pet_grab_selection(app: AppHandle) -> Option<String> {
+    #[cfg(target_os = "macos")]
+    {
+        crate::system_capture::grab_selection(&app)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        None
+    }
+}
+
+/// Whether the Accessibility permission (needed to synthesise ⌘C) is
+/// granted. The pet uses this to guide the user on first run.
+#[tauri::command]
+pub fn pet_has_accessibility() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        crate::system_capture::has_accessibility()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        true
+    }
+}
+
+/// Open System Settings → Privacy → Accessibility so the user can grant it.
+#[tauri::command]
+pub fn pet_open_accessibility() {
+    #[cfg(target_os = "macos")]
+    crate::system_capture::open_accessibility_pane();
+}
+
 /// Bring the main nodx window forward (pet's "open nodx" button). Builds
 /// it on demand — in lightweight (pet-only) mode it never existed yet.
 #[tauri::command]
