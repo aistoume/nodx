@@ -66,6 +66,77 @@ async fn pet_ask(
     ai::complete(p, &thread, image_b64.as_deref()).await
 }
 
+/// Split a command template into argv, honouring quotes. Deliberately NOT
+/// a shell: `{input}` is substituted as ONE argv element, so a selection
+/// containing `;`, backticks or quotes can never become another command.
+fn split_args(template: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut cur = String::new();
+    let mut quote: Option<char> = None;
+    let mut started = false;
+    for ch in template.chars() {
+        match quote {
+            Some(q) if ch == q => quote = None,
+            Some(_) => cur.push(ch),
+            None if ch == '\'' || ch == '"' => {
+                quote = Some(ch);
+                started = true;
+            }
+            None if ch.is_whitespace() => {
+                if started || !cur.is_empty() {
+                    out.push(std::mem::take(&mut cur));
+                    started = false;
+                }
+            }
+            None => cur.push(ch),
+        }
+    }
+    if started || !cur.is_empty() {
+        out.push(cur);
+    }
+    out
+}
+
+/// Run a user-configured CLI with the pet's current context as input.
+///
+/// The user authors the template in Settings (e.g. `claude -p {input}` or
+/// `ollama run llama3 {input}`); `{input}` becomes a single argument. No
+/// shell is spawned. Output is capped so a runaway tool can't flood the UI.
+#[tauri::command]
+async fn pet_run_cli(template: String, input: String) -> Result<String, String> {
+    let parts = split_args(&template);
+    let (program, rest) = parts.split_first().ok_or_else(|| "命令为空".to_string())?;
+    let args: Vec<String> = rest
+        .iter()
+        .map(|a| a.replace("{input}", &input))
+        .collect();
+
+    let mut cmd = tokio::process::Command::new(program);
+    cmd.args(&args)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    // Login shells put user tools in /usr/local/bin and /opt/homebrew/bin;
+    // a GUI app inherits neither.
+    if let Ok(path) = std::env::var("PATH") {
+        cmd.env("PATH", format!("{path}:/usr/local/bin:/opt/homebrew/bin"));
+    }
+
+    let out = tokio::time::timeout(std::time::Duration::from_secs(120), cmd.output())
+        .await
+        .map_err(|_| "命令超时（120 秒）".to_string())?
+        .map_err(|e| format!("无法运行 `{program}`：{e}"))?;
+
+    let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+    let body = if stdout.is_empty() { stderr } else { stdout };
+    let body: String = body.chars().take(20_000).collect();
+    if !out.status.success() && body.is_empty() {
+        return Err(format!("命令退出码 {:?}", out.status.code()));
+    }
+    Ok(body)
+}
+
 /// Open (or focus) the settings window — provider/key + wheel editor.
 #[tauri::command]
 fn pet_open_settings(app: AppHandle) -> Result<(), String> {
@@ -218,6 +289,7 @@ pub fn run() {
             pet_hide,
             pet_ask,
             pet_open_settings,
+            pet_run_cli,
             pet_key_set,
             pet_key_has,
             pet_open_url,

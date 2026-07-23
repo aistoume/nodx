@@ -359,6 +359,25 @@ export function PetApp() {
           await captureRegion();
           break;
         }
+        case 'cli': {
+          const input = clipText ?? '';
+          await expand();
+          setTurns([{ role: 'user', text: `▷ ${spoke.label || '运行命令'}` }]);
+          setBusy(true);
+          setError(null);
+          try {
+            const out = await invoke<string>('pet_run_cli', {
+              template: spoke.param,
+              input,
+            });
+            setTurns((prev) => [...prev, { role: 'assistant', text: out || '(无输出)' }]);
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+          } finally {
+            setBusy(false);
+          }
+          break;
+        }
         case 'ask':
         default:
           await expand();

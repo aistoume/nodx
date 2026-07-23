@@ -11,13 +11,17 @@ export type WheelKind =
   | 'prompt' // send a custom prompt with whatever context is loaded
   | 'search' // open `urlPrefix + <selection>` in the browser
   | 'ask' // open the card and let the user type
-  | 'shot'; // region screenshot, then ask
+  | 'shot' // region screenshot, then ask
+  | 'cli'; // run a user-configured external command with the context
 
 export interface WheelSpoke {
   emoji: string;
   label: string;
   kind: WheelKind;
-  /** prompt text (kind=prompt) or URL prefix (kind=search). */
+  /**
+   * prompt text (kind=prompt), URL prefix (kind=search), or a command
+   * template (kind=cli) where `{input}` is replaced by the context.
+   */
   param: string;
 }
 
@@ -46,7 +50,18 @@ export const KIND_LABEL: Record<WheelKind, string> = {
   search: '打开网址搜索',
   ask: '打开对话框自己问',
   shot: '框选截屏后提问',
+  cli: '运行命令（CLI / 插件）',
 };
+
+/** Ready-made command templates for the CLI action. */
+export const CLI_PRESETS: { label: string; cmd: string }[] = [
+  { label: 'Claude Code', cmd: 'claude -p {input}' },
+  { label: 'Codex CLI', cmd: 'codex exec {input}' },
+  { label: 'Gemini CLI', cmd: 'gemini -p {input}' },
+  { label: 'Ollama（本地模型）', cmd: 'ollama run llama3 {input}' },
+  { label: '朗读（macOS say）', cmd: 'say {input}' },
+  { label: '快捷指令', cmd: 'shortcuts run 我的快捷指令 -i {input}' },
+];
 
 /** Common search destinations — same list the extension ships. */
 export const SEARCH_PRESETS: { label: string; url: string }[] = [
@@ -87,7 +102,7 @@ export function loadWheel(): WheelConfig {
     cfg.spokes = cfg.spokes.map((s, i) => ({
       emoji: s?.emoji?.trim() || d.spokes[i]!.emoji,
       label: s?.label ?? d.spokes[i]!.label,
-      kind: (['prompt', 'search', 'ask', 'shot'] as WheelKind[]).includes(s?.kind)
+      kind: (['prompt', 'search', 'ask', 'shot', 'cli'] as WheelKind[]).includes(s?.kind)
         ? s.kind
         : d.spokes[i]!.kind,
       param: s?.param ?? '',

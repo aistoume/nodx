@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
 import {
+  CLI_PRESETS,
   KIND_LABEL,
   SEARCH_PRESETS,
   SPOKE_COLORS,
@@ -30,7 +31,7 @@ const PROVIDERS: { id: Provider; label: string; hint: string }[] = [
   { id: 'gemini', label: 'Gemini', hint: 'AQ.… / AIza… · aistudio.google.com（有免费额度）' },
 ];
 const PROVIDER_KEY = 'nodx-pet-provider';
-const KINDS: WheelKind[] = ['prompt', 'search', 'ask', 'shot'];
+const KINDS: WheelKind[] = ['prompt', 'search', 'ask', 'shot', 'cli'];
 
 /** Live preview — the same geometry the pet renders. */
 function WheelPreview({ spokes }: { spokes: WheelSpoke[] }) {
@@ -184,6 +185,35 @@ export function SettingsApp() {
                     placeholder="随内容发送的提示词，例如：翻译成中文 / 提取要点"
                     onChange={(e) => patch(i, { param: e.target.value })}
                   />
+                )}
+                {s.kind === 'cli' && (
+                  <>
+                    <div className="row">
+                      <select
+                        value={CLI_PRESETS.some((c) => c.cmd === s.param) ? s.param : '__custom__'}
+                        onChange={(e) => {
+                          if (e.target.value !== '__custom__') patch(i, { param: e.target.value });
+                        }}
+                      >
+                        {CLI_PRESETS.map((c) => (
+                          <option key={c.cmd} value={c.cmd}>
+                            {c.label}
+                          </option>
+                        ))}
+                        <option value="__custom__">自定义命令…</option>
+                      </select>
+                    </div>
+                    <input
+                      value={s.param}
+                      placeholder="命令模板，例如 claude -p {input}"
+                      onChange={(e) => patch(i, { param: e.target.value })}
+                    />
+                    <p className="hint">
+                      {'{input}'} 会被替换成选中文字/你的问题，并作为单个参数传入（不经 shell，
+                      文字里的引号分号不会被当成命令）。可执行文件需在 PATH 里，
+                      已自动补上 /usr/local/bin 与 /opt/homebrew/bin。
+                    </p>
+                  </>
                 )}
                 {s.kind === 'search' && (
                   <>
