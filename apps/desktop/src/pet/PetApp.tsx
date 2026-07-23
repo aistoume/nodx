@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import {
   getCurrentWindow,
   LogicalSize,
@@ -48,6 +49,7 @@ export function PetApp() {
   const [petOnly, setPetOnly] = useState(false);
   const [clipText, setClipText] = useState<string | null>(null);
   const answerRef = useRef<HTMLDivElement | null>(null);
+  const askRef = useRef<HTMLTextAreaElement | null>(null);
 
   const grabClipboard = useCallback(async () => {
     setError(null);
@@ -138,6 +140,26 @@ export function PetApp() {
     });
     return () => {
       void unlisten.then((f) => f());
+    };
+  }, []);
+
+  // ── ⌥+E wake: Rust grabbed the selection, hand it to the question bar ─
+  useEffect(() => {
+    const un = listen<string | null>('pet://wake', async (e) => {
+      const sel = (e.payload ?? '').trim();
+      if (sel) {
+        setClipText(sel);
+        setShot(null);
+        setAnswer(null);
+        setError(null);
+      }
+      await resize(CARD.w, CARD.h);
+      setView('card');
+      // Ready to type immediately — that's the point of the shortcut.
+      setTimeout(() => askRef.current?.focus(), 60);
+    });
+    return () => {
+      void un.then((f) => f());
     };
   }, []);
 
@@ -343,6 +365,7 @@ export function PetApp() {
 
         <div className="pet-ask-row">
           <textarea
+            ref={askRef}
             rows={2}
             value={question}
             disabled={busy}

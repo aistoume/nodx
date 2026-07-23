@@ -314,7 +314,7 @@ pub fn run() {
                 if shortcut.matches(Modifiers::ALT, Code::KeyE) {
                     let handle = app.clone();
                     std::thread::spawn(move || {
-                        system_capture::on_hotkey(handle);
+                        pet::on_hotkey(handle);
                     });
                     return;
                 }
@@ -526,7 +526,7 @@ fn build_tray_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
     let about_capture = MenuItem::with_id(
         app,
         "tray-capture-hint",
-        "⌥+E 全局划词解释 (Highlight + ⌥+E anywhere)",
+        "⌥+E 划词唤醒桌宠 (Select text + ⌥+E → pet)",
         true,
         None::<&str>,
     )?;

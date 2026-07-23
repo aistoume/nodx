@@ -3,7 +3,7 @@
 //! ask). The webview UI is `pet.html` (src/pet/); this module is only the
 //! native bits: interactive region capture and window show/hide.
 
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 /// Interactive region screenshot → base64 PNG.
 ///
@@ -73,6 +73,36 @@ pub fn pet_grab_selection(app: AppHandle) -> Option<String> {
         let _ = app;
         None
     }
+}
+
+/// ⌥+E — wake the pet with whatever the user currently has selected.
+///
+/// Order matters: grab the selection FIRST (while the user's app is still
+/// frontmost), then surface the pet and hand it the text. The pet fills it
+/// into its question bar so the user can type straight away.
+#[cfg(desktop)]
+pub fn on_hotkey(app: AppHandle) {
+    #[cfg(target_os = "macos")]
+    let selection: Option<String> = {
+        if crate::system_capture::has_accessibility() {
+            crate::system_capture::grab_selection(&app)
+        } else {
+            // Can't synthesise ⌘C without it — point the user at the pane
+            // and still wake the pet so the shortcut never feels dead.
+            crate::system_capture::open_accessibility_pane();
+            None
+        }
+    };
+    #[cfg(not(target_os = "macos"))]
+    let selection: Option<String> = None;
+
+    if let Some(win) = app.get_webview_window("pet") {
+        let _ = win.show();
+        // Panels only take the keyboard when asked — do it here so the
+        // user can type their question immediately after the hotkey.
+        let _ = win.set_focus();
+    }
+    let _ = app.emit("pet://wake", selection);
 }
 
 /// Whether the Accessibility permission (needed to synthesise ⌘C) is
