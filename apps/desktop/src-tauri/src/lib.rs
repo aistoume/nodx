@@ -567,11 +567,14 @@ fn build_tray(app: &AppHandle) -> Result<(), tauri::Error> {
     // icon is a filled square, so `icon_as_template` turned it into a solid
     // black blob in the menu bar — a real template (black shape on
     // transparent) renders crisp and adapts to light/dark menu bars.
-    let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray-template.png"))
+    let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon.png"))
         .unwrap_or_else(|_| app.default_window_icon().unwrap().clone());
     let _ = TrayIconBuilder::with_id("main-tray")
         .icon(tray_icon)
-        .icon_as_template(true)
+        // Non-template: render the amber pixels as-is. Template mode on a
+        // black-on-transparent glyph rendered blank in the menu bar; a
+        // coloured icon is unambiguous and on-brand on light & dark bars.
+        .icon_as_template(false)
         .menu(&menu)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "tray-show" => {
