@@ -563,17 +563,14 @@ fn build_tray_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
 fn build_tray(app: &AppHandle) -> Result<(), tauri::Error> {
     let menu = build_tray_menu(app)?;
 
-    // Dedicated monochrome template glyph (the 3-bar nodx logo). The app
-    // icon is a filled square, so `icon_as_template` turned it into a solid
-    // black blob in the menu bar — a real template (black shape on
-    // transparent) renders crisp and adapts to light/dark menu bars.
+    // The nodx star mark lifted off the app icon's navy plate (transparent
+    // background, brand colours kept). NOT a template: template mode masks
+    // by alpha, which flattened the whole opaque app icon into a black
+    // blob — the original "why is the tray icon dark?" bug.
     let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon.png"))
         .unwrap_or_else(|_| app.default_window_icon().unwrap().clone());
     let _ = TrayIconBuilder::with_id("main-tray")
         .icon(tray_icon)
-        // Non-template: render the amber pixels as-is. Template mode on a
-        // black-on-transparent glyph rendered blank in the menu bar; a
-        // coloured icon is unambiguous and on-brand on light & dark bars.
         .icon_as_template(false)
         .menu(&menu)
         .on_menu_event(|app, event| match event.id.as_ref() {
