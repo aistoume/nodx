@@ -4,7 +4,8 @@
   "description": "Default permissions for the nodx desktop window",
   "windows": [
     "main",
-    "popover"
+    "popover",
+    "pet"
   ],
   "permissions": [
     "core:default",
@@ -73,6 +74,12 @@
     "deep-link:default",
     "core:default",
     "clipboard-manager:allow-read-text",
-    "clipboard-manager:allow-write-text"
+    "clipboard-manager:allow-write-text",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-size",
+    "core:window:allow-set-position",
+    "core:window:allow-set-focus",
+    "core:window:allow-show",
+    "core:window:allow-hide"
   ]
 }

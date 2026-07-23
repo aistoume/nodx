@@ -1,3 +1,4 @@
+mod pet;
 mod ai_gateway;
 mod migrations;
 mod os_actions;
@@ -350,6 +351,9 @@ pub fn run() {
             os_open_app,
             os_open_url,
             os_run_shortcut,
+            pet::pet_capture_region,
+            pet::pet_show_main,
+            pet::pet_hide,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -471,6 +475,8 @@ fn build_tray_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
     let show = MenuItem::with_id(app, "tray-show", "打开 nodx · Open nodx", true, None::<&str>)?;
     let settings =
         MenuItem::with_id(app, "tray-settings", "⚙ 设置 · Settings", true, None::<&str>)?;
+    let pet_toggle =
+        MenuItem::with_id(app, "tray-pet", "🐣 桌宠 · Desktop pet", true, None::<&str>)?;
     let separator = MenuItem::with_id(app, "tray-sep", "—", false, None::<&str>)?;
     let about_capture = MenuItem::with_id(
         app,
@@ -505,7 +511,7 @@ fn build_tray_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
 
     Menu::with_items(
         app,
-        &[&show, &settings, &separator, &running, &separator, &about_capture, &separator, &quit],
+        &[&show, &settings, &pet_toggle, &separator, &running, &separator, &about_capture, &separator, &quit],
     )
 }
 
@@ -524,6 +530,7 @@ fn build_tray(app: &AppHandle) -> Result<(), tauri::Error> {
                     let _ = win.set_focus();
                 }
             }
+            "tray-pet" => pet::toggle(app),
             "tray-settings" => {
                 if let Some(win) = app.get_webview_window("main") {
                     let _ = win.show();

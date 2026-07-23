@@ -39,6 +39,22 @@
         "focus": true,
         "fullscreen": false,
         "center": true
+      },
+      {
+        "label": "pet",
+        "title": "nodx pet",
+        "url": "pet.html",
+        "width": 84,
+        "height": 84,
+        "transparent": true,
+        "decorations": false,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "visible": true,
+        "focus": false,
+        "visibleOnAllWorkspaces": true
       }
     ],
     "security": {
@@ -51,7 +67,8 @@
           "$HOME/Library/Application Support/app.nodx.desktop/media/**"
         ]
       }
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,

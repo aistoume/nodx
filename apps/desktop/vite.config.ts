@@ -33,6 +33,7 @@ export default defineConfig(
         input: {
           main: 'index.html',
           popover: 'popover.html',
+          pet: 'pet.html',
         },
       },
       // We ship as a Tauri desktop bundle, not the web. Startup latency
