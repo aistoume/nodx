@@ -6,6 +6,7 @@
  *
  * Interaction contract (kept deliberately boring):
  *   - click bubble        → expand card
+ *   - drag bubble         → move the pet anywhere (position persisted)
  *   - right-click bubble  → hide pet (re-show from the tray 🐣 menu)
  *   - card header         → drag to move (position persisted)
  *   - ▾ in card           → collapse back to bubble
@@ -41,6 +42,35 @@ export function PetApp() {
   const [answer, setAnswer] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const answerRef = useRef<HTMLDivElement | null>(null);
+
+  // Bubble drag: distinguish a click (→ expand) from a drag (→ move the
+  // window). We start the native drag once the pointer moves past a small
+  // threshold; a release without movement counts as a click.
+  const downAt = useRef<{ x: number; y: number } | null>(null);
+  const draggedRef = useRef(false);
+  const onBubbleDown = useCallback((e: React.PointerEvent) => {
+    if (e.button !== 0) return; // left button only
+    downAt.current = { x: e.clientX, y: e.clientY };
+    draggedRef.current = false;
+  }, []);
+  const onBubbleMove = useCallback((e: React.PointerEvent) => {
+    if (!downAt.current || draggedRef.current) return;
+    const dx = e.clientX - downAt.current.x;
+    const dy = e.clientY - downAt.current.y;
+    if (Math.hypot(dx, dy) > 4) {
+      draggedRef.current = true;
+      void getCurrentWindow().startDragging();
+    }
+  }, []);
+  const onBubbleClick = useCallback(() => {
+    downAt.current = null;
+    if (draggedRef.current) {
+      draggedRef.current = false; // was a drag, not a click
+      return;
+    }
+    void expand();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Restore / persist window position ─────────────────────────────
   useEffect(() => {
@@ -135,8 +165,10 @@ export function PetApp() {
       <div className="pet-bubble-wrap">
         <button
           className="pet-bubble"
-          title="nodx — 点击展开 · 右键隐藏"
-          onClick={() => void expand()}
+          title="nodx — 点击展开 · 拖动移动 · 右键隐藏"
+          onPointerDown={onBubbleDown}
+          onPointerMove={onBubbleMove}
+          onClick={onBubbleClick}
           onContextMenu={(e) => {
             e.preventDefault();
             hidePet();

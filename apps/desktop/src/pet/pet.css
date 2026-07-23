@@ -38,6 +38,9 @@ body,
   justify-content: center;
   gap: 5px;
   transition: transform 0.12s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
 }
 .pet-bubble:hover {
   transform: scale(1.08);
