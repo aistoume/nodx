@@ -401,8 +401,11 @@ export function PetApp() {
           onClick={onBubbleClick}
           onDoubleClick={onBubbleDoubleClick}
           onContextMenu={(e) => {
+            // Right-click = straight into the conversation card (the thread
+            // survives collapsing, so this is "get back to my chat").
+            // Hiding lives on the card's ✕ and in the tray menu.
             e.preventDefault();
-            hidePet();
+            void expand();
           }}
         >
           <img className="pet-star" src="/star.png" alt="nodx" draggable={false} />
@@ -452,7 +455,7 @@ export function PetApp() {
         <button className="pet-ic" title={t('collapse')} onClick={() => void collapse()}>
           ▾
         </button>
-        <button className="pet-ic" title={t('hidePet')} onClick={hidePet}>
+        <button className="pet-ic danger" title={t('hidePet')} onClick={hidePet}>
           ✕
         </button>
       </header>

@@ -24,7 +24,7 @@ export const LANGUAGES: { id: Language; label: string }[] = [
 
 const STRINGS = {
   zh: {
-    bubbleTitle: "单击=动作轮盘 · 双击=框选截屏 · 拖动=移动 · 右键=隐藏",
+    bubbleTitle: "单击=轮盘 · 双击=截屏 · 右键=对话 · 拖动=移动",
     cancel: "取消",
     collapse: "收起成气泡",
     hidePet: "隐藏桌宠（托盘可恢复）",
@@ -85,7 +85,7 @@ const STRINGS = {
     defaultExplainPrompt: "解释一下这段内容，简明扼要。",
   },
   en: {
-    bubbleTitle: "Click = wheel · Double-click = screenshot · Drag = move · Right-click = hide",
+    bubbleTitle: "Click = wheel · Double-click = capture · Right-click = chat · Drag = move",
     cancel: "Cancel",
     collapse: "Collapse to bubble",
     hidePet: "Hide pet (restore from tray)",
@@ -146,7 +146,7 @@ const STRINGS = {
     defaultExplainPrompt: "Explain this concisely.",
   },
   fr: {
-    bubbleTitle: "Clic = roue · Double-clic = capture · Glisser = déplacer · Clic droit = masquer",
+    bubbleTitle: "Clic = roue · Double-clic = capture · Clic droit = chat · Glisser = déplacer",
     cancel: "Annuler",
     collapse: "Réduire en bulle",
     hidePet: "Masquer (restaurer via la barre)",
@@ -207,7 +207,7 @@ const STRINGS = {
     defaultExplainPrompt: "Explique ceci de façon concise.",
   },
   ja: {
-    bubbleTitle: "クリック=ホイール · ダブルクリック=範囲キャプチャ · ドラッグ=移動 · 右クリック=非表示",
+    bubbleTitle: "クリック=ホイール · ダブルクリック=キャプチャ · 右クリック=チャット · ドラッグ=移動",
     cancel: "キャンセル",
     collapse: "バブルに戻す",
     hidePet: "ペットを隠す（トレイから復帰）",
@@ -268,7 +268,7 @@ const STRINGS = {
     defaultExplainPrompt: "この内容を簡潔に説明して。",
   },
   es: {
-    bubbleTitle: "Clic = rueda · Doble clic = captura · Arrastrar = mover · Clic derecho = ocultar",
+    bubbleTitle: "Clic = rueda · Doble clic = captura · Clic derecho = chat · Arrastrar = mover",
     cancel: "Cancelar",
     collapse: "Contraer a burbuja",
     hidePet: "Ocultar (restaurar desde la bandeja)",
@@ -329,7 +329,7 @@ const STRINGS = {
     defaultExplainPrompt: "Explica esto de forma concisa.",
   },
   de: {
-    bubbleTitle: "Klick = Rad · Doppelklick = Screenshot · Ziehen = bewegen · Rechtsklick = ausblenden",
+    bubbleTitle: "Klick = Rad · Doppelklick = Aufnahme · Rechtsklick = Chat · Ziehen = bewegen",
     cancel: "Abbrechen",
     collapse: "Zur Blase verkleinern",
     hidePet: "Ausblenden (via Menüleiste zurück)",
@@ -390,7 +390,7 @@ const STRINGS = {
     defaultExplainPrompt: "Erkläre das kurz und knapp.",
   },
   ko: {
-    bubbleTitle: "클릭=휠 · 더블클릭=화면 캡처 · 드래그=이동 · 우클릭=숨기기",
+    bubbleTitle: "클릭=휠 · 더블클릭=캡처 · 우클릭=대화 · 드래그=이동",
     cancel: "취소",
     collapse: "버블로 접기",
     hidePet: "펫 숨기기 (트레이에서 복원)",
@@ -451,7 +451,7 @@ const STRINGS = {
     defaultExplainPrompt: "이 내용을 간결하게 설명해줘.",
   },
   pt: {
-    bubbleTitle: "Clique = roda · Duplo clique = captura · Arrastar = mover · Clique direito = ocultar",
+    bubbleTitle: "Clique = roda · Duplo clique = captura · Clique direito = chat · Arrastar = mover",
     cancel: "Cancelar",
     collapse: "Recolher para bolha",
     hidePet: "Ocultar (restaurar pela bandeja)",
@@ -512,7 +512,7 @@ const STRINGS = {
     defaultExplainPrompt: "Explique isto de forma concisa.",
   },
   it: {
-    bubbleTitle: "Clic = ruota · Doppio clic = cattura · Trascina = sposta · Clic destro = nascondi",
+    bubbleTitle: "Clic = ruota · Doppio clic = cattura · Clic destro = chat · Trascina = sposta",
     cancel: "Annulla",
     collapse: "Riduci a bolla",
     hidePet: "Nascondi (ripristina dal vassoio)",
@@ -573,7 +573,7 @@ const STRINGS = {
     defaultExplainPrompt: "Spiega questo in modo conciso.",
   },
   ru: {
-    bubbleTitle: "Клик = колесо · Двойной клик = снимок · Перетащить = переместить · ПКМ = скрыть",
+    bubbleTitle: "Клик = колесо · Двойной клик = снимок · ПКМ = чат · Перетащить = переместить",
     cancel: "Отмена",
     collapse: "Свернуть в пузырь",
     hidePet: "Скрыть (вернуть из трея)",
@@ -634,7 +634,7 @@ const STRINGS = {
     defaultExplainPrompt: "Объясни это кратко.",
   },
   ar: {
-    bubbleTitle: "نقرة = العجلة · نقرتان = لقطة · سحب = نقل · نقر يمين = إخفاء",
+    bubbleTitle: "نقرة = العجلة · نقرتان = لقطة · نقر يمين = المحادثة · سحب = نقل",
     cancel: "إلغاء",
     collapse: "طيّ إلى فقاعة",
     hidePet: "إخفاء (استعادة من الشريط)",

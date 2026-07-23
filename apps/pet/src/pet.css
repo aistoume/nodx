@@ -139,7 +139,7 @@ body,
 .pet-head {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 8px 10px;
   background: rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -148,21 +148,33 @@ body,
 }
 .pet-head-title {
   flex: 1;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #f59e0b;
 }
 .pet-ic {
   border: 0;
-  background: transparent;
-  color: #a1a1aa;
-  font-size: 13px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #d4d4d8;
+  font-size: 17px;
+  line-height: 1;
   cursor: pointer;
-  padding: 3px 6px;
-  border-radius: 6px;
+  /* Big enough to hit and to read at a glance — the 13px icons were
+     unreadable against a busy desktop. */
+  min-width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 8px;
 }
 .pet-ic:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+.pet-ic.danger:hover {
+  background: rgba(239, 68, 68, 0.85);
   color: #fff;
 }
 .pet-ic.on {
@@ -358,4 +370,11 @@ body,
   padding-right: 30px;
 }
 .pet-turn.pending { color: #a1a1aa; }
-.pet-copy { position: absolute; top: 4px; right: 2px; }
+.pet-copy {
+  position: absolute;
+  top: 4px;
+  right: 2px;
+  min-width: 24px;
+  height: 24px;
+  font-size: 13px;
+}
