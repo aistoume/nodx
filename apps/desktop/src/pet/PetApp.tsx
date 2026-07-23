@@ -32,8 +32,30 @@ const IS_MAC = navigator.userAgent.includes('Mac');
 
 type Shot = { b64: string } | null;
 
+/**
+ * Resize the pet window while keeping its CENTRE fixed — the wheel has to
+ * bloom around the bubble, not grow down-right from its top-left corner.
+ */
 async function resize(w: number, h: number) {
-  await getCurrentWindow().setSize(new LogicalSize(w, h));
+  const win = getCurrentWindow();
+  try {
+    const [pos, size, sf] = await Promise.all([
+      win.outerPosition(),
+      win.outerSize(),
+      win.scaleFactor(),
+    ]);
+    const cx = pos.x + size.width / 2;
+    const cy = pos.y + size.height / 2;
+    await win.setSize(new LogicalSize(w, h));
+    await win.setPosition(
+      new PhysicalPosition(
+        Math.round(cx - (w * sf) / 2),
+        Math.round(cy - (h * sf) / 2),
+      ),
+    );
+  } catch {
+    await win.setSize(new LogicalSize(w, h));
+  }
 }
 
 type View = 'bubble' | 'wheel' | 'card';
@@ -143,18 +165,38 @@ export function PetApp() {
     const win = getCurrentWindow();
     const saved = localStorage.getItem(POS_KEY);
     if (saved) {
-      try {
-        const { x, y } = JSON.parse(saved) as { x: number; y: number };
-        void win.setPosition(new PhysicalPosition(x, y));
-      } catch {
-        /* corrupt — ignore */
-      }
+      // Stored value is the CENTRE (see below) — place the bubble around it.
+      void (async () => {
+        try {
+          const { cx, cy } = JSON.parse(saved) as { cx: number; cy: number };
+          const sf = await win.scaleFactor();
+          await win.setPosition(
+            new PhysicalPosition(
+              Math.round(cx - (BUBBLE.w * sf) / 2),
+              Math.round(cy - (BUBBLE.h * sf) / 2),
+            ),
+          );
+        } catch {
+          /* corrupt — ignore */
+        }
+      })();
     }
     let t: ReturnType<typeof setTimeout> | undefined;
     const unlisten = win.onMoved(({ payload }) => {
       clearTimeout(t);
+      // Persist the centre, not the corner: the window changes size as the
+      // pet morphs, so a corner would drift on every expand/collapse.
       t = setTimeout(() => {
-        localStorage.setItem(POS_KEY, JSON.stringify({ x: payload.x, y: payload.y }));
+        void (async () => {
+          const size = await win.outerSize();
+          localStorage.setItem(
+            POS_KEY,
+            JSON.stringify({
+              cx: payload.x + size.width / 2,
+              cy: payload.y + size.height / 2,
+            }),
+          );
+        })();
       }, 300);
     });
     return () => {
@@ -312,9 +354,7 @@ export function PetApp() {
             hidePet();
           }}
         >
-          <span className="pet-bar b1" />
-          <span className="pet-bar b2" />
-          <span className="pet-bar b3" />
+          <img className="pet-star" src="/star.png" alt="nodx" draggable={false} />
         </button>
       </div>
     );

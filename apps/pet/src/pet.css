@@ -55,6 +55,14 @@ body,
   border-radius: 3px;
   background: #f59e0b;
 }
+.pet-star {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
 .pet-bar.b1 { width: 26px; }
 .pet-bar.b2 { width: 18px; align-self: flex-start; margin-left: 19px; }
 .pet-bar.b3 { width: 22px; }
