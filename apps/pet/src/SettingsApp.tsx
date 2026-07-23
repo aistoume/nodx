@@ -9,12 +9,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
+import { applyDir, getLanguage, LANGUAGES, setLanguage, t, type Language } from './i18n';
 import {
   CLI_PRESETS,
-  KIND_LABEL,
+  kindLabel,
   SEARCH_PRESETS,
   SPOKE_COLORS,
-  SPOKE_POS_LABEL,
+  spokePosLabels,
   defaultWheel,
   loadWheel,
   saveWheel,
@@ -28,7 +29,7 @@ type Provider = 'anthropic' | 'openai' | 'gemini';
 const PROVIDERS: { id: Provider; label: string; hint: string }[] = [
   { id: 'anthropic', label: 'Claude', hint: 'sk-ant-… · console.anthropic.com' },
   { id: 'openai', label: 'GPT', hint: 'sk-… · platform.openai.com' },
-  { id: 'gemini', label: 'Gemini', hint: 'AQ.… / AIza… · aistudio.google.com（有免费额度）' },
+  { id: 'gemini', label: 'Gemini', hint: 'AQ.… / AIza… · aistudio.google.com' },
 ];
 const PROVIDER_KEY = 'nodx-pet-provider';
 const KINDS: WheelKind[] = ['prompt', 'search', 'ask', 'shot', 'cli'];
@@ -63,6 +64,8 @@ function WheelPreview({ spokes }: { spokes: WheelSpoke[] }) {
 }
 
 export function SettingsApp() {
+  const [lang, setLang] = useState<Language>(getLanguage);
+  const POS_LABELS = spokePosLabels();
   const [provider, setProvider] = useState<Provider>('anthropic');
   const [hasKey, setHasKey] = useState(false);
   const [keyInput, setKeyInput] = useState('');
@@ -70,6 +73,7 @@ export function SettingsApp() {
   const [saved, setSaved] = useState<string | null>(null);
 
   useEffect(() => {
+    applyDir();
     const p = (localStorage.getItem(PROVIDER_KEY) as Provider | null) ?? 'anthropic';
     setProvider(p);
     void invoke<boolean>('pet_key_has', { provider: p }).then(setHasKey).catch(() => {});
@@ -87,7 +91,7 @@ export function SettingsApp() {
     await invoke('pet_key_set', { provider, key: k });
     setHasKey(k.length > 0);
     setKeyInput('');
-    setSaved('API key 已保存');
+    setSaved(t('stKeySavedMsg'));
     setTimeout(() => setSaved(null), 2000);
   }, [keyInput, provider]);
 
@@ -101,16 +105,38 @@ export function SettingsApp() {
   const saveAll = useCallback(() => {
     saveWheel(cfg);
     void emit('pet://config');
-    setSaved('已保存 — 桌宠轮盘已更新');
+    setSaved(t('stSavedMsg'));
     setTimeout(() => setSaved(null), 2200);
   }, [cfg]);
 
   return (
     <div className="st">
-      <h1>nodx Lens 设置</h1>
+      <h1>{t('stTitle')}</h1>
 
       <section>
-        <h2>AI 提供方</h2>
+        <h2>{t('stLanguage')}</h2>
+        <select
+          value={lang}
+          onChange={(e) => {
+            const l = e.target.value as Language;
+            setLanguage(l);
+            setLang(l);
+            applyDir();
+            void emit('pet://config');
+            // Strings are read at render time — reload so every label flips.
+            location.reload();
+          }}
+        >
+          {LANGUAGES.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.id === 'auto' ? t('stLangAuto') : l.label}
+            </option>
+          ))}
+        </select>
+      </section>
+
+      <section>
+        <h2>{t('stProvider')}</h2>
         <div className="row">
           {PROVIDERS.map((p) => (
             <button
@@ -126,7 +152,7 @@ export function SettingsApp() {
         <div className="row">
           <input
             type="password"
-            placeholder={hasKey ? '已保存 · 输入新 key 可替换' : '粘贴 API key'}
+            placeholder={hasKey ? t('stKeySavedPh') : t('stKeyPh')}
             value={keyInput}
             onChange={(e) => setKeyInput(e.target.value)}
             onKeyDown={(e) => {
@@ -134,33 +160,31 @@ export function SettingsApp() {
             }}
           />
           <button className="primary" onClick={() => void saveKey()}>
-            存
+            {t('stSave')}
           </button>
         </div>
-        <p className="hint">key 只存在本机钥匙串，请求直连提供方，不经任何服务器。</p>
+        <p className="hint">{t('stKeyHint')}</p>
       </section>
 
       <section>
-        <h2>动作轮盘</h2>
-        <p className="hint">
-          单击桌宠弹出的四象轮盘。图标、名称、动作与提示词都可以改；颜色按位置固定。
-        </p>
+        <h2>{t('stWheel')}</h2>
+        <p className="hint">{t('stWheelHint')}</p>
         <div className="wheel-body">
           <WheelPreview spokes={cfg.spokes} />
           <div className="editors">
             {cfg.spokes.map((s, i) => (
               <div className="spoke" key={i} style={{ borderLeft: `4px solid ${SPOKE_COLORS[i]}` }}>
-                <strong>{SPOKE_POS_LABEL[i]}</strong>
+                <strong>{POS_LABELS[i]}</strong>
                 <div className="row">
                   <input
                     className="emoji"
                     value={s.emoji}
-                    placeholder="图标"
+                    placeholder={t('stIcon')}
                     onChange={(e) => patch(i, { emoji: e.target.value })}
                   />
                   <input
                     value={s.label}
-                    placeholder="名称"
+                    placeholder={t('stName')}
                     onChange={(e) => patch(i, { label: e.target.value })}
                   />
                   <select
@@ -173,7 +197,7 @@ export function SettingsApp() {
                   >
                     {KINDS.map((k) => (
                       <option key={k} value={k}>
-                        {KIND_LABEL[k]}
+                        {kindLabel(k)}
                       </option>
                     ))}
                   </select>
@@ -182,7 +206,7 @@ export function SettingsApp() {
                   <textarea
                     rows={2}
                     value={s.param}
-                    placeholder="随内容发送的提示词，例如：翻译成中文 / 提取要点"
+                    placeholder={t('stPromptPh')}
                     onChange={(e) => patch(i, { param: e.target.value })}
                   />
                 )}
@@ -200,18 +224,16 @@ export function SettingsApp() {
                             {c.label}
                           </option>
                         ))}
-                        <option value="__custom__">自定义命令…</option>
+                        <option value="__custom__">{t('stCustomCmd')}</option>
                       </select>
                     </div>
                     <input
                       value={s.param}
-                      placeholder="命令模板，例如 claude -p {input}"
+                      placeholder={t('stCmdPh')}
                       onChange={(e) => patch(i, { param: e.target.value })}
                     />
                     <p className="hint">
-                      {'{input}'} 会被替换成选中文字/你的问题，并作为单个参数传入（不经 shell，
-                      文字里的引号分号不会被当成命令）。可执行文件需在 PATH 里，
-                      已自动补上 /usr/local/bin 与 /opt/homebrew/bin。
+                      {t('stCmdHint')}
                     </p>
                   </>
                 )}
@@ -228,12 +250,12 @@ export function SettingsApp() {
                           {p.label}
                         </option>
                       ))}
-                      <option value="__custom__">自定义 URL…</option>
+                      <option value="__custom__">{t('stCustomUrl')}</option>
                     </select>
                     {!SEARCH_PRESETS.some((p) => p.url === s.param) && (
                       <input
                         value={s.param}
-                        placeholder="URL 前缀（末尾自动拼关键词）"
+                        placeholder={t('stUrlPh')}
                         onChange={(e) => patch(i, { param: e.target.value })}
                       />
                     )}
@@ -245,14 +267,14 @@ export function SettingsApp() {
         </div>
         <div className="row">
           <button className="primary" onClick={saveAll}>
-            保存轮盘
+            {t('stSaveWheel')}
           </button>
           <button
             onClick={() => {
               setCfg(defaultWheel());
             }}
           >
-            恢复默认
+            {t('stReset')}
           </button>
           {saved && <span className="saved">{saved}</span>}
         </div>

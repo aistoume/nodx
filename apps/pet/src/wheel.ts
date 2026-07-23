@@ -7,6 +7,8 @@
  * muscle memory survives re-labelling.
  */
 
+import { t } from './i18n';
+
 export type WheelKind =
   | 'prompt' // send a custom prompt with whatever context is loaded
   | 'search' // open `urlPrefix + <selection>` in the browser
@@ -32,7 +34,7 @@ export interface WheelConfig {
 
 const KEY = 'nodx-pet-wheel-v1';
 
-export const DEFAULT_EXPLAIN_PROMPT = '解释一下这段内容，简明扼要。';
+
 
 /** Position colours (up/right/down/left) — mirrors the extension. */
 export const SPOKE_COLORS = [
@@ -43,35 +45,36 @@ export const SPOKE_COLORS = [
 ];
 
 export const SPOKE_POS = ['up', 'right', 'down', 'left'] as const;
-export const SPOKE_POS_LABEL = ['上（蓝）', '右（琥珀）', '下（绿）', '左（紫）'];
+export const spokePosLabels = (): string[] => [t('posUp'), t('posRight'), t('posDown'), t('posLeft')];
 
-export const KIND_LABEL: Record<WheelKind, string> = {
-  prompt: 'AI 回答（自定义提示词）',
-  search: '打开网址搜索',
-  ask: '打开对话框自己问',
-  shot: '框选截屏后提问',
-  cli: '运行命令（CLI / 插件）',
-};
+export const kindLabel = (k: WheelKind): string =>
+  ({
+    prompt: t('kindPrompt'),
+    search: t('kindSearch'),
+    ask: t('kindAsk'),
+    shot: t('kindShot'),
+    cli: t('kindCli'),
+  })[k];
 
 /** Ready-made command templates for the CLI action. */
 export const CLI_PRESETS: { label: string; cmd: string }[] = [
   { label: 'Claude Code', cmd: 'claude -p {input}' },
   { label: 'Codex CLI', cmd: 'codex exec {input}' },
   { label: 'Gemini CLI', cmd: 'gemini -p {input}' },
-  { label: 'Ollama（本地模型）', cmd: 'ollama run llama3 {input}' },
-  { label: '朗读（macOS say）', cmd: 'say {input}' },
-  { label: '快捷指令', cmd: 'shortcuts run 我的快捷指令 -i {input}' },
+  { label: 'Ollama (local)', cmd: 'ollama run llama3 {input}' },
+  { label: 'Speak (macOS say)', cmd: 'say {input}' },
+  { label: 'Shortcuts', cmd: 'shortcuts run MyShortcut -i {input}' },
 ];
 
 /** Common search destinations — same list the extension ships. */
 export const SEARCH_PRESETS: { label: string; url: string }[] = [
   { label: 'Google', url: 'https://www.google.com/search?q=' },
-  { label: 'Google 图片', url: 'https://www.google.com/search?udm=2&q=' },
+  { label: 'Google Images', url: 'https://www.google.com/search?udm=2&q=' },
   { label: 'Google Shopping', url: 'https://www.google.com/search?udm=28&q=' },
   { label: 'Amazon', url: 'https://www.amazon.com/s?k=' },
-  { label: '淘宝', url: 'https://s.taobao.com/search?q=' },
-  { label: '京东', url: 'https://search.jd.com/Search?keyword=' },
-  { label: '小红书', url: 'https://www.xiaohongshu.com/search_result?keyword=' },
+  { label: 'Taobao 淘宝', url: 'https://s.taobao.com/search?q=' },
+  { label: 'JD 京东', url: 'https://search.jd.com/Search?keyword=' },
+  { label: 'Xiaohongshu 小红书', url: 'https://www.xiaohongshu.com/search_result?keyword=' },
   { label: 'YouTube', url: 'https://www.youtube.com/results?search_query=' },
   { label: 'Wikipedia', url: 'https://zh.wikipedia.org/w/index.php?search=' },
   { label: 'Perplexity', url: 'https://www.perplexity.ai/search?q=' },
@@ -81,10 +84,10 @@ export function defaultWheel(): WheelConfig {
   return {
     version: 1,
     spokes: [
-      { emoji: '📖', label: '解释', kind: 'prompt', param: DEFAULT_EXPLAIN_PROMPT },
-      { emoji: '🔎', label: '搜索', kind: 'search', param: SEARCH_PRESETS[0]!.url },
-      { emoji: '💬', label: '追问', kind: 'ask', param: '' },
-      { emoji: '🖼', label: '截屏', kind: 'shot', param: '' },
+      { emoji: '📖', label: t('spokeExplain'), kind: 'prompt', param: t('defaultExplainPrompt') },
+      { emoji: '🔎', label: t('spokeSearch'), kind: 'search', param: SEARCH_PRESETS[0]!.url },
+      { emoji: '💬', label: t('spokeFollow'), kind: 'ask', param: '' },
+      { emoji: '🖼', label: t('spokeShot'), kind: 'shot', param: '' },
     ],
   };
 }

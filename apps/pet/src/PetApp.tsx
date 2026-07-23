@@ -22,6 +22,7 @@ import {
   LogicalSize,
   PhysicalPosition,
 } from '@tauri-apps/api/window';
+import { applyDir, t } from './i18n';
 import { loadWheel, SPOKE_COLORS, type WheelConfig, type WheelSpoke } from './wheel';
 
 type Provider = 'anthropic' | 'openai' | 'gemini';
@@ -80,12 +81,12 @@ export function PetApp() {
 
   const grabClipboard = useCallback(async () => {
     setError(null);
-    const t = await invoke<string>('pet_read_clipboard');
-    if (t) {
-      setClipText(t);
+    const clip = await invoke<string>('pet_read_clipboard');
+    if (clip) {
+      setClipText(clip);
       setTurns([]);
     } else {
-      setError('剪贴板里没有文字 — 先在别处选中并复制（⌘C）。');
+      setError(t('clipEmpty'));
     }
   }, []);
 
@@ -101,6 +102,7 @@ export function PetApp() {
   }, []);
 
   useEffect(() => {
+    applyDir();
     reloadConfig();
     const un = listen('pet://config', () => reloadConfig());
     return () => {
@@ -309,7 +311,7 @@ export function PetApp() {
       // model doesn't get the same block re-pasted every round.
       const first = turns.length === 0;
       const content = first && clipText
-        ? `关于下面这段文字，${q}\n\n"""\n${clipText}\n"""`
+        ? `${t('quotedAbout')}${q}\n\n"""\n${clipText}\n"""`
         : q;
       const thread = [...turns, { role: 'user' as const, text: content }];
       setTurns([...turns, { role: 'user', text: q }]);
@@ -326,7 +328,7 @@ export function PetApp() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes('NO_KEY')) {
-        setError('还没填 API key — 点 ⚙ 设置一次即可。');
+        setError(t('needKeyMsg'));
         void invoke('pet_open_settings');
       } else {
         setError(msg);
@@ -362,7 +364,7 @@ export function PetApp() {
         case 'cli': {
           const input = clipText ?? '';
           await expand();
-          setTurns([{ role: 'user', text: `▷ ${spoke.label || '运行命令'}` }]);
+          setTurns([{ role: 'user', text: `▷ ${spoke.label || t('runCmd')}` }]);
           setBusy(true);
           setError(null);
           try {
@@ -370,7 +372,7 @@ export function PetApp() {
               template: spoke.param,
               input,
             });
-            setTurns((prev) => [...prev, { role: 'assistant', text: out || '(无输出)' }]);
+            setTurns((prev) => [...prev, { role: 'assistant', text: out || t('noOutput') }]);
           } catch (e) {
             setError(e instanceof Error ? e.message : String(e));
           } finally {
@@ -393,7 +395,7 @@ export function PetApp() {
       <div className="pet-bubble-wrap">
         <button
           className="pet-bubble"
-          title="单击=动作轮盘 · 双击=框选截屏 · 拖动=移动 · 右键=隐藏"
+          title={t('bubbleTitle')}
           onPointerDown={onBubbleDown}
           onPointerMove={onBubbleMove}
           onClick={onBubbleClick}
@@ -426,7 +428,7 @@ export function PetApp() {
             <em>{sp.label}</em>
           </button>
         ))}
-        <button className="pet-wheel-center" title="取消" onClick={() => void collapse()}>
+        <button className="pet-wheel-center" title={t('cancel')} onClick={() => void collapse()}>
           ✕
         </button>
       </div>
@@ -442,15 +444,15 @@ export function PetApp() {
         </span>
         <button
           className={`pet-ic${hasKey ? '' : ' warn'}`}
-          title={hasKey ? '设置：提供方 / key / 轮盘自定义' : '还没填 API key — 点这里设置'}
+          title={hasKey ? t('settingsTitle') : t('needKeyTitle')}
           onClick={() => void invoke('pet_open_settings')}
         >
           ⚙
         </button>
-        <button className="pet-ic" title="收起成气泡" onClick={() => void collapse()}>
+        <button className="pet-ic" title={t('collapse')} onClick={() => void collapse()}>
           ▾
         </button>
-        <button className="pet-ic" title="隐藏桌宠（托盘 🐣 可恢复）" onClick={hidePet}>
+        <button className="pet-ic" title={t('hidePet')} onClick={hidePet}>
           ✕
         </button>
       </header>
@@ -459,17 +461,17 @@ export function PetApp() {
         <div className="pet-src-row">
           {IS_MAC && (
             <button className="pet-shot-btn" onClick={() => void captureRegion()} disabled={busy}>
-              📸 {shot ? '重截' : '框选屏幕'}
+              📸 {shot ? t('shotBtnAgain') : t('shotBtn')}
             </button>
           )}
           <button className="pet-shot-btn ghost" onClick={() => void grabClipboard()} disabled={busy}>
-            📋 {clipText ? '换剪贴板' : '问选中文字'}
+            📋 {clipText ? t('clipBtnAgain') : t('clipBtn')}
           </button>
         </div>
         {shot && (
           <div className="pet-thumb-row">
-            <img className="pet-thumb" src={`data:image/png;base64,${shot.b64}`} alt="截屏" />
-            <button className="pet-ic" title="移除截屏" onClick={() => setShot(null)}>
+            <img className="pet-thumb" src={`data:image/png;base64,${shot.b64}`} alt={t('shotBtn')} />
+            <button className="pet-ic" title={t('removeShot')} onClick={() => setShot(null)}>
               ✕
             </button>
           </div>
@@ -477,7 +479,7 @@ export function PetApp() {
         {clipText && (
           <div className="pet-clip-row">
             <span className="pet-clip-text" title={clipText}>“{clipText}”</span>
-            <button className="pet-ic" title="移除文字" onClick={() => setClipText(null)}>
+            <button className="pet-ic" title={t('removeText')} onClick={() => setClipText(null)}>
               ✕
             </button>
           </div>
@@ -491,12 +493,12 @@ export function PetApp() {
             disabled={busy}
             placeholder={
               shot
-                ? '问点关于这张截屏的…  ⌘/Ctrl+Enter'
+                ? t('phShot')
                 : clipText
-                  ? '问点关于这段文字的…  ⌘/Ctrl+Enter'
+                  ? t('phClip')
                   : turns.length > 0
-                  ? '继续追问…  ⌘/Ctrl+Enter'
-                  : '随便问点什么…  ⌘/Ctrl+Enter'
+                  ? t('phFollow')
+                  : t('phFree')
             }
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={(e) => {
@@ -507,21 +509,21 @@ export function PetApp() {
             }}
           />
           <button className="pet-ask-btn" disabled={busy || !question.trim()} onClick={() => void ask()}>
-            {busy ? '…' : '问'}
+            {busy ? '…' : t('askBtn')}
           </button>
         </div>
 
         {error && <div className="pet-err">{error}</div>}
         {turns.length > 0 && (
           <div className="pet-thread" ref={answerRef}>
-            {turns.map((t, i) => (
-              <div key={i} className={`pet-turn ${t.role}`}>
-                {t.text}
-                {t.role === 'assistant' && (
+            {turns.map((turn, i) => (
+              <div key={i} className={`pet-turn ${turn.role}`}>
+                {turn.text}
+                {turn.role === 'assistant' && (
                   <button
                     className="pet-ic pet-copy"
-                    title="复制"
-                    onClick={() => void navigator.clipboard.writeText(t.text)}
+                    title={t('copy')}
+                    onClick={() => void navigator.clipboard.writeText(turn.text)}
                   >
                     📋
                   </button>
