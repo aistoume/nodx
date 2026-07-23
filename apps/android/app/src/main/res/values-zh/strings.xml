@@ -144,4 +144,6 @@
     <string name="instruct_hint">你想做什么？如"给我解释一下""在淘宝打开这个"…</string>
     <string name="instruct_run">运行</string>
     <string name="instruct_opened">已打开：%1$s</string>
+    <string name="voice_no_speech">没听清,再说一次</string>
+    <string name="voice_unavailable">此设备不支持语音识别</string>
 </resources>

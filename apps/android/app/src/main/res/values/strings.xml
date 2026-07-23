@@ -144,4 +144,6 @@
     <string name="instruct_hint">What do you want? e.g. "explain it to me", "open it on Amazon"…</string>
     <string name="instruct_run">Run</string>
     <string name="instruct_opened">Opened: %1$s</string>
+    <string name="voice_no_speech">Didn\'t catch that — try again</string>
+    <string name="voice_unavailable">Speech recognition is unavailable on this device</string>
 </resources>

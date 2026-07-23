@@ -144,4 +144,6 @@
     <string name="instruct_hint">ماذا تريد؟ مثل «اشرح لي هذا»، «افتحه على أمازون»…</string>
     <string name="instruct_run">تنفيذ</string>
     <string name="instruct_opened">فُتح: %1$s</string>
+    <string name="voice_no_speech">لم أسمع جيداً — حاول مرة أخرى</string>
+    <string name="voice_unavailable">التعرف على الكلام غير متاح على هذا الجهاز</string>
 </resources>

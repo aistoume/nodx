@@ -144,4 +144,6 @@
     <string name="instruct_hint">Что нужно сделать? напр. «объясни мне это», «открой на Amazon»…</string>
     <string name="instruct_run">Выполнить</string>
     <string name="instruct_opened">Открыто: %1$s</string>
+    <string name="voice_no_speech">Не расслышал — попробуйте ещё раз</string>
+    <string name="voice_unavailable">Распознавание речи недоступно на этом устройстве</string>
 </resources>

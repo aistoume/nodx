@@ -234,12 +234,20 @@ For every other kind of instruction (translate, explain, rewrite, extract, summa
                 runInstruction(activity, instruction, text, onDone)
             }
             .setNegativeButton(R.string.act_close) { _, _ -> onDone() }
+            .setNeutralButton("\ud83c\udfa4") { _, _ ->
+                activity.startActivity(
+                    Intent(activity, VoiceInputActivity::class.java)
+                        .putExtra(VoiceInputActivity.EXTRA_MODE, "text")
+                        .putExtra(VoiceInputActivity.EXTRA_TEXT, text)
+                )
+                onDone()
+            }
             .setOnCancelListener { onDone() }
             .show()
         input.requestFocus()
     }
 
-    private fun runInstruction(
+    internal fun runInstruction(
         activity: Activity, instruction: String, text: String, onDone: () -> Unit,
     ) {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)

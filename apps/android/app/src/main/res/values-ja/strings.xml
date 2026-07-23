@@ -144,4 +144,6 @@
     <string name="instruct_hint">何をしますか？例：「わかりやすく説明して」「Amazon で開いて」…</string>
     <string name="instruct_run">実行</string>
     <string name="instruct_opened">開きました：%1$s</string>
+    <string name="voice_no_speech">聞き取れませんでした — もう一度どうぞ</string>
+    <string name="voice_unavailable">この端末では音声認識を利用できません</string>
 </resources>

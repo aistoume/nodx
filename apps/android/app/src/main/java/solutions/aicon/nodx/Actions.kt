@@ -132,6 +132,18 @@ object Actions {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.END
                 addView(Button(context).apply {
+                    text = "\ud83c\udfa4"
+                    setOnClickListener {
+                        close()
+                        VoiceInputActivity.pendingCrop = crop
+                        context.startActivity(
+                            Intent(context, VoiceInputActivity::class.java)
+                                .putExtra(VoiceInputActivity.EXTRA_MODE, "vision")
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }
+                })
+                addView(Button(context).apply {
                     text = context.getString(R.string.act_close)
                     setOnClickListener { close() }
                 })
@@ -181,7 +193,7 @@ object Actions {
      * search-type instruction ("find it on Amazon") identifies the subject
      * and OPENS the real results page; anything else shows the answer card.
      */
-    private fun instructVision(context: Context, crop: Bitmap, instruction: String) {
+    internal fun instructVision(context: Context, crop: Bitmap, instruction: String) {
         if (!ensureKey(context)) return
         val b64 = toBase64ForVision(crop)
         toast(context, context.getString(R.string.act_recognizing))

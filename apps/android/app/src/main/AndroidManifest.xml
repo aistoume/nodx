@@ -53,6 +53,13 @@
         <!-- taskAffinity="" + NEW_TASK：中转页开在独立空任务里，不会把
              MainActivity 连带拉到前台；finish 后前台回落到点悬浮球时的来源 app -->
         <activity
+            android:name=".VoiceInputActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <activity
             android:name=".ProjectionConsentActivity"
             android:exported="false"
             android:excludeFromRecents="true"
