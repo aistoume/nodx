@@ -352,6 +352,7 @@ pub fn run() {
             os_open_url,
             os_run_shortcut,
             pet::pet_capture_region,
+            pet::pet_read_clipboard,
             pet::pet_show_main,
             pet::pet_hide,
             pet::pet_only_get,

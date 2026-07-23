@@ -42,7 +42,19 @@ export function PetApp() {
   const [answer, setAnswer] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [petOnly, setPetOnly] = useState(false);
+  const [clipText, setClipText] = useState<string | null>(null);
   const answerRef = useRef<HTMLDivElement | null>(null);
+
+  const grabClipboard = useCallback(async () => {
+    setError(null);
+    const t = await invoke<string>('pet_read_clipboard');
+    if (t) {
+      setClipText(t);
+      setAnswer(null);
+    } else {
+      setError('剪贴板里没有文字 — 先在别处选中并复制（⌘C）。');
+    }
+  }, []);
 
   useEffect(() => {
     void invoke<boolean>('pet_only_get').then(setPetOnly).catch(() => {});
@@ -149,10 +161,14 @@ export function PetApp() {
     setAnswer(null);
     try {
       const cfg = await getGatewayConfig();
+      // Selected/copied text is prepended as quoted context.
+      const prompt = clipText
+        ? `关于下面这段文字，${q}\n\n"""\n${clipText}\n"""`
+        : q;
       const res = await completeText(cfg, {
-        prompt: q,
+        prompt,
         system:
-          'You are nodx pet, a tiny desktop assistant. Answer concisely (2–6 sentences unless asked for more). If an image is attached, answer about the exact pixels shown, quoting visible text/numbers exactly. Reply in the language of the question.',
+          'You are nodx pet, a tiny desktop assistant. Answer concisely (2–6 sentences unless asked for more). If an image is attached, answer about the exact pixels shown, quoting visible text/numbers exactly. If quoted text is provided, ground your answer in it. Reply in the language of the question.',
         model: shot ? MODELS.sonnet : MODELS.haiku,
         maxTokens: 1024,
         ...(shot ? { imageBase64: shot.b64, imageMime: 'image/png' } : {}),
@@ -168,7 +184,7 @@ export function PetApp() {
     } finally {
       setBusy(false);
     }
-  }, [question, busy, shot]);
+  }, [question, busy, shot, clipText]);
 
   // ── Bubble ─────────────────────────────────────────────────────────
   if (!expanded) {
@@ -223,15 +239,28 @@ export function PetApp() {
       </header>
 
       <div className="pet-body">
-        {IS_MAC && (
-          <button className="pet-shot-btn" onClick={() => void captureRegion()} disabled={busy}>
-            📸 {shot ? '重新框选屏幕' : '框选屏幕提问'}
+        <div className="pet-src-row">
+          {IS_MAC && (
+            <button className="pet-shot-btn" onClick={() => void captureRegion()} disabled={busy}>
+              📸 {shot ? '重截' : '框选屏幕'}
+            </button>
+          )}
+          <button className="pet-shot-btn ghost" onClick={() => void grabClipboard()} disabled={busy}>
+            📋 {clipText ? '换剪贴板' : '问选中文字'}
           </button>
-        )}
+        </div>
         {shot && (
           <div className="pet-thumb-row">
             <img className="pet-thumb" src={`data:image/png;base64,${shot.b64}`} alt="截屏" />
             <button className="pet-ic" title="移除截屏" onClick={() => setShot(null)}>
+              ✕
+            </button>
+          </div>
+        )}
+        {clipText && (
+          <div className="pet-clip-row">
+            <span className="pet-clip-text" title={clipText}>“{clipText}”</span>
+            <button className="pet-ic" title="移除文字" onClick={() => setClipText(null)}>
               ✕
             </button>
           </div>
@@ -242,7 +271,13 @@ export function PetApp() {
             rows={2}
             value={question}
             disabled={busy}
-            placeholder={shot ? '问点关于这张截屏的…  ⌘/Ctrl+Enter' : '随便问点什么…  ⌘/Ctrl+Enter'}
+            placeholder={
+              shot
+                ? '问点关于这张截屏的…  ⌘/Ctrl+Enter'
+                : clipText
+                  ? '问点关于这段文字的…  ⌘/Ctrl+Enter'
+                  : '随便问点什么…  ⌘/Ctrl+Enter'
+            }
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {

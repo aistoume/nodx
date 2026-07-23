@@ -44,6 +44,20 @@ pub async fn pet_capture_region() -> Result<Option<String>, String> {
     }
 }
 
+/// Read the current clipboard text so the pet can answer about text the
+/// user copied from any app.
+///
+/// Why clipboard and not synthesise-⌘C like ⌥+E: clicking a pet button
+/// moves focus to the pet window, so a synthesised copy would target the
+/// pet, not the app that holds the selection. Global ⌥+E doesn't have that
+/// problem (no focus change), which is why THAT path grabs the live
+/// selection. For the pet, "copy → click" is the reliable contract.
+#[tauri::command]
+pub fn pet_read_clipboard(app: AppHandle) -> String {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    app.clipboard().read_text().unwrap_or_default().trim().to_string()
+}
+
 /// Bring the main nodx window forward (pet's "open nodx" button). Builds
 /// it on demand — in lightweight (pet-only) mode it never existed yet.
 #[tauri::command]
