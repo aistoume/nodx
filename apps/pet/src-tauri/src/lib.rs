@@ -123,7 +123,7 @@ fn build_tray(app: &AppHandle) -> Result<(), tauri::Error> {
     let hint = MenuItem::with_id(
         app,
         "hint",
-        "⌥+E 划词唤醒 (Select text + ⌥+E)",
+        "⌥+E 划词提问 · ⌥+W 框选截屏",
         false,
         None::<&str>,
     )?;
@@ -168,6 +168,14 @@ pub fn run() {
                     let handle = app.clone();
                     // The ⌘C dance sleeps 120 ms — keep it off the UI thread.
                     std::thread::spawn(move || on_hotkey(handle));
+                    return;
+                }
+                // ⌥+W — go straight to region capture.
+                if shortcut.matches(Modifiers::ALT, Code::KeyW) {
+                    if let Some(win) = app.get_webview_window("main") {
+                        let _ = win.show();
+                    }
+                    let _ = app.emit("pet://shoot", ());
                 }
             })
             .build(),
@@ -198,6 +206,13 @@ pub fn run() {
                 )) {
                     Ok(()) => log::info!("registered ⌥+E"),
                     Err(e) => log::warn!("could not register ⌥+E: {e}"),
+                }
+                match app.global_shortcut().register(Shortcut::new(
+                    Some(Modifiers::ALT),
+                    Code::KeyW,
+                )) {
+                    Ok(()) => log::info!("registered ⌥+W"),
+                    Err(e) => log::warn!("could not register ⌥+W: {e}"),
                 }
                 build_tray(app.handle())?;
 

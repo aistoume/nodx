@@ -59,6 +59,63 @@ body,
 .pet-bar.b2 { width: 18px; align-self: flex-start; margin-left: 19px; }
 .pet-bar.b3 { width: 22px; }
 
+/* ── Wheel (select → click → radial actions) ─────────────────────── */
+.pet-wheel-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.pet-spoke {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: transform 0.1s ease;
+}
+.pet-spoke em {
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+}
+.pet-spoke:hover { transform: scale(1.12); }
+.pet-spoke:active { transform: scale(0.95); }
+.pet-spoke.up { transform: translate(0, -68px); background: rgba(59, 130, 246, 0.95); }
+.pet-spoke.right { transform: translate(68px, 0); background: rgba(217, 119, 6, 0.95); }
+.pet-spoke.down { transform: translate(0, 68px); background: rgba(16, 185, 129, 0.95); }
+.pet-spoke.left { transform: translate(-68px, 0); background: rgba(168, 85, 247, 0.95); }
+.pet-spoke.up:hover { transform: translate(0, -68px) scale(1.12); }
+.pet-spoke.right:hover { transform: translate(68px, 0) scale(1.12); }
+.pet-spoke.down:hover { transform: translate(0, 68px) scale(1.12); }
+.pet-spoke.left:hover { transform: translate(-68px, 0) scale(1.12); }
+.pet-wheel-center {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  background: rgba(24, 24, 27, 0.92);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+}
+.pet-wheel-center:hover { background: rgba(24, 24, 27, 1); }
+
 /* ── Card ───────────────────────────────────────────────────────── */
 .pet-card {
   width: 100%;
@@ -126,6 +183,35 @@ body,
 .pet-shot-btn:disabled {
   opacity: 0.5;
   cursor: default;
+}
+.pet-src-row {
+  display: flex;
+  gap: 6px;
+}
+.pet-src-row .pet-shot-btn {
+  flex: 1;
+}
+.pet-shot-btn.ghost {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fafafa;
+}
+.pet-clip-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 2px solid #f59e0b;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.pet-clip-text {
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #d4d4d8;
+  max-height: 66px;
+  overflow-y: auto;
+  white-space: pre-wrap;
 }
 
 .pet-thumb-row {

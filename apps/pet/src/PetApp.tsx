@@ -48,7 +48,6 @@ type View = 'bubble' | 'wheel' | 'card';
 
 export function PetApp() {
   const [view, setView] = useState<View>('bubble');
-  const expanded = view === 'card';
   const [shot, setShot] = useState<Shot>(null);
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
@@ -116,30 +115,49 @@ export function PetApp() {
       void getCurrentWindow().startDragging();
     }
   }, []);
-  const onBubbleClick = useCallback(() => {
+  // Single click → action wheel (pre-loaded with the current selection if
+  // there is one). Double click → straight to region capture. We delay the
+  // single-click action by one double-click window so the two don't fight.
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openWheel = useCallback(async () => {
+    try {
+      const sel = await invoke<string | null>('pet_grab_selection');
+      if (sel && sel.trim()) {
+        setClipText(sel.trim());
+        setAnswer(null);
+        setShot(null);
+      }
+    } catch {
+      /* Accessibility not granted — the wheel still works, just no text */
+    }
+    await showWheel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onBubbleClick = useCallback((e: React.MouseEvent) => {
     downAt.current = null;
     if (draggedRef.current) {
       draggedRef.current = false; // was a drag, not a click
       return;
     }
-    // Click = "act on whatever I have selected". Grab the selection from
-    // the frontmost app (the pet is a non-activating panel, so our ⌘C
-    // lands there). Got text → morph into the action wheel; nothing
-    // selected → just open the card.
+    if (e.detail >= 2) return; // handled by onDoubleClick
+    if (clickTimer.current) clearTimeout(clickTimer.current);
+    clickTimer.current = setTimeout(() => {
+      clickTimer.current = null;
+      void openWheel();
+    }, 240);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openWheel]);
+
+  const onBubbleDoubleClick = useCallback(() => {
+    if (clickTimer.current) {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+    }
     void (async () => {
-      try {
-        const sel = await invoke<string | null>('pet_grab_selection');
-        if (sel && sel.trim()) {
-          setClipText(sel.trim());
-          setAnswer(null);
-          setShot(null);
-          await showWheel();
-          return;
-        }
-      } catch {
-        /* Accessibility not granted etc. — fall through to the card */
-      }
       await expand();
+      await captureRegion();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -186,6 +204,23 @@ export function PetApp() {
     return () => {
       void un.then((f) => f());
     };
+  }, []);
+
+
+  // ── ⌥+W: jump straight into region capture ────────────────────────
+  useEffect(() => {
+    const un = listen('pet://shoot', async () => {
+      setClipText(null);
+      setAnswer(null);
+      setError(null);
+      await resize(CARD.w, CARD.h);
+      setView('card');
+      await captureRegion();
+    });
+    return () => {
+      void un.then((f) => f());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const expand = useCallback(async () => {
@@ -288,10 +323,11 @@ export function PetApp() {
       <div className="pet-bubble-wrap">
         <button
           className="pet-bubble"
-          title="nodx — 选中文字后点我 · 拖动移动 · 右键隐藏"
+          title="单击=动作轮盘 · 双击=框选截屏 · 拖动=移动 · 右键=隐藏"
           onPointerDown={onBubbleDown}
           onPointerMove={onBubbleMove}
           onClick={onBubbleClick}
+          onDoubleClick={onBubbleDoubleClick}
           onContextMenu={(e) => {
             e.preventDefault();
             hidePet();

@@ -318,6 +318,14 @@ pub fn run() {
                     });
                     return;
                 }
+                // ⌥+W — wake the pet straight into region capture.
+                if shortcut.matches(Modifiers::ALT, Code::KeyW) {
+                    if let Some(win) = app.get_webview_window("pet") {
+                        let _ = win.show();
+                    }
+                    let _ = app.emit("pet://shoot", ());
+                    return;
+                }
                 // ESC / Cmd+W — popover dismiss shortcuts (registered
                 // only while the popover is visible, see system_capture
                 // mod). Hide it + clean up the shortcuts.
@@ -433,6 +441,12 @@ pub fn run() {
             // (e.g. the old standalone lens-mac) already grabbed the key.
             #[cfg(desktop)]
             {
+                if let Err(e) = app.global_shortcut().register(Shortcut::new(
+                    Some(Modifiers::ALT),
+                    Code::KeyW,
+                )) {
+                    log::warn!("could not register ⌥+W: {e}");
+                }
                 match app.global_shortcut().register(Shortcut::new(
                     Some(Modifiers::ALT),
                     Code::KeyE,
@@ -526,7 +540,7 @@ fn build_tray_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
     let about_capture = MenuItem::with_id(
         app,
         "tray-capture-hint",
-        "⌥+E 划词唤醒桌宠 (Select text + ⌥+E → pet)",
+        "⌥+E 划词提问 · ⌥+W 框选截屏",
         true,
         None::<&str>,
     )?;
