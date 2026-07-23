@@ -9,6 +9,15 @@ use serde::{Deserialize, Serialize};
 
 const SERVICE: &str = "app.nodx.pet";
 
+/// One conversation turn. The pet keeps the whole thread so follow-up
+/// questions land in context instead of starting over.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Msg {
+    /// "user" | "assistant"
+    pub role: String,
+    pub content: String,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Provider {
@@ -78,10 +87,12 @@ pub fn has_key(p: Provider) -> bool {
 
 const SYSTEM: &str = "You are nodx Lens, a tiny desktop assistant. Answer concisely (2–6 sentences unless asked for more). If an image is attached, answer about the exact pixels shown, quoting visible text/numbers exactly. If quoted text is provided, ground your answer in it. Reply in the language of the question.";
 
-/// One-shot completion. `image_b64` (PNG) switches to the vision model.
+/// Multi-turn completion. `image_b64` (PNG) attaches to the FIRST user
+/// turn (the one the screenshot belongs to) and switches to the vision
+/// model.
 pub async fn complete(
     p: Provider,
-    prompt: &str,
+    thread: &[Msg],
     image_b64: Option<&str>,
 ) -> Result<String, String> {
     let key = get_key(p).ok_or_else(|| "NO_KEY".to_string())?;
@@ -90,21 +101,30 @@ pub async fn complete(
 
     let (url, body, headers): (String, serde_json::Value, Vec<(&str, String)>) = match p {
         Provider::Anthropic => {
-            let mut content = vec![];
-            if let Some(b64) = image_b64 {
-                content.push(serde_json::json!({
-                    "type": "image",
-                    "source": { "type": "base64", "media_type": "image/png", "data": b64 }
-                }));
-            }
-            content.push(serde_json::json!({ "type": "text", "text": prompt }));
+            let msgs: Vec<serde_json::Value> = thread
+                .iter()
+                .enumerate()
+                .map(|(i, m)| {
+                    let mut content = vec![];
+                    if i == 0 && m.role == "user" {
+                        if let Some(b64) = image_b64 {
+                            content.push(serde_json::json!({
+                                "type": "image",
+                                "source": { "type": "base64", "media_type": "image/png", "data": b64 }
+                            }));
+                        }
+                    }
+                    content.push(serde_json::json!({ "type": "text", "text": m.content }));
+                    serde_json::json!({ "role": m.role, "content": content })
+                })
+                .collect();
             (
                 "https://api.anthropic.com/v1/messages".into(),
                 serde_json::json!({
                     "model": model,
                     "max_tokens": 1024,
                     "system": SYSTEM,
-                    "messages": [{ "role": "user", "content": content }]
+                    "messages": msgs
                 }),
                 vec![
                     ("x-api-key", key.clone()),
@@ -113,14 +133,21 @@ pub async fn complete(
             )
         }
         Provider::OpenAI => {
-            let mut content = vec![];
-            if let Some(b64) = image_b64 {
-                content.push(serde_json::json!({
-                    "type": "image_url",
-                    "image_url": { "url": format!("data:image/png;base64,{b64}") }
-                }));
+            let mut msgs = vec![serde_json::json!({ "role": "system", "content": SYSTEM })];
+            for (i, m) in thread.iter().enumerate() {
+                if i == 0 && m.role == "user" && image_b64.is_some() {
+                    msgs.push(serde_json::json!({
+                        "role": "user",
+                        "content": [
+                            { "type": "image_url",
+                              "image_url": { "url": format!("data:image/png;base64,{}", image_b64.unwrap()) } },
+                            { "type": "text", "text": m.content }
+                        ]
+                    }));
+                } else {
+                    msgs.push(serde_json::json!({ "role": m.role, "content": m.content }));
+                }
             }
-            content.push(serde_json::json!({ "type": "text", "text": prompt }));
             (
                 "https://api.openai.com/v1/chat/completions".into(),
                 serde_json::json!({
@@ -128,26 +155,34 @@ pub async fn complete(
                     // GPT-5.x rejects max_tokens; the replacement also covers
                     // hidden reasoning tokens, so it needs headroom.
                     "max_completion_tokens": 4096,
-                    "messages": [
-                        { "role": "system", "content": SYSTEM },
-                        { "role": "user", "content": content }
-                    ]
+                    "messages": msgs
                 }),
                 vec![("authorization", format!("Bearer {key}"))],
             )
         }
         Provider::Gemini => {
-            let mut parts = vec![serde_json::json!({ "text": prompt })];
-            if let Some(b64) = image_b64 {
-                parts.push(serde_json::json!({
-                    "inline_data": { "mime_type": "image/png", "data": b64 }
-                }));
-            }
+            let contents: Vec<serde_json::Value> = thread
+                .iter()
+                .enumerate()
+                .map(|(i, m)| {
+                    let mut parts = vec![serde_json::json!({ "text": m.content })];
+                    if i == 0 && m.role == "user" {
+                        if let Some(b64) = image_b64 {
+                            parts.push(serde_json::json!({
+                                "inline_data": { "mime_type": "image/png", "data": b64 }
+                            }));
+                        }
+                    }
+                    // Gemini calls the assistant role "model".
+                    let role = if m.role == "assistant" { "model" } else { "user" };
+                    serde_json::json!({ "role": role, "parts": parts })
+                })
+                .collect();
             (
                 format!("https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"),
                 serde_json::json!({
                     "system_instruction": { "parts": [{ "text": SYSTEM }] },
-                    "contents": [{ "role": "user", "parts": parts }],
+                    "contents": contents,
                     "generationConfig": { "maxOutputTokens": 2048 }
                 }),
                 vec![("x-goog-api-key", key.clone())],

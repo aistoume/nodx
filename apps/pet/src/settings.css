@@ -1,0 +1,47 @@
+* { box-sizing: border-box; margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', system-ui, sans-serif; }
+html, body, #root { height: 100%; background: #18181b; color: #fafafa; }
+.st { padding: 22px 24px 40px; display: flex; flex-direction: column; gap: 26px; overflow-y: auto; height: 100%; }
+h1 { font-size: 19px; color: #f59e0b; }
+h2 { font-size: 14px; margin-bottom: 8px; color: #e4e4e7; }
+section { display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; gap: 8px; align-items: center; }
+.hint { font-size: 11px; color: #a1a1aa; line-height: 1.5; }
+input, select, textarea {
+  padding: 8px 10px; border: 1px solid rgba(255,255,255,0.16); border-radius: 8px;
+  background: rgba(255,255,255,0.06); color: #fafafa; font-size: 13px;
+  font-family: inherit; flex: 1; min-width: 0;
+}
+textarea { resize: vertical; width: 100%; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: #f59e0b; }
+input.emoji { flex: 0 0 62px; text-align: center; font-size: 16px; }
+button {
+  padding: 8px 14px; border: 1px solid rgba(255,255,255,0.16); border-radius: 8px;
+  background: rgba(255,255,255,0.07); color: #fafafa; font-size: 13px; cursor: pointer;
+  font-family: inherit; flex-shrink: 0;
+}
+button:hover { background: rgba(255,255,255,0.12); }
+button.primary { background: #d97706; border-color: #d97706; font-weight: 700; }
+button.prov { flex: 1; }
+button.prov.on { background: #d97706; border-color: #d97706; font-weight: 700; }
+.saved { font-size: 12px; color: #34d399; }
+
+/* wheel editor */
+.wheel-body { display: flex; gap: 18px; align-items: flex-start; }
+.editors { flex: 1; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.spoke {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 12px; background: rgba(255,255,255,0.04); border-radius: 10px;
+}
+.spoke strong { font-size: 12px; color: #d4d4d8; }
+.wp { position: relative; width: 190px; height: 190px; flex-shrink: 0;
+      background: rgba(255,255,255,0.04); border-radius: 12px; }
+.wp-spoke, .wp-centre {
+  position: absolute; left: 50%; top: 50%; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #fff; border: 2px solid rgba(255,255,255,0.8);
+}
+.wp-spoke { width: 52px; height: 52px; margin: -26px 0 0 -26px; font-size: 17px; gap: 1px; }
+.wp-spoke em { font-size: 8px; font-style: normal; font-weight: 700; }
+.wp-centre { width: 40px; height: 40px; margin: -20px 0 0 -20px;
+             background: rgba(24,24,27,0.92); font-size: 14px; }

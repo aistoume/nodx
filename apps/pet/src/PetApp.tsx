@@ -22,13 +22,9 @@ import {
   LogicalSize,
   PhysicalPosition,
 } from '@tauri-apps/api/window';
+import { loadWheel, SPOKE_COLORS, type WheelConfig, type WheelSpoke } from './wheel';
 
 type Provider = 'anthropic' | 'openai' | 'gemini';
-const PROVIDERS: { id: Provider; label: string; hint: string }[] = [
-  { id: 'anthropic', label: 'Claude', hint: 'sk-ant-… · console.anthropic.com' },
-  { id: 'openai', label: 'GPT', hint: 'sk-… · platform.openai.com' },
-  { id: 'gemini', label: 'Gemini', hint: 'AQ.… / AIza… · aistudio.google.com（有免费额度）' },
-];
 const PROVIDER_KEY = 'nodx-pet-provider';
 
 const BUBBLE = { w: 84, h: 84 };
@@ -73,12 +69,11 @@ export function PetApp() {
   const [shot, setShot] = useState<Shot>(null);
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
-  const [answer, setAnswer] = useState<string | null>(null);
+  const [turns, setTurns] = useState<{ role: 'user' | 'assistant'; text: string }[]>([]);
+  const [wheel, setWheel] = useState<WheelConfig>(loadWheel);
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<Provider>('anthropic');
   const [hasKey, setHasKey] = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
-  const [keyInput, setKeyInput] = useState('');
   const [clipText, setClipText] = useState<string | null>(null);
   const answerRef = useRef<HTMLDivElement | null>(null);
   const askRef = useRef<HTMLTextAreaElement | null>(null);
@@ -88,7 +83,7 @@ export function PetApp() {
     const t = await invoke<string>('pet_read_clipboard');
     if (t) {
       setClipText(t);
-      setAnswer(null);
+      setTurns([]);
     } else {
       setError('剪贴板里没有文字 — 先在别处选中并复制（⌘C）。');
     }
@@ -96,27 +91,24 @@ export function PetApp() {
 
   // Provider + key live in the OS keychain (Rust side); the chosen
   // provider id is a plain local preference.
-  useEffect(() => {
-    const saved = localStorage.getItem(PROVIDER_KEY) as Provider | null;
-    if (saved) setProvider(saved);
-    void invoke<boolean>('pet_key_has', { provider: saved ?? 'anthropic' })
-      .then(setHasKey)
-      .catch(() => {});
-  }, []);
-
-  const pickProvider = useCallback((p: Provider) => {
+  // Provider / key / wheel all live in the settings window; re-read them
+  // whenever it says something changed.
+  const reloadConfig = useCallback(() => {
+    const p = (localStorage.getItem(PROVIDER_KEY) as Provider | null) ?? 'anthropic';
     setProvider(p);
-    localStorage.setItem(PROVIDER_KEY, p);
+    setWheel(loadWheel());
     void invoke<boolean>('pet_key_has', { provider: p }).then(setHasKey).catch(() => {});
   }, []);
 
-  const saveKey = useCallback(async () => {
-    const k = keyInput.trim();
-    await invoke('pet_key_set', { provider, key: k });
-    setHasKey(k.length > 0);
-    setKeyInput('');
-    setShowSettings(false);
-  }, [keyInput, provider]);
+  useEffect(() => {
+    reloadConfig();
+    const un = listen('pet://config', () => reloadConfig());
+    return () => {
+      void un.then((f) => f());
+    };
+  }, [reloadConfig]);
+
+
 
   // Bubble drag: distinguish a click (→ expand) from a drag (→ move the
   // window). We start the native drag once the pointer moves past a small
@@ -147,7 +139,7 @@ export function PetApp() {
       const sel = await invoke<string | null>('pet_grab_selection');
       if (sel && sel.trim()) {
         setClipText(sel.trim());
-        setAnswer(null);
+        setTurns([]);
         setShot(null);
       }
     } catch {
@@ -235,7 +227,7 @@ export function PetApp() {
       if (sel) {
         setClipText(sel);
         setShot(null);
-        setAnswer(null);
+        setTurns([]);
         setError(null);
       }
       await resize(CARD.w, CARD.h);
@@ -253,7 +245,7 @@ export function PetApp() {
   useEffect(() => {
     const un = listen('pet://shoot', async () => {
       setClipText(null);
-      setAnswer(null);
+      setTurns([]);
       setError(null);
       await resize(CARD.w, CARD.h);
       setView('card');
@@ -297,7 +289,7 @@ export function PetApp() {
       await win.show();
       if (b64) {
         setShot({ b64 });
-        setAnswer(null);
+        setTurns([]);
       }
     } catch (e) {
       await getCurrentWindow().show();
@@ -311,53 +303,70 @@ export function PetApp() {
     if (!q || busy) return;
     setBusy(true);
     setError(null);
-    setAnswer(null);
+    setTurns([]);
     try {
-      const prompt = clipText
+      // First turn carries the quoted context; follow-ups are plain so the
+      // model doesn't get the same block re-pasted every round.
+      const first = turns.length === 0;
+      const content = first && clipText
         ? `关于下面这段文字，${q}\n\n"""\n${clipText}\n"""`
         : q;
+      const thread = [...turns, { role: 'user' as const, text: content }];
+      setTurns([...turns, { role: 'user', text: q }]);
+      setQuestion('');
       const text = await invoke<string>('pet_ask', {
         provider,
-        prompt,
+        thread: thread.map((t) => ({ role: t.role, content: t.text })),
         imageB64: shot ? shot.b64 : null,
       });
-      setAnswer(text);
-      requestAnimationFrame(() => answerRef.current?.scrollTo(0, 0));
+      setTurns((prev) => [...prev, { role: 'assistant', text }]);
+      requestAnimationFrame(() =>
+        answerRef.current?.scrollTo(0, answerRef.current.scrollHeight),
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes('NO_KEY')) {
         setError('还没填 API key — 点 ⚙ 设置一次即可。');
-        setShowSettings(true);
+        void invoke('pet_open_settings');
       } else {
         setError(msg);
       }
     } finally {
       setBusy(false);
     }
-  }, [question, busy, shot, clipText, provider]);
+  }, [question, busy, shot, clipText, provider, turns]);
 
-  // ── Wheel actions (on the grabbed selection) ───────────────────────
-  const wheelExplain = useCallback(async () => {
-    setQuestion('解释一下这段文字');
-    await expand();
-    // ask() reads `question` + `clipText`; give React a tick to flush.
-    setTimeout(() => void ask(), 0);
+  // ── Wheel actions — driven by the user's saved config ─────────────
+  const runSpoke = useCallback(
+    async (spoke: WheelSpoke) => {
+      switch (spoke.kind) {
+        case 'prompt': {
+          setQuestion(spoke.param);
+          await expand();
+          setTimeout(() => void ask(), 0);
+          break;
+        }
+        case 'search': {
+          const q = clipText ?? '';
+          await collapse();
+          void invoke('pet_open_url', {
+            url: spoke.param + encodeURIComponent(q),
+          });
+          break;
+        }
+        case 'shot': {
+          await expand();
+          await captureRegion();
+          break;
+        }
+        case 'ask':
+        default:
+          await expand();
+      }
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ask]);
-
-  const wheelSearch = useCallback(async () => {
-    const q = clipText ?? '';
-    await collapse();
-    void invoke('pet_open_url', {
-      url: `https://www.google.com/search?q=${encodeURIComponent(q)}`,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clipText]);
-
-  const wheelAsk = useCallback(async () => {
-    await expand(); // keep clipText, let the user type a question
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    [ask, clipText],
+  );
 
   // ── Bubble ─────────────────────────────────────────────────────────
   if (view === 'bubble') {
@@ -383,20 +392,21 @@ export function PetApp() {
 
   // ── Wheel ──────────────────────────────────────────────────────────
   if (view === 'wheel') {
+    const POS = ['up', 'right', 'down', 'left'] as const;
     return (
       <div className="pet-wheel-wrap">
-        <button className="pet-spoke up" title="解释这段文字" onClick={() => void wheelExplain()}>
-          📖<em>解释</em>
-        </button>
-        <button className="pet-spoke right" title="网页搜索" onClick={() => void wheelSearch()}>
-          🔎<em>搜索</em>
-        </button>
-        <button className="pet-spoke down" title="就这段文字追问" onClick={() => void wheelAsk()}>
-          💬<em>追问</em>
-        </button>
-        <button className="pet-spoke left" title="框选屏幕改为提问" onClick={() => void expand()}>
-          🖼<em>更多</em>
-        </button>
+        {wheel.spokes.map((sp, i) => (
+          <button
+            key={i}
+            className={`pet-spoke ${POS[i]}`}
+            style={{ background: SPOKE_COLORS[i] }}
+            title={sp.label}
+            onClick={() => void runSpoke(sp)}
+          >
+            {sp.emoji || '❓'}
+            <em>{sp.label}</em>
+          </button>
+        ))}
         <button className="pet-wheel-center" title="取消" onClick={() => void collapse()}>
           ✕
         </button>
@@ -412,9 +422,9 @@ export function PetApp() {
           🐣 nodx
         </span>
         <button
-          className={`pet-ic${showSettings ? ' on' : ''}${hasKey ? '' : ' warn'}`}
-          title={hasKey ? '设置：AI 提供方 / API key' : '还没填 API key — 点这里设置'}
-          onClick={() => setShowSettings((v) => !v)}
+          className={`pet-ic${hasKey ? '' : ' warn'}`}
+          title={hasKey ? '设置：提供方 / key / 轮盘自定义' : '还没填 API key — 点这里设置'}
+          onClick={() => void invoke('pet_open_settings')}
         >
           ⚙
         </button>
@@ -427,38 +437,6 @@ export function PetApp() {
       </header>
 
       <div className="pet-body">
-        {showSettings && (
-          <div className="pet-settings">
-            <div className="pet-prov-row">
-              {PROVIDERS.map((p) => (
-                <button
-                  key={p.id}
-                  className={`pet-prov${provider === p.id ? ' on' : ''}`}
-                  onClick={() => pickProvider(p.id)}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-            <p className="pet-hint">{PROVIDERS.find((p) => p.id === provider)?.hint}</p>
-            <div className="pet-ask-row">
-              <input
-                type="password"
-                className="pet-key-input"
-                placeholder={hasKey ? '已保存 · 输入新 key 可替换' : '粘贴 API key'}
-                value={keyInput}
-                onChange={(e) => setKeyInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void saveKey();
-                }}
-              />
-              <button className="pet-ask-btn" onClick={() => void saveKey()}>
-                存
-              </button>
-            </div>
-            <p className="pet-hint">key 只存在本机钥匙串，请求直连提供方。</p>
-          </div>
-        )}
         <div className="pet-src-row">
           {IS_MAC && (
             <button className="pet-shot-btn" onClick={() => void captureRegion()} disabled={busy}>
@@ -497,6 +475,8 @@ export function PetApp() {
                 ? '问点关于这张截屏的…  ⌘/Ctrl+Enter'
                 : clipText
                   ? '问点关于这段文字的…  ⌘/Ctrl+Enter'
+                  : turns.length > 0
+                  ? '继续追问…  ⌘/Ctrl+Enter'
                   : '随便问点什么…  ⌘/Ctrl+Enter'
             }
             onChange={(e) => setQuestion(e.target.value)}
@@ -513,18 +493,23 @@ export function PetApp() {
         </div>
 
         {error && <div className="pet-err">{error}</div>}
-        {answer !== null && (
-          <div className="pet-answer" ref={answerRef}>
-            {answer}
-            <div className="pet-answer-tools">
-              <button
-                className="pet-ic"
-                title="复制回答"
-                onClick={() => void navigator.clipboard.writeText(answer)}
-              >
-                📋
-              </button>
-            </div>
+        {turns.length > 0 && (
+          <div className="pet-thread" ref={answerRef}>
+            {turns.map((t, i) => (
+              <div key={i} className={`pet-turn ${t.role}`}>
+                {t.text}
+                {t.role === 'assistant' && (
+                  <button
+                    className="pet-ic pet-copy"
+                    title="复制"
+                    onClick={() => void navigator.clipboard.writeText(t.text)}
+                  >
+                    📋
+                  </button>
+                )}
+              </div>
+            ))}
+            {busy && <div className="pet-turn assistant pending">…</div>}
           </div>
         )}
       </div>

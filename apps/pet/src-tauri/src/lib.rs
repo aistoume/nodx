@@ -54,15 +54,39 @@ fn pet_hide(app: AppHandle) {
     }
 }
 
-/// Ask the configured provider. `image_b64` (PNG) enables vision.
+/// Ask the configured provider with the full conversation so far, so
+/// follow-up questions keep context. `image_b64` (PNG) enables vision.
 #[tauri::command]
 async fn pet_ask(
     provider: String,
-    prompt: String,
+    thread: Vec<ai::Msg>,
     image_b64: Option<String>,
 ) -> Result<String, String> {
     let p = ai::Provider::parse(&provider).ok_or_else(|| format!("unknown provider: {provider}"))?;
-    ai::complete(p, &prompt, image_b64.as_deref()).await
+    ai::complete(p, &thread, image_b64.as_deref()).await
+}
+
+/// Open (or focus) the settings window — provider/key + wheel editor.
+#[tauri::command]
+fn pet_open_settings(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("settings") {
+        let _ = w.show();
+        let _ = w.set_focus();
+        return Ok(());
+    }
+    tauri::WebviewWindowBuilder::new(
+        &app,
+        "settings",
+        tauri::WebviewUrl::App("settings.html".into()),
+    )
+    .title("nodx Lens — 设置")
+    .inner_size(560.0, 700.0)
+    .min_inner_size(460.0, 520.0)
+    .resizable(true)
+    .center()
+    .build()
+    .map(|_| ())
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -193,6 +217,7 @@ pub fn run() {
             pet_open_accessibility,
             pet_hide,
             pet_ask,
+            pet_open_settings,
             pet_key_set,
             pet_key_has,
             pet_open_url,

@@ -8,6 +8,7 @@ export default defineConfig({
   server: { port: 1430, strictPort: true },
   envPrefix: ['VITE_', 'TAURI_ENV_*'],
   build: {
+    rollupOptions: { input: { main: 'index.html', settings: 'settings.html' } },
     target: process.env.TAURI_ENV_PLATFORM === 'windows' ? 'chrome105' : 'safari13',
     minify: !process.env.TAURI_ENV_DEBUG,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
