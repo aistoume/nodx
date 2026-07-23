@@ -354,6 +354,8 @@ pub fn run() {
             pet::pet_capture_region,
             pet::pet_show_main,
             pet::pet_hide,
+            pet::pet_only_get,
+            pet::pet_only_set,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -399,10 +401,7 @@ pub fn run() {
                     let url_str = url.as_str();
                     log::info!("deep-link URL: {}", url_str);
                     if let Some(payload) = parse_capture_url(url_str) {
-                        if let Some(win) = app_handle.get_webview_window("main") {
-                            let _ = win.show();
-                            let _ = win.set_focus();
-                        }
+                        pet::ensure_main_window(&app_handle);
                         if let Err(e) = app_handle.emit("nodx://capture", &payload) {
                             log::warn!("emit nodx://capture failed: {}", e);
                         }
@@ -448,6 +447,12 @@ pub fn run() {
                 // tray to bring nodx back.
                 build_tray(app.handle())?;
 
+                // Lightweight mode: in pet-only, never build the heavy main
+                // workspace webview at launch — only the pet + tray show.
+                if !pet::is_pet_only(app.handle()) {
+                    pet::ensure_main_window(app.handle());
+                }
+
                 // ── 0.3: Popover close → hide (not destroy) ─────────────
                 // The popover window declared in tauri.conf.json defaults
                 // to destroy-on-close. Install our hide-instead handler so
@@ -477,6 +482,14 @@ fn build_tray_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
         MenuItem::with_id(app, "tray-settings", "⚙ 设置 · Settings", true, None::<&str>)?;
     let pet_toggle =
         MenuItem::with_id(app, "tray-pet", "🐣 桌宠 · Desktop pet", true, None::<&str>)?;
+    let pet_only = tauri::menu::CheckMenuItem::with_id(
+        app,
+        "tray-pet-only",
+        "🪶 轻量模式（只留桌宠，不开主窗）",
+        true,
+        pet::is_pet_only(app),
+        None::<&str>,
+    )?;
     let separator = MenuItem::with_id(app, "tray-sep", "—", false, None::<&str>)?;
     let about_capture = MenuItem::with_id(
         app,
@@ -511,7 +524,7 @@ fn build_tray_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
 
     Menu::with_items(
         app,
-        &[&show, &settings, &pet_toggle, &separator, &running, &separator, &about_capture, &separator, &quit],
+        &[&show, &settings, &pet_toggle, &pet_only, &separator, &running, &separator, &about_capture, &separator, &quit],
     )
 }
 
@@ -524,19 +537,22 @@ fn build_tray(app: &AppHandle) -> Result<(), tauri::Error> {
         .menu(&menu)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "tray-show" => {
-                if let Some(win) = app.get_webview_window("main") {
-                    let _ = win.show();
-                    let _ = win.unminimize();
-                    let _ = win.set_focus();
-                }
+                pet::ensure_main_window(app);
             }
             "tray-pet" => pet::toggle(app),
-            "tray-settings" => {
-                if let Some(win) = app.get_webview_window("main") {
-                    let _ = win.show();
-                    let _ = win.set_focus();
-                    let _ = app.emit("nav-to-settings", ());
+            "tray-pet-only" => {
+                let now = !pet::is_pet_only(app);
+                pet::pet_only_set(app.clone(), now);
+                // Rebuild the menu so the checkmark reflects the new state.
+                if let (Some(tray), Ok(menu)) =
+                    (app.tray_by_id("main-tray"), build_tray_menu(app))
+                {
+                    let _ = tray.set_menu(Some(menu));
                 }
+            }
+            "tray-settings" => {
+                pet::ensure_main_window(app);
+                let _ = app.emit("nav-to-settings", ());
             }
             "tray-quit" => {
                 app.exit(0);

@@ -3,7 +3,7 @@
 //! ask). The webview UI is `pet.html` (src/pet/); this module is only the
 //! native bits: interactive region capture and window show/hide.
 
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 /// Interactive region screenshot → base64 PNG.
 ///
@@ -44,13 +44,80 @@ pub async fn pet_capture_region() -> Result<Option<String>, String> {
     }
 }
 
-/// Bring the main nodx window forward (pet's "open nodx" button).
+/// Bring the main nodx window forward (pet's "open nodx" button). Builds
+/// it on demand — in lightweight (pet-only) mode it never existed yet.
 #[tauri::command]
 pub fn pet_show_main(app: AppHandle) {
-    if let Some(win) = app.get_webview_window("main") {
-        let _ = win.show();
-        let _ = win.unminimize();
-        let _ = win.set_focus();
+    ensure_main_window(&app);
+}
+
+// ── Lightweight / pet-only mode ──────────────────────────────────────
+// When enabled, launch shows ONLY the pet bubble (+ tray); the heavy main
+// workspace webview is never created until the user explicitly opens it.
+// The flag persists to app_data/pet_only.txt.
+
+fn pet_only_file(app: &AppHandle) -> Option<std::path::PathBuf> {
+    let dir = app.path().app_data_dir().ok()?;
+    let _ = std::fs::create_dir_all(&dir);
+    Some(dir.join("pet_only.txt"))
+}
+
+pub fn is_pet_only(app: &AppHandle) -> bool {
+    pet_only_file(app)
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .map(|s| s.trim() == "1")
+        .unwrap_or(false)
+}
+
+#[tauri::command]
+pub fn pet_only_get(app: AppHandle) -> bool {
+    is_pet_only(&app)
+}
+
+#[tauri::command]
+pub fn pet_only_set(app: AppHandle, on: bool) {
+    if let Some(p) = pet_only_file(&app) {
+        let _ = std::fs::write(p, if on { "1" } else { "0" });
+    }
+    if on {
+        // Hide (not destroy) the main window if it's already up, so toggling
+        // at runtime takes effect immediately.
+        if let Some(w) = app.get_webview_window("main") {
+            let _ = w.hide();
+        }
+    } else {
+        ensure_main_window(&app);
+    }
+}
+
+/// Show the main workspace window, building it lazily if it doesn't exist
+/// yet. Config mirrors the old tauri.conf.json `main` entry. This is the
+/// single entry point every "open nodx" path routes through (tray, pet 🧠,
+/// deep-link capture), so pet-only mode can defer the heavy webview.
+pub fn ensure_main_window(app: &AppHandle) -> Option<WebviewWindow> {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+        return Some(w);
+    }
+    match WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+        .title("nodx")
+        .inner_size(1280.0, 820.0)
+        .min_inner_size(960.0, 640.0)
+        .resizable(true)
+        .fullscreen(false)
+        .build()
+    {
+        Ok(w) => {
+            let _ = w.show();
+            let _ = w.set_focus();
+            Some(w)
+        }
+        Err(e) => {
+            log::warn!("ensure_main_window failed: {e}");
+            None
+        }
     }
 }
 

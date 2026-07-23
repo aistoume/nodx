@@ -41,7 +41,18 @@ export function PetApp() {
   const [busy, setBusy] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [petOnly, setPetOnly] = useState(false);
   const answerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    void invoke<boolean>('pet_only_get').then(setPetOnly).catch(() => {});
+  }, []);
+
+  const togglePetOnly = useCallback(() => {
+    const next = !petOnly;
+    setPetOnly(next);
+    void invoke('pet_only_set', { on: next });
+  }, [petOnly]);
 
   // Bubble drag: distinguish a click (→ expand) from a drag (→ move the
   // window). We start the native drag once the pointer moves past a small
@@ -189,6 +200,17 @@ export function PetApp() {
         <span className="pet-head-title" data-tauri-drag-region>
           🐣 nodx
         </span>
+        <button
+          className={`pet-ic${petOnly ? ' on' : ''}`}
+          title={
+            petOnly
+              ? '轻量模式已开：启动只显示桌宠。点击关闭（下次启动照常打开主窗）'
+              : '轻量模式：启动只显示桌宠，不开主窗。点击开启'
+          }
+          onClick={togglePetOnly}
+        >
+          🪶
+        </button>
         <button className="pet-ic" title="打开 nodx 主窗口" onClick={() => void invoke('pet_show_main')}>
           🧠
         </button>

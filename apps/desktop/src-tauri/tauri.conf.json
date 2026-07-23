@@ -12,16 +12,6 @@
   "app": {
     "windows": [
       {
-        "label": "main",
-        "title": "nodx",
-        "width": 1280,
-        "height": 820,
-        "minWidth": 960,
-        "minHeight": 640,
-        "resizable": true,
-        "fullscreen": false
-      },
-      {
         "label": "popover",
         "title": "nodx — explain",
         "url": "popover.html",
