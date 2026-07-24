@@ -157,6 +157,7 @@ h2 {
 .install-card h3 { font-size: 20px; margin-bottom: 8px; font-weight: 700; }
 .install-card p { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
 .install-cta { color: var(--brand); font-weight: 600; font-size: 14px; }
+.install-card .cta-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
 /* whole-card click without invalid <a>-in-<a> nesting */
 a.install-cta::after { content: ""; position: absolute; inset: 0; }
 .install-card small { position: relative; z-index: 1; }
