@@ -158,8 +158,10 @@ h2 {
 .install-card p { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
 .install-cta { color: var(--brand); font-weight: 600; font-size: 14px; }
 .install-card .cta-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
-/* whole-card click without invalid <a>-in-<a> nesting */
+/* whole-card click without invalid <a>-in-<a> nesting; only the FIRST
+   CTA stretches over the card — later CTAs must stay clickable above it */
 a.install-cta::after { content: ""; position: absolute; inset: 0; }
+a.install-cta ~ a.install-cta { position: relative; z-index: 1; }
 .install-card small { position: relative; z-index: 1; }
 .install-card.coming {
   background: linear-gradient(135deg, var(--brand-2), var(--brand-dark)); color: #fff; border: 0;
