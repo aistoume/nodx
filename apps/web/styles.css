@@ -391,3 +391,27 @@ footer { padding: 56px 24px 40px; color: var(--muted); font-size: 13px; }
   .upsell { padding: 32px 20px; }
   .upsell h2 { font-size: 22px; }
 }
+
+/* ── Language toggle (i18n.js) ───────────────────────────────────── */
+#lang-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 999;
+  min-width: 46px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  color: #1a1a1a;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+#lang-toggle:hover { border-color: #f59e0b; color: #d97706; }
+@media (prefers-color-scheme: dark) {
+  #lang-toggle { background: rgba(30, 30, 33, 0.92); color: #fafafa; border-color: rgba(255,255,255,0.16); }
+}
