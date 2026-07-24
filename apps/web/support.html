@@ -12,7 +12,7 @@
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Support — Aicon Solutions</title>
+    <title data-i18n="sup.metaTitle">Support — Aicon Solutions</title>
     <meta name="description" content="Get help with nodx Lens, nodx desktop, and other Aicon Solutions products. Report bugs, ask questions, or share feedback." />
     <meta property="og:title" content="Support — Aicon Solutions" />
     <meta property="og:description" content="Get help, report a bug, or share feedback for any Aicon product." />
@@ -92,16 +92,16 @@
         <span class="brand-text">Aicon Solutions</span>
       </a>
       <nav>
-        <a href="/">Home</a>
-        <a href="/nodx/">nodx</a>
-        <a href="/support.html">Support</a>
+        <a href="/" data-i18n="nav.home">Home</a>
+        <a href="/nodx/" data-i18n="nav.nodx">nodx</a>
+        <a href="/support.html" data-i18n="foot.support">Support</a>
         <a class="x-link" href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏</a>
       </nav>
     </header>
 
     <main class="legal">
-      <h1>Support</h1>
-      <p class="meta">
+      <h1 data-i18n="sup.title">Support</h1>
+      <p class="meta" data-i18n="sup.intro">
         We're a small studio — usually one person answering. That means we're
         slower than a giant, but we actually read every message.
       </p>
@@ -109,21 +109,21 @@
       <!-- ── Contact methods ─────────────────────────────────────────── -->
       <div class="contact-grid">
         <div class="contact-card">
-          <div class="label">Email</div>
+          <div class="label" data-i18n="sup.contact_email_label">Email</div>
           <div class="value">
             <a href="mailto:contact@aicon.solutions">contact@aicon.solutions</a>
           </div>
-          <p>
+          <p data-i18n="sup.contact_email_desc">
             Best for bug reports, feature requests, or anything that's not a
             quick question. Response usually within 2 business days.
           </p>
         </div>
         <div class="contact-card">
-          <div class="label">𝕏 (Twitter)</div>
+          <div class="label" data-i18n="sup.contact_x_label">𝕏 (Twitter)</div>
           <div class="value">
             <a href="https://x.com/LaoMo9394" target="_blank" rel="noopener">@LaoMo9394</a>
           </div>
-          <p>
+          <p data-i18n="sup.contact_x_desc">
             Best for quick questions, product roadmap discussions, or public
             feedback. DMs open.
           </p>
@@ -132,11 +132,11 @@
 
       <!-- ── nodx Lens (Chrome extension) ────────────────────────────── -->
       <div class="card">
-        <h2>nodx Lens · Chrome extension</h2>
+        <h2 data-i18n="sup.lens_h2">nodx Lens · Chrome extension</h2>
 
         <details>
-          <summary>How do I use it?</summary>
-          <p>
+          <summary data-i18n="sup.lens_q1">How do I use it?</summary>
+          <p data-i18n="sup.lens_a1">
             After installing, open <strong>Options</strong> (right-click the
             nodx Lens icon → Options) and paste your API key from one of:
             Anthropic, OpenAI, or Google. Then on any webpage, highlight some
@@ -146,27 +146,27 @@
         </details>
 
         <details>
-          <summary>The 🔍 button doesn't show up</summary>
-          <p>Check three things, in order:</p>
+          <summary data-i18n="sup.lens_q2">The 🔍 button doesn't show up</summary>
+          <p data-i18n="sup.lens_a2_intro">Check three things, in order:</p>
           <ul>
-            <li>
+            <li data-i18n="sup.lens_a2_li1">
               Is the API key saved in Options? Some pages (like new tab,
               Chrome Web Store, chrome:// pages) block extensions — try on a
               regular webpage.
             </li>
-            <li>
+            <li data-i18n="sup.lens_a2_li2">
               Is your selection between 2 and 500 characters? Very short or
               very long selections are ignored to avoid noise.
             </li>
-            <li>
+            <li data-i18n="sup.lens_a2_li3">
               In Options → Trigger, is "Show the explain button" turned on?
             </li>
           </ul>
         </details>
 
         <details>
-          <summary>I get "Missing API key" or authentication errors</summary>
-          <p>
+          <summary data-i18n="sup.lens_q3">I get "Missing API key" or authentication errors</summary>
+          <p data-i18n="sup.lens_a3">
             Open Options and paste your key again. Then reload the webpage —
             content scripts hold the old settings until reload. If your key was
             revoked or hit a rate limit, that message comes straight from the
@@ -175,8 +175,8 @@
         </details>
 
         <details>
-          <summary>Do you see the text I highlight?</summary>
-          <p>
+          <summary data-i18n="sup.lens_q4">Do you see the text I highlight?</summary>
+          <p data-i18n="sup.lens_a4">
             No. The text goes directly from your browser to the AI provider you
             configured. nodx Lens has no server. See the
             <a href="/privacy.html">Privacy Policy</a> for details.
@@ -184,8 +184,8 @@
         </details>
 
         <details>
-          <summary>Does it work in Chinese / Japanese / other languages?</summary>
-          <p>
+          <summary data-i18n="sup.lens_q5">Does it work in Chinese / Japanese / other languages?</summary>
+          <p data-i18n="sup.lens_a5">
             Yes — the AI provider handles the language. In Options you can pick
             "Follow browser" or force Chinese / English for the UI itself.
           </p>
@@ -194,11 +194,11 @@
 
       <!-- ── nodx desktop (macOS) ────────────────────────────────────── -->
       <div class="card">
-        <h2>nodx desktop · macOS app</h2>
+        <h2 data-i18n="sup.desk_h2">nodx desktop · macOS app</h2>
 
         <details>
-          <summary>How do I install and set up?</summary>
-          <p>
+          <summary data-i18n="sup.desk_q1">How do I install and set up?</summary>
+          <p data-i18n="sup.desk_a1">
             Download the <code>.dmg</code> from
             <a href="/nodx/">aicon.solutions/nodx</a>, drag <code>nodx.app</code>
             to <code>/Applications</code>, right-click → Open (the app is signed
@@ -206,14 +206,14 @@
             <strong>⚙ Settings</strong> and either:
           </p>
           <ul>
-            <li>Paste your Anthropic API key (<code>sk-ant-…</code>), or</li>
-            <li>Switch to Claude Code subscription mode if you already have <code>claude</code> CLI installed and logged in.</li>
+            <li data-i18n="sup.desk_a1_li1">Paste your Anthropic API key (<code>sk-ant-…</code>), or</li>
+            <li data-i18n="sup.desk_a1_li2">Switch to Claude Code subscription mode if you already have <code>claude</code> CLI installed and logged in.</li>
           </ul>
         </details>
 
         <details>
-          <summary>⌥+E doesn't do anything in other apps</summary>
-          <p>
+          <summary data-i18n="sup.desk_q2">⌥+E doesn't do anything in other apps</summary>
+          <p data-i18n="sup.desk_a2">
             Almost always a missing Accessibility permission. Open ⚙ Settings →
             "⌥+E 全局划词解释" → click "Open System Settings · Accessibility",
             then check the box next to nodx. Come back to nodx, click "Re-check"
@@ -222,21 +222,21 @@
         </details>
 
         <details>
-          <summary>Claude Code mode says "claude not found"</summary>
-          <p>
+          <summary data-i18n="sup.desk_q3">Claude Code mode says "claude not found"</summary>
+          <p data-i18n="sup.desk_a3">
             macOS apps launched from Finder don't see your shell's
             <code>PATH</code>, so <code>claude</code> installed via nvm / bun /
             homebrew may be invisible to nodx. Either:
           </p>
           <ul>
-            <li>Run <code>which claude</code> in your terminal, symlink it: <code>sudo ln -s $(which claude) /usr/local/bin/claude</code></li>
-            <li>Or start nodx from a terminal with <code>CLAUDE_BIN="$(which claude)" open /Applications/nodx.app</code></li>
+            <li data-i18n="sup.desk_a3_li1">Run <code>which claude</code> in your terminal, symlink it: <code>sudo ln -s $(which claude) /usr/local/bin/claude</code></li>
+            <li data-i18n="sup.desk_a3_li2">Or start nodx from a terminal with <code>CLAUDE_BIN="$(which claude)" open /Applications/nodx.app</code></li>
           </ul>
         </details>
 
         <details>
-          <summary>How do I export or move my data?</summary>
-          <p>
+          <summary data-i18n="sup.desk_q4">How do I export or move my data?</summary>
+          <p data-i18n="sup.desk_a4">
             All data is in a local SQLite database at
             <code>~/Library/Application Support/nodx.desktop/</code>. From
             within nodx you can also export any topic subtree as a
@@ -248,21 +248,21 @@
 
       <!-- ── General questions ──────────────────────────────────────── -->
       <div class="card">
-        <h2>General</h2>
+        <h2 data-i18n="sup.gen_h2">General</h2>
 
         <details>
-          <summary>How do I report a bug?</summary>
-          <p>
+          <summary data-i18n="sup.gen_q1">How do I report a bug?</summary>
+          <p data-i18n="sup.gen_a1">
             Email <a href="mailto:contact@aicon.solutions">contact@aicon.solutions</a>
             with:
           </p>
           <ul>
-            <li>The product and version (visible in Options / Settings)</li>
-            <li>What you did and what happened</li>
-            <li>What you expected to happen</li>
-            <li>A screenshot if it helps</li>
+            <li data-i18n="sup.gen_a1_li1">The product and version (visible in Options / Settings)</li>
+            <li data-i18n="sup.gen_a1_li2">What you did and what happened</li>
+            <li data-i18n="sup.gen_a1_li3">What you expected to happen</li>
+            <li data-i18n="sup.gen_a1_li4">A screenshot if it helps</li>
           </ul>
-          <p>
+          <p data-i18n="sup.gen_a1_p2">
             For nodx desktop, if it's a crash, macOS keeps a crash report at
             <code>~/Library/Logs/DiagnosticReports/</code> — attaching that
             speeds up diagnosis a lot.
@@ -270,16 +270,16 @@
         </details>
 
         <details>
-          <summary>How do I request a feature?</summary>
-          <p>
+          <summary data-i18n="sup.gen_q2">How do I request a feature?</summary>
+          <p data-i18n="sup.gen_a2">
             Same email. Extra points if you explain the problem you're trying
             to solve — sometimes there's already a way, or a simpler approach.
           </p>
         </details>
 
         <details>
-          <summary>Are Aicon products open source?</summary>
-          <p>
+          <summary data-i18n="sup.gen_q3">Are Aicon products open source?</summary>
+          <p data-i18n="sup.gen_a3">
             The website source (this page included) is at
             <a href="https://github.com/aistoume/aicon-web" target="_blank" rel="noopener">github.com/aistoume/aicon-web</a>
             and is public. The product source repositories are currently
@@ -289,8 +289,8 @@
         </details>
 
         <details>
-          <summary>Do you offer refunds?</summary>
-          <p>
+          <summary data-i18n="sup.gen_q4">Do you offer refunds?</summary>
+          <p data-i18n="sup.gen_a4">
             Our products are currently free (bring-your-own API key). When paid
             tiers ship (nodx Team / Enterprise), refund terms will be published
             here.
@@ -298,8 +298,8 @@
         </details>
 
         <details>
-          <summary>Something's not on this page</summary>
-          <p>
+          <summary data-i18n="sup.gen_q5">Something's not on this page</summary>
+          <p data-i18n="sup.gen_a5">
             Email or DM me. If it's a common question, I'll add it here.
           </p>
         </details>
@@ -310,13 +310,13 @@
       <div class="footer-row">
         <div>
           <strong>Aicon Solutions</strong>
-          <p>A product studio for AI-augmented thinking tools.</p>
+          <p data-i18n="sup.foot_tagline">A product studio for AI-augmented thinking tools.</p>
         </div>
         <div class="footer-links">
-          <a href="/">Home</a> ·
-          <a href="/nodx/">nodx</a> ·
-          <a href="/support.html">Support</a> ·
-          <a href="/privacy.html">Privacy</a> ·
+          <a href="/" data-i18n="nav.home">Home</a> ·
+          <a href="/nodx/" data-i18n="nav.nodx">nodx</a> ·
+          <a href="/support.html" data-i18n="foot.support">Support</a> ·
+          <a href="/privacy.html" data-i18n="foot.privacy">Privacy</a> ·
           <a href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏</a>
         </div>
       </div>

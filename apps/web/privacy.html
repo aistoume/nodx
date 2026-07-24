@@ -12,7 +12,7 @@
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Privacy — Aicon Solutions</title>
+    <title data-i18n="priv.metaTitle">Privacy — Aicon Solutions</title>
     <meta name="description" content="Privacy policy for nodx Lens, nodx desktop, and other Aicon Solutions products. Local-first by design — no accounts, no telemetry, no data collection." />
     <meta property="og:title" content="Privacy — Aicon Solutions" />
     <meta property="og:description" content="Local-first by design. No accounts. No telemetry." />
@@ -52,18 +52,18 @@
         <span class="brand-text">Aicon Solutions</span>
       </a>
       <nav>
-        <a href="/">Home</a>
-        <a href="/nodx/">nodx</a>
-        <a href="/support.html">Support</a>
+        <a href="/" data-i18n="nav.home">Home</a>
+        <a href="/nodx/" data-i18n="nav.nodx">nodx</a>
+        <a href="/support.html" data-i18n="foot.support">Support</a>
         <a class="x-link" href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏</a>
       </nav>
     </header>
 
     <main class="legal">
-      <h1>Privacy Policy</h1>
-      <p class="meta">Effective 2026-06-30 · Updated 2026-07-22 · Applies to all Aicon Solutions products</p>
+      <h1 data-i18n="priv.title">Privacy Policy</h1>
+      <p class="meta" data-i18n="priv.meta">Effective 2026-06-30 · Updated 2026-07-22 · Applies to all Aicon Solutions products</p>
 
-      <div class="callout">
+      <div class="callout" data-i18n="priv.short">
         <strong>The short version:</strong> Aicon Solutions has no servers that
         store your data. Our products are local-first. Our products collect no
         analytics, no telemetry, and no personal information. AI features route
@@ -73,8 +73,8 @@
         page traffic — see <a href="#website-analytics">Website analytics</a>.
       </div>
 
-      <h2>1 · Who we are</h2>
-      <p>
+      <h2 data-i18n="priv.who-title">1 · Who we are</h2>
+      <p data-i18n="priv.who-body">
         Aicon Solutions ("we", "us") is an independent product studio operated
         by LaoMos (Aicon Solutions, contact@aicon.solutions). This page
         applies to every product we ship, including <strong>nodx Lens</strong>
@@ -82,31 +82,31 @@
         past or future products listed on aicon.solutions.
       </p>
 
-      <h2>2 · What data each product handles</h2>
+      <h2 data-i18n="priv.data-title">2 · What data each product handles</h2>
 
       <!-- ── nodx Lens (Chrome extension) ────────────────────────────── -->
       <div class="product-section">
-        <h2>nodx Lens (Chrome extension)</h2>
+        <h2 data-i18n="priv.lens-title">nodx Lens (Chrome extension)</h2>
 
-        <h3>What stays on your device</h3>
+        <h3 data-i18n="priv.lens-stays-title">What stays on your device</h3>
         <ul>
-          <li>Your AI provider API key (Anthropic / OpenAI / Google), stored in <code>chrome.storage.local</code></li>
-          <li>Your language, model, and trigger preferences</li>
-          <li>Up to the 100 most recent explanations (text you highlighted + the AI's response)</li>
+          <li data-i18n="priv.lens-stays-1">Your AI provider API key (Anthropic / OpenAI / Google), stored in <code>chrome.storage.local</code></li>
+          <li data-i18n="priv.lens-stays-2">Your language, model, and trigger preferences</li>
+          <li data-i18n="priv.lens-stays-3">Up to the 100 most recent explanations (text you highlighted + the AI's response)</li>
         </ul>
 
-        <h3>What leaves your browser</h3>
-        <p>
+        <h3 data-i18n="priv.lens-leaves-title">What leaves your browser</h3>
+        <p data-i18n="priv.lens-leaves-body">
           When you click 🔍 to explain a highlighted phrase, an HTTPS request
           goes <strong>directly</strong> from your browser to the AI provider you
           configured. The request contains only:
         </p>
         <ul>
-          <li>The text you highlighted</li>
-          <li>A short prompt asking the AI to explain it</li>
-          <li>Your API key (as an authorization header)</li>
+          <li data-i18n="priv.lens-leaves-1">The text you highlighted</li>
+          <li data-i18n="priv.lens-leaves-2">A short prompt asking the AI to explain it</li>
+          <li data-i18n="priv.lens-leaves-3">Your API key (as an authorization header)</li>
         </ul>
-        <p>
+        <p data-i18n="priv.lens-leaves-note">
           The request goes to <code>api.anthropic.com</code>,
           <code>api.openai.com</code>, or
           <code>generativelanguage.googleapis.com</code> depending on which
@@ -114,28 +114,28 @@
           traffic.
         </p>
 
-        <h3>What we <em>don't</em> do</h3>
+        <h3 data-i18n="priv.lens-dont-title">What we <em>don't</em> do</h3>
         <ul>
-          <li>No analytics, no telemetry, no crash reports</li>
-          <li>No account registration or sign-in</li>
-          <li>No selling, transferring, or aggregating user data</li>
-          <li>No use of user data for advertising or credit decisions</li>
+          <li data-i18n="priv.lens-dont-1">No analytics, no telemetry, no crash reports</li>
+          <li data-i18n="priv.lens-dont-2">No account registration or sign-in</li>
+          <li data-i18n="priv.lens-dont-3">No selling, transferring, or aggregating user data</li>
+          <li data-i18n="priv.lens-dont-4">No use of user data for advertising or credit decisions</li>
         </ul>
       </div>
 
       <!-- ── nodx desktop (macOS app) ────────────────────────────────── -->
       <div class="product-section">
-        <h2>nodx desktop (macOS app)</h2>
+        <h2 data-i18n="priv.desk-title">nodx desktop (macOS app)</h2>
 
-        <h3>What stays on your device</h3>
+        <h3 data-i18n="priv.desk-stays-title">What stays on your device</h3>
         <ul>
-          <li>All your topics, messages, decisions, and reasoning traces (local SQLite database in your app data folder)</li>
-          <li>Your AI provider API key (stored in macOS Keychain, same encryption Safari uses)</li>
-          <li>Your preferences (theme, hotkey settings, layout)</li>
+          <li data-i18n="priv.desk-stays-1">All your topics, messages, decisions, and reasoning traces (local SQLite database in your app data folder)</li>
+          <li data-i18n="priv.desk-stays-2">Your AI provider API key (stored in macOS Keychain, same encryption Safari uses)</li>
+          <li data-i18n="priv.desk-stays-3">Your preferences (theme, hotkey settings, layout)</li>
         </ul>
 
-        <h3>What leaves your device</h3>
-        <p>
+        <h3 data-i18n="priv.desk-leaves-title">What leaves your device</h3>
+        <p data-i18n="priv.desk-leaves-body">
           Same model as nodx Lens: an in-process gateway inside the app makes
           HTTPS requests directly to your chosen AI provider using your own
           API key. Nothing is sent to any nodx-owned server. If you opt into
@@ -145,9 +145,9 @@
           token.
         </p>
 
-        <h3>System permissions we request</h3>
+        <h3 data-i18n="priv.desk-perms-title">System permissions we request</h3>
         <ul>
-          <li>
+          <li data-i18n="priv.desk-perms-1">
             <strong>Accessibility</strong> (⌥+E system-wide selection capture) —
             required for the app to synthesise <code>⌘+C</code> so it can read
             what you highlighted in another app. The synthesised copy is
@@ -157,19 +157,19 @@
       </div>
 
       <div class="product-section">
-        <h2>nodx Lens for Android</h2>
-        <p class="meta">Applies to v1.0.0 and later (sideload APK and Google Play).</p>
+        <h2 data-i18n="priv.android-title">nodx Lens for Android</h2>
+        <p class="meta" data-i18n="priv.android-meta">Applies to v1.0.0 and later (sideload APK and Google Play).</p>
 
-        <h3>What stays on your device</h3>
+        <h3 data-i18n="priv.android-stays-title">What stays on your device</h3>
         <ul>
-          <li>Your AI provider API keys (Anthropic / OpenAI / Google / OpenRouter) — stored in app-private <code>SharedPreferences</code>, never transmitted anywhere except directly to that provider</li>
-          <li>Saved screenshots and generated images (your device's photo library, <code>Pictures/nodx</code>)</li>
-          <li>The activity log — prompts, AI answers, search queries and links, with thumbnails — stored in app-private storage, capped at 200 entries, delete any entry with a long-press</li>
-          <li>Your action-wheel customisation</li>
+          <li data-i18n="priv.android-stays-1">Your AI provider API keys (Anthropic / OpenAI / Google / OpenRouter) — stored in app-private <code>SharedPreferences</code>, never transmitted anywhere except directly to that provider</li>
+          <li data-i18n="priv.android-stays-2">Saved screenshots and generated images (your device's photo library, <code>Pictures/nodx</code>)</li>
+          <li data-i18n="priv.android-stays-3">The activity log — prompts, AI answers, search queries and links, with thumbnails — stored in app-private storage, capped at 200 entries, delete any entry with a long-press</li>
+          <li data-i18n="priv.android-stays-4">Your action-wheel customisation</li>
         </ul>
 
-        <h3>What leaves your device</h3>
-        <p>
+        <h3 data-i18n="priv.android-leaves-title">What leaves your device</h3>
+        <p data-i18n="priv.android-leaves-body">
           Exactly one kind of traffic: when you tap the bubble and pick an
           action, the cropped screenshot region and your prompt are sent over
           HTTPS <strong>directly to the AI provider you selected</strong>,
@@ -177,11 +177,11 @@
           analytics, no crash reporting, no ads SDK.
         </p>
 
-        <h3>System permissions we request</h3>
+        <h3 data-i18n="priv.android-perms-title">System permissions we request</h3>
         <ul>
-          <li><strong>Display over other apps</strong> — draws the floating bubble, the region selector, and the result card.</li>
-          <li><strong>Screen capture (MediaProjection)</strong> — captures one frame when you tap the bubble. Android asks for your consent per session.</li>
-          <li>
+          <li data-i18n="priv.android-perms-1"><strong>Display over other apps</strong> — draws the floating bubble, the region selector, and the result card.</li>
+          <li data-i18n="priv.android-perms-2"><strong>Screen capture (MediaProjection)</strong> — captures one frame when you tap the bubble. Android asks for your consent per session.</li>
+          <li data-i18n="priv.android-perms-3">
             <strong>Accessibility service (optional)</strong> — the "long-lived
             capture" toggle. If you enable the <em>nodx screenshot</em> service,
             the app uses the accessibility <code>takeScreenshot</code> API so you
@@ -191,14 +191,14 @@
             for no other purpose. You can leave it off and use per-session
             consent instead.
           </li>
-          <li><strong>Notifications</strong> — the persistent notification Android requires for the bubble's foreground service, which also hosts the Stop button.</li>
+          <li data-i18n="priv.android-perms-4"><strong>Notifications</strong> — the persistent notification Android requires for the bubble's foreground service, which also hosts the Stop button.</li>
         </ul>
       </div>
 
       <!-- ── Other Aicon products ────────────────────────────────────── -->
       <div class="product-section">
-        <h2>LaoMOS · Still Employed? and future products</h2>
-        <p>
+        <h2 data-i18n="priv.other-title">LaoMOS · Still Employed? and future products</h2>
+        <p data-i18n="priv.other-body">
           Any product we build follows the same principle: local-first, no
           telemetry, minimal data collection. Individual product pages document
           any product-specific data handling. As of writing there are no
@@ -208,8 +208,8 @@
 
       <!-- ── Website analytics ───────────────────────────────────────── -->
       <div class="product-section" id="website-analytics">
-        <h2>2b · Website analytics (aicon.solutions only)</h2>
-        <p>
+        <h2 data-i18n="priv.web-title">2b · Website analytics (aicon.solutions only)</h2>
+        <p data-i18n="priv.web-body1">
           This website uses <strong>Google Analytics 4</strong> (gtag.js) to
           understand aggregate traffic: pages viewed, referral source, device
           type, and approximate location derived from IP. Google processes this
@@ -219,7 +219,7 @@
           campaigns bring visitors — no ad personalization, and we never feed
           it any content from our products.
         </p>
-        <p>
+        <p data-i18n="priv.web-body2">
           <strong>This applies to the website only.</strong> The products
           themselves (nodx Lens, nodx desktop, nodx Lens for Android) contain
           no analytics of any kind, as described above. To opt out of Google
@@ -229,35 +229,35 @@
         </p>
       </div>
 
-      <h2>3 · Data we handle (Chrome Web Store terminology)</h2>
-      <p>Per Chrome Web Store's data-handling categories:</p>
+      <h2 data-i18n="priv.cws-title">3 · Data we handle (Chrome Web Store terminology)</h2>
+      <p data-i18n="priv.cws-intro">Per Chrome Web Store's data-handling categories:</p>
       <ul>
-        <li>
+        <li data-i18n="priv.cws-1">
           <strong>Authentication information</strong> — your AI provider API
           key, stored locally in your browser (Lens) or the macOS Keychain
           (desktop). Never leaves your device except in HTTPS requests you
           initiate to the provider you chose.
         </li>
-        <li>
+        <li data-i18n="priv.cws-2">
           <strong>Website content</strong> — the text you explicitly highlight
           and choose to explain. Sent only to the AI provider you configured.
           Not retained by us.
         </li>
       </ul>
 
-      <p>We do <strong>not</strong> handle:</p>
+      <p data-i18n="priv.cws-nothandle">We do <strong>not</strong> handle:</p>
       <ul>
-        <li>Personally identifiable information (name, email, phone, address)</li>
-        <li>Health information</li>
-        <li>Financial information</li>
-        <li>Personal communications</li>
-        <li>Location data</li>
-        <li>Web browsing history</li>
-        <li>User activity beyond what you deliberately trigger</li>
+        <li data-i18n="priv.cws-not-1">Personally identifiable information (name, email, phone, address)</li>
+        <li data-i18n="priv.cws-not-2">Health information</li>
+        <li data-i18n="priv.cws-not-3">Financial information</li>
+        <li data-i18n="priv.cws-not-4">Personal communications</li>
+        <li data-i18n="priv.cws-not-5">Location data</li>
+        <li data-i18n="priv.cws-not-6">Web browsing history</li>
+        <li data-i18n="priv.cws-not-7">User activity beyond what you deliberately trigger</li>
       </ul>
 
-      <h2>4 · Third parties</h2>
-      <p>
+      <h2 data-i18n="priv.third-title">4 · Third parties</h2>
+      <p data-i18n="priv.third-body">
         When you use an AI feature, the request goes to the third-party
         provider you configured. Those providers have their own privacy
         policies:
@@ -268,30 +268,30 @@
         <li><a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google (Gemini)</a></li>
       </ul>
 
-      <h2>5 · Certifications</h2>
+      <h2 data-i18n="priv.cert-title">5 · Certifications</h2>
       <ul>
-        <li>We do <strong>not</strong> sell or transfer user data to third parties.</li>
-        <li>We do <strong>not</strong> use or transfer user data for purposes unrelated to the item's single purpose.</li>
-        <li>We do <strong>not</strong> use or transfer user data to determine creditworthiness or for lending purposes.</li>
+        <li data-i18n="priv.cert-1">We do <strong>not</strong> sell or transfer user data to third parties.</li>
+        <li data-i18n="priv.cert-2">We do <strong>not</strong> use or transfer user data for purposes unrelated to the item's single purpose.</li>
+        <li data-i18n="priv.cert-3">We do <strong>not</strong> use or transfer user data to determine creditworthiness or for lending purposes.</li>
       </ul>
 
-      <h2>6 · Children's privacy</h2>
-      <p>
+      <h2 data-i18n="priv.children-title">6 · Children's privacy</h2>
+      <p data-i18n="priv.children-body">
         Our products are not directed at children under 13. We knowingly
         collect nothing from anyone — including children — because we collect
         nothing at all.
       </p>
 
-      <h2>7 · Changes</h2>
-      <p>
+      <h2 data-i18n="priv.changes-title">7 · Changes</h2>
+      <p data-i18n="priv.changes-body">
         If this policy changes, we will update the <em>Effective</em> date at
         the top of this page. Because we don't have accounts, we can't email
         you about changes — please bookmark this page if you want to check
         back.
       </p>
 
-      <h2>8 · Contact</h2>
-      <p>
+      <h2 data-i18n="priv.contact-title">8 · Contact</h2>
+      <p data-i18n="priv.contact-body">
         Questions, concerns, or a data-related request:
         <a href="mailto:contact@aicon.solutions">contact@aicon.solutions</a>.
       </p>
@@ -301,13 +301,13 @@
       <div class="footer-row">
         <div>
           <strong>Aicon Solutions</strong>
-          <p>A product studio for AI-augmented thinking tools.</p>
+          <p data-i18n="priv.foot-tagline">A product studio for AI-augmented thinking tools.</p>
         </div>
         <div class="footer-links">
-          <a href="/">Home</a> ·
-          <a href="/nodx/">nodx</a> ·
-          <a href="/support.html">Support</a> ·
-          <a href="/privacy.html">Privacy</a> ·
+          <a href="/" data-i18n="nav.home">Home</a> ·
+          <a href="/nodx/" data-i18n="nav.nodx">nodx</a> ·
+          <a href="/support.html" data-i18n="foot.support">Support</a> ·
+          <a href="/privacy.html" data-i18n="foot.privacy">Privacy</a> ·
           <a href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏</a>
         </div>
       </div>

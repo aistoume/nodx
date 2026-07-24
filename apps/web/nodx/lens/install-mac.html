@@ -12,7 +12,7 @@
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Install nodx Lens on macOS — Aicon Solutions</title>
+    <title data-i18n="macinst.metaTitle">Install nodx Lens on macOS — Aicon Solutions</title>
     <meta name="description" content="How to install the nodx Lens macOS beta. macOS shows a 'damaged' warning for unsigned apps — here's the one-line fix." />
     <link rel="icon" type="image/png" href="/icons/icon-128.png" />
     <link rel="stylesheet" href="/styles.css" />
@@ -59,9 +59,9 @@
         <span class="brand-text">Aicon Solutions</span>
       </a>
       <nav>
-        <a href="/">Home</a>
-        <a href="/nodx/">nodx</a>
-        <a href="/nodx/lens/">Lens</a>
+        <a href="/" data-i18n="nav.home">Home</a>
+        <a href="/nodx/" data-i18n="nav.nodx">nodx</a>
+        <a href="/nodx/lens/" data-i18n="macinst.nav-lens">Lens</a>
       </nav>
     </header>
 
@@ -69,34 +69,34 @@
       <a href="/">Aicon</a> <span>›</span>
       <a href="/nodx/">nodx</a> <span>›</span>
       <a href="/nodx/lens/">Lens</a> <span>›</span>
-      <strong>Install on macOS</strong>
+      <strong data-i18n="macinst.breadcrumb">Install on macOS</strong>
     </div>
 
     <div class="install-doc">
-      <h1>Install nodx Lens on macOS (beta)</h1>
-      <p class="subtitle">Unsigned beta — takes 60 seconds + one terminal command.</p>
+      <h1 data-i18n="macinst.h1">Install nodx Lens on macOS (beta)</h1>
+      <p class="subtitle" data-i18n="macinst.subtitle">Unsigned beta — takes 60 seconds + one terminal command.</p>
 
-      <div class="callout">
+      <div class="callout" data-i18n="macinst.merge-note">
         <strong>Update:</strong> the standalone Lens-for-Mac app has been merged
         into <a href="/nodx/">nodx desktop</a> (since 0.3). Download nodx desktop
         below to get system-wide ⌥+E select-and-explain plus the full thinking
         workspace — the install steps on this page apply the same way.
       </div>
 
-      <a class="download-btn" href="/downloads/nodx-0.5.0-arm64.dmg" download>
+      <a class="download-btn" href="/downloads/nodx-0.5.0-arm64.dmg" download data-i18n="macinst.download-btn">
         ⬇ Download nodx-0.5.0-arm64.dmg
       </a>
-      <p style="font-size:13px;color:var(--muted);">Apple Silicon · macOS 12+ · ~8 MB</p>
+      <p style="font-size:13px;color:var(--muted);" data-i18n="macinst.specs">Apple Silicon · macOS 12+ · ~8 MB</p>
 
-      <h2>1. Install</h2>
+      <h2 data-i18n="macinst.h2-install">1. Install</h2>
       <ol>
-        <li>Double-click the downloaded <code>.dmg</code></li>
-        <li>Drag <strong>nodx</strong> to the <strong>Applications</strong> folder</li>
-        <li>Eject the DMG</li>
+        <li data-i18n="macinst.install-1">Double-click the downloaded <code>.dmg</code></li>
+        <li data-i18n="macinst.install-2">Drag <strong>nodx</strong> to the <strong>Applications</strong> folder</li>
+        <li data-i18n="macinst.install-3">Eject the DMG</li>
       </ol>
 
-      <h2>2. Bypass Gatekeeper (one-time)</h2>
-      <div class="callout">
+      <h2 data-i18n="macinst.h2-gatekeeper">2. Bypass Gatekeeper (one-time)</h2>
+      <div class="callout" data-i18n="macinst.gatekeeper-why">
         <strong>Why this step exists:</strong> macOS marks any app downloaded from the
         internet with a "quarantine" flag. Apps that aren't signed by Apple
         Developer Program (we'll be properly signed after the beta) trigger a
@@ -105,77 +105,77 @@
         until you remove the flag.
       </div>
 
-      <p>Open <strong>Terminal</strong> (⌘+Space → "Terminal") and paste:</p>
+      <p data-i18n="macinst.open-terminal">Open <strong>Terminal</strong> (⌘+Space → "Terminal") and paste:</p>
       <pre><code>xattr -dr com.apple.quarantine "/Applications/nodx.app"</code></pre>
 
-      <p>That's it. Double-click <strong>nodx Lens</strong> in Applications — it opens normally.</p>
+      <p data-i18n="macinst.thats-it">That's it. Double-click <strong>nodx Lens</strong> in Applications — it opens normally.</p>
 
-      <h2>3. Grant Accessibility permission</h2>
-      <p>nodx Lens needs Accessibility to simulate ⌘+C when you press ⌥+E. On first
+      <h2 data-i18n="macinst.h2-accessibility">3. Grant Accessibility permission</h2>
+      <p data-i18n="macinst.accessibility-intro">nodx Lens needs Accessibility to simulate ⌘+C when you press ⌥+E. On first
         launch, press <strong>⌥+E</strong>:</p>
       <ol>
-        <li>A "Permission Needed" window appears</li>
-        <li>System Settings auto-opens to Privacy &amp; Security → Accessibility</li>
-        <li>Toggle <strong>nodx Lens</strong> on</li>
-        <li>From the menu bar (top-right) → click the nodx Lens icon → <strong>Quit</strong></li>
-        <li>Re-launch nodx Lens from Applications</li>
+        <li data-i18n="macinst.accessibility-1">A "Permission Needed" window appears</li>
+        <li data-i18n="macinst.accessibility-2">System Settings auto-opens to Privacy &amp; Security → Accessibility</li>
+        <li data-i18n="macinst.accessibility-3">Toggle <strong>nodx Lens</strong> on</li>
+        <li data-i18n="macinst.accessibility-4">From the menu bar (top-right) → click the nodx Lens icon → <strong>Quit</strong></li>
+        <li data-i18n="macinst.accessibility-5">Re-launch nodx Lens from Applications</li>
       </ol>
 
-      <h2>4. Configure your API key</h2>
-      <p>Press <strong>⌥+E</strong> — Settings opens.</p>
+      <h2 data-i18n="macinst.h2-apikey">4. Configure your API key</h2>
+      <p data-i18n="macinst.apikey-intro">Press <strong>⌥+E</strong> — Settings opens.</p>
       <ul>
-        <li><strong>Provider</strong> — Anthropic, OpenAI, or Google</li>
-        <li><strong>API Key</strong> — from your chosen provider's console</li>
-        <li><strong>Model</strong> — defaults are fine</li>
-        <li><strong>Language</strong> — English or 中文</li>
+        <li data-i18n="macinst.apikey-provider"><strong>Provider</strong> — Anthropic, OpenAI, or Google</li>
+        <li data-i18n="macinst.apikey-key"><strong>API Key</strong> — from your chosen provider's console</li>
+        <li data-i18n="macinst.apikey-model"><strong>Model</strong> — defaults are fine</li>
+        <li data-i18n="macinst.apikey-language"><strong>Language</strong> — English or 中文</li>
       </ul>
 
-      <h2>5. Use it</h2>
+      <h2 data-i18n="macinst.h2-use">5. Use it</h2>
       <ol>
-        <li>Select text in any app (Notes, VS Code, Safari, PDF...)</li>
-        <li>Press <strong>⌥+E</strong></li>
-        <li>nodx Lens captures your selection and shows an AI explanation</li>
-        <li>Press <strong>Esc</strong> to dismiss</li>
+        <li data-i18n="macinst.use-1">Select text in any app (Notes, VS Code, Safari, PDF...)</li>
+        <li data-i18n="macinst.use-2">Press <strong>⌥+E</strong></li>
+        <li data-i18n="macinst.use-3">nodx Lens captures your selection and shows an AI explanation</li>
+        <li data-i18n="macinst.use-4">Press <strong>Esc</strong> to dismiss</li>
       </ol>
 
-      <h2>What it does (and doesn't)</h2>
+      <h2 data-i18n="macinst.h2-does">What it does (and doesn't)</h2>
       <ul>
-        <li>✅ Reads the text you just selected (simulates ⌘+C)</li>
-        <li>✅ Sends it directly to your AI provider with your own key</li>
-        <li>✅ Streams the response into a small floating window</li>
-        <li>✅ Restores your original clipboard so we don't pollute what you had copied</li>
-        <li>❌ No background telemetry. No analytics. No phone-home.</li>
-        <li>❌ No reading anything outside the ⌥+E trigger.</li>
-        <li>❌ No nodx server in the loop — your data goes direct to Anthropic / OpenAI / Google.</li>
+        <li data-i18n="macinst.does-1">✅ Reads the text you just selected (simulates ⌘+C)</li>
+        <li data-i18n="macinst.does-2">✅ Sends it directly to your AI provider with your own key</li>
+        <li data-i18n="macinst.does-3">✅ Streams the response into a small floating window</li>
+        <li data-i18n="macinst.does-4">✅ Restores your original clipboard so we don't pollute what you had copied</li>
+        <li data-i18n="macinst.does-5">❌ No background telemetry. No analytics. No phone-home.</li>
+        <li data-i18n="macinst.does-6">❌ No reading anything outside the ⌥+E trigger.</li>
+        <li data-i18n="macinst.does-7">❌ No nodx server in the loop — your data goes direct to Anthropic / OpenAI / Google.</li>
       </ul>
 
-      <h2>Uninstall</h2>
+      <h2 data-i18n="macinst.h2-uninstall">Uninstall</h2>
       <ol>
-        <li>Finder → Applications → drag <strong>nodx Lens</strong> to Trash</li>
-        <li>(Optional) Clear settings: <code>rm -rf ~/Library/Application\ Support/com.nodx.lens</code></li>
-        <li>(Optional) Remove Accessibility entry: System Settings → Privacy → Accessibility → select nodx Lens → click <code>−</code></li>
+        <li data-i18n="macinst.uninstall-1">Finder → Applications → drag <strong>nodx Lens</strong> to Trash</li>
+        <li data-i18n="macinst.uninstall-2">(Optional) Clear settings: <code>rm -rf ~/Library/Application\ Support/com.nodx.lens</code></li>
+        <li data-i18n="macinst.uninstall-3">(Optional) Remove Accessibility entry: System Settings → Privacy → Accessibility → select nodx Lens → click <code>−</code></li>
       </ol>
 
-      <h2>Troubleshooting</h2>
+      <h2 data-i18n="macinst.h2-troubleshooting">Troubleshooting</h2>
       <ul>
-        <li><strong>"⌥+E does nothing"</strong> — check Accessibility permission is on AND restart nodx Lens after granting</li>
-        <li><strong>"Window appears in the wrong spot"</strong> — V0 centers the window; V1 will spawn at cursor</li>
-        <li><strong>"Error: 401 / 403"</strong> — API key wrong / out of quota / wrong model name</li>
-        <li><strong>Other issues</strong> — ping <a href="https://x.com/LaoMo9394" target="_blank" rel="noopener">@LaoMo9394 on 𝕏</a></li>
+        <li data-i18n="macinst.trouble-1"><strong>"⌥+E does nothing"</strong> — check Accessibility permission is on AND restart nodx Lens after granting</li>
+        <li data-i18n="macinst.trouble-2"><strong>"Window appears in the wrong spot"</strong> — V0 centers the window; V1 will spawn at cursor</li>
+        <li data-i18n="macinst.trouble-3"><strong>"Error: 401 / 403"</strong> — API key wrong / out of quota / wrong model name</li>
+        <li data-i18n="macinst.trouble-4"><strong>Other issues</strong> — ping <a href="https://x.com/LaoMo9394" target="_blank" rel="noopener">@LaoMo9394 on 𝕏</a></li>
       </ul>
 
-      <p style="margin-top:32px;color:var(--muted);font-size:13px;">
+      <p style="margin-top:32px;color:var(--muted);font-size:13px;" data-i18n="macinst.back">
         ← <a href="/nodx/lens/">back to nodx Lens</a>
       </p>
     </div>
 
     <footer class="container">
       <div class="footer-row">
-        <div>
+        <div data-i18n="macinst.foot-credit">
           <strong>nodx Lens</strong> · part of <a href="/nodx/">nodx</a> · by <a href="/">Aicon Solutions</a>
         </div>
         <div class="footer-links">
-          <a href="/privacy.html">Privacy</a> ·
+          <a href="/privacy.html" data-i18n="foot.privacy">Privacy</a> ·
           <a href="https://x.com/LaoMo9394" target="_blank" rel="noopener">𝕏</a>
         </div>
       </div>
