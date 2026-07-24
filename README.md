@@ -1,5 +1,11 @@
 <div align="center">
 
+**English** · [简体中文](./README.zh-CN.md)
+
+</div>
+
+<div align="center">
+
 <img src=".github/assets/hero.png" alt="nodx — AI 陪你想，而不是替你想 / A decision-thinking workspace where AI helps you think more, not less" width="100%" />
 
 <br/>
@@ -41,6 +47,7 @@ A local-first desktop app that helps managers turn fuzzy decision questions into
 |---|---|---|
 | 🖥 [**nodx desktop**](./apps/desktop) | The thinking workspace: Survey → decomposition → document → expert panels → auto-recursion → case library | macOS release on the [Releases page](https://github.com/aistoume/nodx/releases) |
 | 🌐 [**nodx Lens**](./apps/extension) | Chrome MV3 extension: select text or box any page region → customizable action wheel (explain / search / shop / generate / save) | [Chrome Web Store](https://chromewebstore.google.com/detail/ipljkbefemodjbihcnmmaallcfndmild) · v1.0 |
+| 🐣 [**nodx Lens — desktop pet**](./apps/pet) | Standalone floating bubble for macOS: click for the action wheel, ⌥+E pulls your selection into a question, any spoke can shell out to your own CLI. No nodx install needed | v1.0 — [download .dmg](https://github.com/aistoume/nodx/releases/tag/pet-v1.0.0) (signed & notarized) |
 | 🤖 [**Lens for Android**](./apps/android) | Same action wheel, system-wide on your phone via a floating bubble | v1.0 — [Google Play (open testing)](https://play.google.com/store/apps/details?id=solutions.aicon.nodx) · [APK](https://aicon.solutions/nodx/lens/) |
 | 🧲 [**Lens for Mac**](./apps/lens-mac) | ⌥+E select-to-explain anywhere on macOS | merged into nodx desktop |
 | 🏠 [**Website**](./apps/web) | aicon.solutions — downloads, docs, pricing | live |
@@ -85,6 +92,7 @@ Post-M1, mid-M2. Highlights:
 - ✅ i18n (zh/en), ⌥+E system-wide capture, Windows CI
 - ✅ **nodx Lens 1.0**: fully customizable wheel, 5 AI providers (Claude / GPT / Gemini / OpenRouter / local gateway), 13 search presets, quick model switcher
 - ✅ **Android 1.0**: floating bubble, wheel, action log, 4 providers
+- ✅ **Desktop pet 1.0** (`apps/pet`): standalone signed + notarized macOS app — non-activating panel, ⌥+E / ⌥+W hotkeys, multi-turn threads, customizable wheel, arbitrary CLI actions, 11 languages
 - ⏳ Auto-recursion Sprint C, drafts drawer, @-mentions UI; Safari port in planning
 
 Product spec and design docs are maintained in a private companion repo.
@@ -232,6 +240,7 @@ nodx/
 │   │   └── src-tauri/     #   Rust backend, SQLite migrations, in-proc AI gateway
 │   ├── extension/         # nodx Lens — Chrome MV3 extension
 │   ├── android/           # Lens for Android (Kotlin, floating bubble + wheel)
+│   ├── pet/               # nodx Lens desktop pet (standalone Tauri app)
 │   ├── lens-mac/          # ⌥+E select-to-explain (merged into desktop)
 │   └── web/               # aicon.solutions static site
 ├── packages/
