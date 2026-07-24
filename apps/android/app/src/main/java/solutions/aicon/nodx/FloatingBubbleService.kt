@@ -7,7 +7,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.media.projection.MediaProjection
@@ -75,7 +74,11 @@ class FloatingBubbleService : Service() {
                 isRunning = true
                 val path = intent.getStringExtra(EXTRA_CAPTURE_PATH)
                 if (path != null) {
-                    val bmp = runCatching { BitmapFactory.decodeFile(path) }.getOrNull()
+                    // Camera shots can be tens of MP — decode downsampled to
+                    // the display size instead of full resolution (Play rec).
+                    val dm = resources.displayMetrics
+                    val maxDim = maxOf(dm.widthPixels, dm.heightPixels)
+                    val bmp = runCatching { BitmapIO.decodeFileSampled(path, maxDim) }.getOrNull()
                     java.io.File(path).delete()
                     if (bmp != null) SelectionOverlayView.show(this, windowManager, bmp)
                 }

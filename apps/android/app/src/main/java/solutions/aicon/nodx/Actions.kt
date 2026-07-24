@@ -23,7 +23,6 @@ import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import android.graphics.BitmapFactory
 import kotlinx.coroutines.withContext
 import solutions.aicon.nodx.ai.AnthropicClient
 import solutions.aicon.nodx.ai.GeminiClient
@@ -324,7 +323,9 @@ object Actions {
                 GeminiClient.generateImage(gKey, action.stylePrompt.replace("{subject}", subject))
             }
                 .getOrElse { mainToast(context, context.getString(R.string.gen_failed, it.message), long = true); return@launch }
-            val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            // Largest downstream use is a 640px gallery copy — decode with
+            // headroom instead of at the generator's full resolution (Play rec).
+            val bmp = BitmapIO.decodeBytesSampled(bytes, 1280)
                 ?: run { mainToast(context, context.getString(R.string.gen_decode_failed)); return@launch }
             val uri = storeToGallery(context, downscale(bmp, 640), "nodx-gen")
             ActionLog.append(
